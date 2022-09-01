@@ -90,6 +90,20 @@ func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is.True(err != nil)
 }
 
+func TestSensefarmBasicDecoder(t *testing.T) {
+	is, _ := testSetup(t)
+
+	r := &Payload{}
+
+	err := SensefarmBasicDecoder(context.Background(), []byte(sensefarm), func(c context.Context, m Payload) error {
+		r = &m
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(r.Timestamp, "2022-08-25T06:40:56.785171Z")
+}
+
 func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
 
@@ -178,6 +192,20 @@ const senlabT_sensorReadingError string = `[{
 	"data":"AdCNeZwQARk=",
 	"object":{"batlevel":81,"logValue":17.5625}
 }`*/
+
+const sensefarm string = `[
+	{
+	  "devEui":"70b3d554600002b0",
+	  "sensorType":"cube02",
+	  "timestamp":"2022-08-25T06:40:56.785171Z",
+	  "payload":"b006b800013008e4980000032fa80006990000043aa9000a08418a8bcc",
+	  "spreadingFactor":"12",
+	  "rssi":"-109",
+	  "snr":"-2.5",
+	  "gatewayIdentifier":"126",
+	  "fPort":"2"
+	}
+  ]`
 
 const elsysTemp string = `{
 	"applicationID": "8",
