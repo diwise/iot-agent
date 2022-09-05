@@ -136,8 +136,8 @@ func Watermeter(ctx context.Context, deviceID string, payload decoder.Payload) (
 		Timestamp    string `json:"timestamp"`
 		DeviceName   string `json:"deviceName"`
 		Measurements []struct {
-			CurrentVolume   *float64 `json:"curVol,omitempty"`
-			CurrentDateTime *string  `json:"curDateTime,omitempty"`
+			CurrentVolume   *float64 `json:"currentVolume,omitempty"`
+			CurrentDateTime *string  `json:"currentTime,omitempty"`
 		} `json:"measurements"`
 	}{}
 

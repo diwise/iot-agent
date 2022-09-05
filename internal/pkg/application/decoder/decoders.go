@@ -3,6 +3,8 @@ package decoder
 import (
 	"context"
 	"encoding/json"
+	"reflect"
+	"strings"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
@@ -19,6 +21,7 @@ type Payload struct {
 	Type         string        `json:"type,omitempty"`
 	Error        string        `json:"error,omitempty"`
 	Measurements []interface{} `json:"measurements"`
+	StatusCode   int           `json:"statusCode"`
 }
 
 func (p Payload) ConvertToStruct(v any) error {
@@ -30,6 +33,21 @@ func (p Payload) ConvertToStruct(v any) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (p *Payload) ValueOf(name string) any {
+	for _, m := range p.Measurements {
+		t := reflect.TypeOf(m)
+
+		for i := 0; i < t.NumField(); i++ {
+			if strings.EqualFold(t.Field(i).Name, name) {
+				v := reflect.ValueOf(m)
+				return v.Field(i).Interface()
+			}
+		}
+	}
+
 	return nil
 }
 
