@@ -195,7 +195,7 @@ const senlabT_sensorReadingError string = `[{
 
 const sensefarm string = `[
 	{
-	  "devEui":"70b3d554600002b0",
+	  "devEui":"71b4d554600002b0",
 	  "sensorType":"cube02",
 	  "timestamp":"2022-08-25T06:40:56.785171Z",
 	  "payload":"b006b800013008e4980000032fa80006990000043aa9000a08418a8bcc",
