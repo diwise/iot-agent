@@ -160,6 +160,51 @@ func TestQalcosonic_w24h(t *testing.T) {
 	is.Equal(payload.StatusCode, 0)
 }
 
+func TestQalcosonicStatusCodes(t *testing.T) {
+	is, _ := testSetup(t)
+
+	is.Equal("No error", getStatusMessage(0)[0])
+	is.Equal("Power low", getStatusMessage(0x04)[0])
+	is.Equal("Permanent error", getStatusMessage(0x08)[0])
+	is.Equal("Temporary error", getStatusMessage(0x10)[0])
+	is.Equal("Empty spool", getStatusMessage(0x10)[1])
+	is.Equal("Leakage", getStatusMessage(0x20)[0])
+	is.Equal("Burst", getStatusMessage(0xA0)[0])
+	is.Equal("Negative flow", getStatusMessage(0x60)[0])
+	is.Equal("Freeze", getStatusMessage(0x80)[0])
+
+	is.Equal("Power low", getStatusMessage(0x0C)[0])
+	is.Equal("Permanent error", getStatusMessage(0x0C)[1])
+
+	is.Equal("Temporary error", getStatusMessage(0x10)[0])
+	is.Equal("Empty spool", getStatusMessage(0x10)[1])
+
+	is.Equal("Power low", getStatusMessage(0x14)[0])
+	is.Equal("Temporary error", getStatusMessage(0x14)[1])
+	is.Equal("Empty spool", getStatusMessage(0x14)[2])
+
+	// ...
+
+	is.Equal("Permanent error", getStatusMessage(0x18)[0])
+	is.Equal("Temporary error", getStatusMessage(0x18)[1])
+	is.Equal("Empty spool", getStatusMessage(0x18)[2])
+
+	// ...
+
+	is.Equal("Power low", getStatusMessage(0x3C)[0])
+	is.Equal("Permanent error", getStatusMessage(0x3C)[1])
+	is.Equal("Temporary error", getStatusMessage(0x3C)[2])
+	is.Equal("Leakage", getStatusMessage(0x3C)[3])
+
+	// ...
+
+	is.Equal("Power low", getStatusMessage(0xBC)[0])
+	is.Equal("Permanent error", getStatusMessage(0xBC)[1])
+	is.Equal("Temporary error", getStatusMessage(0xBC)[2])
+	is.Equal("Burst", getStatusMessage(0xBC)[3])
+
+}
+
 func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
 	is := is.New(t)
 	return is, zerolog.Logger{}

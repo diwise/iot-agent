@@ -149,12 +149,13 @@ func w1h(buf *bytes.Reader) ([]interface{}, error) {
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
 		m := struct {
-			StatusCode int `json:"statusCode"`
+			StatusCode     int      `json:"statusCode"`
+			StatusMessages []string `json:"statusMessages"`
 		}{
-			StatusCode: int(statusCode),
+			StatusCode:     int(statusCode),
+			StatusMessages: getStatusMessage(statusCode),
 		}
 		measurements = append(measurements, m)
-		measurements = append(measurements, statusAxiomaExtended(statusCode))
 	} else {
 		return nil, err
 	}
@@ -227,12 +228,13 @@ func w1hTemp(buf *bytes.Reader) ([]interface{}, error) {
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
 		m := struct {
-			StatusCode int `json:"statusCode"`
+			StatusCode     int      `json:"statusCode"`
+			StatusMessages []string `json:"statusMessages"`
 		}{
-			StatusCode: int(statusCode),
+			StatusCode:     int(statusCode),
+			StatusMessages: getStatusMessage(statusCode),
 		}
 		measurements = append(measurements, m)
-		measurements = append(measurements, statusAxiomaExtended(statusCode))
 	} else {
 		return nil, err
 	}
@@ -318,12 +320,13 @@ func w24h(buf *bytes.Reader) ([]interface{}, error) {
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
 		m := struct {
-			StatusCode int `json:"statusCode"`
+			StatusCode     int      `json:"statusCode"`
+			StatusMessages []string `json:"statusMessages"`
 		}{
-			StatusCode: int(statusCode),
+			StatusCode:     int(statusCode),
+			StatusMessages: getStatusMessage(statusCode),
 		}
 		measurements = append(measurements, m)
-		measurements = append(measurements, statusAxiomaExtended(statusCode))
 	} else {
 		return nil, err
 	}
@@ -357,37 +360,37 @@ func readPayload(payload string) ([]byte, error) {
 	return nil, err
 }
 
-func statusAxiomaExtended(s uint8) interface{} {
-
-	status := struct {
-		StatusMessages []string
-	}{}
-
-	if s == 0x00 {
-		status.StatusMessages = append(status.StatusMessages, "No error")
+func getStatusMessage(code uint8) []string {
+	var statusMessages []string
+	
+	if code == 0x00 {
+		statusMessages = append(statusMessages, "No error")
 	} else {
-		if s&0x04 == 0x04 {
-			status.StatusMessages = append(status.StatusMessages, "Power low")
+		if code&0x04 == 0x04 {
+			statusMessages = append(statusMessages, "Power low")
 		}
-		if s&0x08 == 0x08 {
-			status.StatusMessages = append(status.StatusMessages, "Permanent error")
+		if code&0x08 == 0x08 {
+			statusMessages = append(statusMessages, "Permanent error")
 		}
-		if s&0x10 == 0x10 {
-			status.StatusMessages = append(status.StatusMessages, "Temporary error")
+		if code&0x10 == 0x10 {
+			statusMessages = append(statusMessages, "Temporary error")
 		}
-		if s&0x20 == 0x20 {
-			status.StatusMessages = append(status.StatusMessages, "Leakage")
+		if code&0x10 == 0x10 && code&0x20 != 0x20 && code&0xA0 != 0xA0 && code&0x60 != 0x60 && code&0x80 != 0x80 {
+			statusMessages = append(statusMessages, "Empty spool")
 		}
-		if s&0xA0 == 0xA0 {
-			status.StatusMessages = append(status.StatusMessages, "Burst")
+		if code&0x60 == 0x60 {
+			statusMessages = append(statusMessages, "Negative flow")
 		}
-		if s&0x60 == 0x60 {
-			status.StatusMessages = append(status.StatusMessages, "Negative flow")
+		if code&0xA0 == 0xA0 {
+			statusMessages = append(statusMessages, "Burst")
 		}
-		if s&0x80 == 0x80 {
-			status.StatusMessages = append(status.StatusMessages, "Freeze")
+		if code&0x20 == 0x20 && code&0x40 != 0x40 && code&0x80 != 0x80 {
+			statusMessages = append(statusMessages, "Leakage")
+		}
+		if code&0x80 == 0x80 && code&0x20 != 0x20 {
+			statusMessages = append(statusMessages, "Freeze")
 		}
 	}
 
-	return status
+	return statusMessages
 }
