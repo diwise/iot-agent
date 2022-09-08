@@ -362,7 +362,7 @@ func readPayload(payload string) ([]byte, error) {
 
 func getStatusMessage(code uint8) []string {
 	var statusMessages []string
-	
+
 	if code == 0x00 {
 		statusMessages = append(statusMessages, "No error")
 	} else {
@@ -390,6 +390,10 @@ func getStatusMessage(code uint8) []string {
 		if code&0x80 == 0x80 && code&0x20 != 0x20 {
 			statusMessages = append(statusMessages, "Freeze")
 		}
+	}
+
+	if len(statusMessages) == 0 {
+		statusMessages = append(statusMessages, "Unknown")
 	}
 
 	return statusMessages

@@ -203,6 +203,7 @@ func TestQalcosonicStatusCodes(t *testing.T) {
 	is.Equal("Temporary error", getStatusMessage(0xBC)[2])
 	is.Equal("Burst", getStatusMessage(0xBC)[3])
 
+	is.Equal("Unknown", getStatusMessage(0x02)[0])
 }
 
 func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
