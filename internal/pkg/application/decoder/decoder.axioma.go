@@ -382,13 +382,13 @@ func getStatusMessage(code uint8) []string {
 			statusMessages = append(statusMessages, "Empty spool")
 		}
 		if code&0x60 == 0x60 {
-			statusMessages = append(statusMessages, "Negative flow")
+			statusMessages = append(statusMessages, "Backflow")
 		}
 		if code&0xA0 == 0xA0 {
 			statusMessages = append(statusMessages, "Burst")
 		}
 		if code&0x20 == 0x20 && code&0x40 != 0x40 && code&0x80 != 0x80 {
-			statusMessages = append(statusMessages, "Leakage")
+			statusMessages = append(statusMessages, "Leak")
 		}
 		if code&0x80 == 0x80 && code&0x20 != 0x20 {
 			statusMessages = append(statusMessages, "Freeze")
