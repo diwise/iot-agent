@@ -10,18 +10,30 @@ import (
 )
 
 type Payload struct {
-	DevEUI       string        `json:"devEUI"`
-	DeviceName   string        `json:"deviceName,omitempty"`
-	FPort        string        `json:"fPort,omitempty"`
-	Latitude     float64       `json:"latitude,omitempty"`
-	Longitude    float64       `json:"longitude,omitempty"`
-	Rssi         string        `json:"rssi,omitempty"`
-	SensorType   string        `json:"sensorType,omitempty"`
-	Timestamp    string        `json:"timestamp,omitempty"`
-	Type         string        `json:"type,omitempty"`
-	Error        string        `json:"error,omitempty"`
-	Measurements []interface{} `json:"measurements"`
-	StatusCode   int           `json:"statusCode"`
+	DevEUI       string  `json:"devEUI"`
+	DeviceName   string  `json:"deviceName,omitempty"`
+	FPort        string  `json:"fPort,omitempty"`
+	Latitude     float64 `json:"latitude,omitempty"`
+	Longitude    float64 `json:"longitude,omitempty"`
+	Rssi         string  `json:"rssi,omitempty"`
+	SensorType   string  `json:"sensorType,omitempty"`
+	Timestamp    string  `json:"timestamp,omitempty"`
+	Type         string  `json:"type,omitempty"`
+	Error        string  `json:"error,omitempty"`
+	Measurements []any   `json:"measurements"`
+	Status       Status  `json:"status"`
+}
+
+type Status struct {
+	Code     int      `json:"statusCode"`
+	Messages []string `json:"statusMessages"`
+}
+
+func (p *Payload) SetStatus(code int, messages []string) {
+	p.Status = Status{
+		Code:     code,
+		Messages: messages,
+	}
 }
 
 func (p Payload) ConvertToStruct(v any) error {

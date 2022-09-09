@@ -78,6 +78,10 @@ func newPayload() decoder.Payload {
 	payload := decoder.Payload{
 		DevEUI:    "ncaknlclkdanklcd",
 		Timestamp: "2006-01-02T15:04:05Z",
+		Status: decoder.Status{
+			Code: 0,
+			Messages: nil,
+		},
 	}
 	temp := struct {
 		Temperature float32 `json:"temperature"`

@@ -107,7 +107,10 @@ func AxiomaWatermeteringDecoder(ctx context.Context, msg []byte, fn func(context
 		payload.Measurements = append(payload.Measurements, measurements...)
 	}
 
-	payload.StatusCode = payload.ValueOf("StatusCode").(int)
+	code := payload.ValueOf("StatusCode").(int)
+	messages := payload.ValueOf("StatusMessages").([]string)
+
+	payload.SetStatus(code, messages)
 
 	err = fn(ctx, payload)
 	if err != nil {
