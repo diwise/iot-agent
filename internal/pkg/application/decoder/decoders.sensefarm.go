@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 func SensefarmBasicDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
@@ -125,13 +126,17 @@ type payloadSensefarm struct {
 
 func decodeSensefarmPayload(b []byte, p *payloadSensefarm) error {
 
+	if len(b) == 0 {
+		return fmt.Errorf("input payload array is empty")
+	}
+
 	for i := 0; i < len(b); i++ { //The multisensor message are read byte by byte and parsed for information on each individual sensor and it's values.
 		switch (b[i] & 0xFF) >> 3 {
 		case 0x01: //  Temperature
 			noOfBytes := 4
 			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &p.Temperature)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to read temperature: %w", err)
 			}
 			i += noOfBytes
 
@@ -139,41 +144,41 @@ func decodeSensefarmPayload(b []byte, p *payloadSensefarm) error {
 			noOfBytes := 2
 			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &p.BatteryVoltage)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to read battery: %w", err)
 			}
 
 			i += noOfBytes
 
 		case 0x13: //Resistance
-			var tempInt32 int32
+			var resistance int32
 
 			noOfBytes := 4
-			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &tempInt32)
+			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &resistance)
 
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to read resistance: %w", err)
 			}
 
-			p.Resistances = append(p.Resistances, tempInt32)
+			p.Resistances = append(p.Resistances, resistance)
 			i += noOfBytes
 
 		case 0x15: // Soil moisture
-			var tempInt16 int16
+			var soilMoisture int16
 
 			noOfBytes := 2
-			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &tempInt16)
+			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &soilMoisture)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to read soil moisture: %w", err)
 			}
 
-			p.SoilMoistures = append(p.SoilMoistures, tempInt16)
+			p.SoilMoistures = append(p.SoilMoistures, soilMoisture)
 			i += noOfBytes
 
 		case 0x016: // Transmission reason
 			noOfBytes := 1
 			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &p.TransmissionReason)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to read transmission reason: %w", err)
 			}
 
 			i += noOfBytes
@@ -182,7 +187,7 @@ func decodeSensefarmPayload(b []byte, p *payloadSensefarm) error {
 			noOfBytes := 2
 			err := binary.Read(bytes.NewReader(b[i+1:]), binary.BigEndian, &p.ProtocolVersion)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to read protocol version: %w", err)
 			}
 
 			i += noOfBytes
