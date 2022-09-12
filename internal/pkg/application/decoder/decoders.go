@@ -3,25 +3,40 @@ package decoder
 import (
 	"context"
 	"encoding/json"
+	"reflect"
+	"strings"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type Payload struct {
-	DevEUI            string        `json:"devEUI"`
-	DeviceName        string        `json:"deviceName,omitempty"`
-	FPort             string        `json:"fPort,omitempty"`
-	SpreadingFactor   string        `json:"spreadingFactor,omitempty"`
-	Latitude          float64       `json:"latitude,omitempty"`
-	Longitude         float64       `json:"longitude,omitempty"`
-	Rssi              string        `json:"rssi,omitempty"`
-	Snr               string        `json:"snr,omitempty"`
-	GatewayIdentifier string        `json:"gatewayIdentifier,omitempty"`
-	SensorType        string        `json:"sensorType,omitempty"`
-	Timestamp         string        `json:"timestamp,omitempty"`
-	Type              string        `json:"type,omitempty"`
-	Error             string        `json:"error,omitempty"`
-	Measurements      []interface{} `json:"measurements"`
+	DevEUI            string  `json:"devEUI"`
+	DeviceName        string  `json:"deviceName,omitempty"`
+	FPort             string  `json:"fPort,omitempty"`
+	SpreadingFactor   string  `json:"spreadingFactor,omitempty"`
+	Latitude          float64 `json:"latitude,omitempty"`
+	Longitude         float64 `json:"longitude,omitempty"`
+	Rssi              string  `json:"rssi,omitempty"`
+	Snr               string  `json:"snr,omitempty"`
+	GatewayIdentifier string  `json:"gatewayIdentifier,omitempty"`
+	SensorType        string  `json:"sensorType,omitempty"`
+	Timestamp         string  `json:"timestamp,omitempty"`
+	Type              string  `json:"type,omitempty"`
+	Error             string  `json:"error,omitempty"`
+	Measurements      []any   `json:"measurements"`
+	Status            Status  `json:"status"`
+}
+
+type Status struct {
+	Code     int      `json:"statusCode"`
+	Messages []string `json:"statusMessages"`
+}
+
+func (p *Payload) SetStatus(code int, messages []string) {
+	p.Status = Status{
+		Code:     code,
+		Messages: messages,
+	}
 }
 
 func (p Payload) ConvertToStruct(v any) error {
@@ -33,6 +48,21 @@ func (p Payload) ConvertToStruct(v any) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (p *Payload) ValueOf(name string) any {
+	for _, m := range p.Measurements {
+		t := reflect.TypeOf(m)
+
+		for i := 0; i < t.NumField(); i++ {
+			if strings.EqualFold(t.Field(i).Name, name) {
+				v := reflect.ValueOf(m)
+				return v.Field(i).Interface()
+			}
+		}
+	}
+
 	return nil
 }
 

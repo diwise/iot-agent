@@ -1,18 +1,52 @@
 package events
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type StatusMessage struct {
-	DeviceID  string `json:"deviceID"`
-	Timestamp string `json:"timestamp"`
+	DeviceID  string  `json:"deviceID"`
+	Error     *string `json:"error,omitempty"`
+	Status    Status  `json:"status"`
+	Timestamp string  `json:"timestamp"`
 }
 
-func NewStatusMessage(deviceID string) *StatusMessage {
+type Status struct {
+	Code     int      `json:"statusCode"`
+	Messages []string `json:"statusMessages,omitempty"`
+}
+
+func NewStatusMessage(deviceID string, options ...func(*StatusMessage)) *StatusMessage {
 	msg := &StatusMessage{
 		DeviceID:  deviceID,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	}
+
+	for _, op := range options {
+		op(msg)
+	}
+
 	return msg
+}
+
+func WithStatus(code int, messages []string) func(*StatusMessage) {
+	return func(sm *StatusMessage) {
+		sm.Status = Status{
+			Code:     code,
+			Messages: messages,
+		}
+	}
+}
+
+func WithError(err string) func(*StatusMessage) {
+	return func(sm *StatusMessage) {
+		if strings.Trim(err, " ") == "" {
+			sm.Error = nil
+		} else {
+			sm.Error = &err
+		}
+	}
 }
 
 func (m *StatusMessage) ContentType() string {

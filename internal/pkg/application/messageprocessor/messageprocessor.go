@@ -14,7 +14,7 @@ import (
 )
 
 type MessageProcessor interface {
-	ProcessMessage(ctx context.Context, msg decoder.Payload) error
+	ProcessMessage(ctx context.Context, payload decoder.Payload) error
 }
 
 type msgProcessor struct {
@@ -31,21 +31,21 @@ func NewMessageReceivedProcessor(dmc dmc.DeviceManagementClient, conReg conversi
 	}
 }
 
-func (mp *msgProcessor) ProcessMessage(ctx context.Context, msg decoder.Payload) error {
+func (mp *msgProcessor) ProcessMessage(ctx context.Context, payload decoder.Payload) error {
 	log := logging.GetFromContext(ctx)
 
-	device, err := mp.dmc.FindDeviceFromDevEUI(ctx, msg.DevEUI)
+	device, err := mp.dmc.FindDeviceFromDevEUI(ctx, payload.DevEUI)
 	if err != nil {
 		log.Error().Err(err).Msg("device lookup failure")
 		return err
 	}
 
-	err = mp.event.Publish(ctx, events.NewStatusMessage(device.ID()))
+	err = mp.event.Publish(ctx, events.NewStatusMessage(device.ID(), events.WithStatus(payload.Status.Code, payload.Status.Messages), events.WithError(payload.Error)))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to publish status message")
 	}
 
-	if msg.Error != "" {
+	if payload.Error != "" {
 		log.Info().Msg("ignoring payload due to device error")
 		return nil
 	}
@@ -56,7 +56,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, msg decoder.Payload)
 	}
 
 	for _, convert := range messageConverters {
-		payload, err := convert(ctx, device.ID(), msg)
+		pack, err := convert(ctx, device.ID(), payload)
 		if err != nil {
 			log.Error().Err(err).Msg("conversion failed")
 			continue
@@ -65,7 +65,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, msg decoder.Payload)
 		m := iotcore.MessageReceived{
 			Device:    device.ID(),
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
-			Pack:      payload,
+			Pack:      pack,
 		}
 
 		if device.IsActive() {

@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"context"
+
 	"testing"
 	"time"
 
@@ -22,20 +23,6 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(r.Timestamp, "2022-04-12T05:08:50.301732Z")
 }
-
-/*func TestSenlabTTempDecoder(t *testing.T) {
-	is, _ := testSetup(t)
-
-	r := &Payload{}
-
-	err := SenlabTBasicDecoder(context.Background(), []byte(sensinglabstemp), func(c context.Context, m Payload) error {
-		r = &m
-		return nil
-	})
-
-	is.NoErr(err)
-	is.Equal(r.Timestamp, "2022-04-12T05:08:50.301732Z")
-}*/
 
 func TestElsysTemperatureDecoder(t *testing.T) {
 	is, _ := testSetup(t)
@@ -136,18 +123,101 @@ func TestDefaultDecoder(t *testing.T) {
 	is.True(r.DevEUI == "xxxxxxxxxxxxxx")
 }
 
-func TestWatermeteringDecoder(t *testing.T) {
+func TestQalcosonic_w1h_temp(t *testing.T) {
 	is, _ := testSetup(t)
 
-	r := &Payload{}
+	payload := &Payload{}
 
-	err := WatermeteringDecoder(context.Background(), []byte(watermetering), func(c context.Context, m Payload) error {
-		r = &m
+	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1h_temp), func(ctx context.Context, p Payload) error {
+		payload = &p
 		return nil
 	})
 
 	is.NoErr(err)
-	is.True(r.DevEUI == "3489573498573459")
+	is.Equal(payload.DevEUI, "116c52b4274f")
+	is.Equal(payload.ValueOf("CurrentTime"), "2020-09-09T14:32:21+02:00")
+	is.Equal(payload.ValueOf("CurrentVolume"), 302.57800000000003)
+	is.Equal(payload.Status.Code, 0x7c)
+}
+
+func TestQalcosonic_w1h(t *testing.T) {
+	is, _ := testSetup(t)
+
+	payload := &Payload{}
+
+	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1h), func(ctx context.Context, p Payload) error {
+		payload = &p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(payload.DevEUI, "116c52b4274f")
+	is.Equal(payload.ValueOf("CurrentTime"), "2022-08-25T09:41:28+02:00")
+	is.Equal(payload.ValueOf("CurrentVolume"), 100.042)
+	is.Equal(payload.Status.Code, 0)
+}
+
+func TestQalcosonic_w24h(t *testing.T) {
+	is, _ := testSetup(t)
+
+	payload := &Payload{}
+
+	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w24h), func(ctx context.Context, p Payload) error {
+		payload = &p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(payload.DevEUI, "116c52b4274f")
+	is.Equal(payload.ValueOf("CurrentTime"), "2022-09-02T15:40:16+02:00")
+	is.Equal(payload.ValueOf("CurrentVolume"), 64.456)
+	is.Equal(payload.Status.Code, 0)
+}
+
+func TestQalcosonicStatusCodes(t *testing.T) {
+	is, _ := testSetup(t)
+
+	is.Equal("No error", getStatusMessage(0)[0])
+	is.Equal("Power low", getStatusMessage(0x04)[0])
+	is.Equal("Permanent error", getStatusMessage(0x08)[0])
+	is.Equal("Temporary error", getStatusMessage(0x10)[0])
+	is.Equal("Empty spool", getStatusMessage(0x10)[1])
+	is.Equal("Leak", getStatusMessage(0x20)[0])
+	is.Equal("Burst", getStatusMessage(0xA0)[0])
+	is.Equal("Backflow", getStatusMessage(0x60)[0])
+	is.Equal("Freeze", getStatusMessage(0x80)[0])
+
+	is.Equal("Power low", getStatusMessage(0x0C)[0])
+	is.Equal("Permanent error", getStatusMessage(0x0C)[1])
+
+	is.Equal("Temporary error", getStatusMessage(0x10)[0])
+	is.Equal("Empty spool", getStatusMessage(0x10)[1])
+
+	is.Equal("Power low", getStatusMessage(0x14)[0])
+	is.Equal("Temporary error", getStatusMessage(0x14)[1])
+	is.Equal("Empty spool", getStatusMessage(0x14)[2])
+
+	// ...
+
+	is.Equal("Permanent error", getStatusMessage(0x18)[0])
+	is.Equal("Temporary error", getStatusMessage(0x18)[1])
+	is.Equal("Empty spool", getStatusMessage(0x18)[2])
+
+	// ...
+
+	is.Equal("Power low", getStatusMessage(0x3C)[0])
+	is.Equal("Permanent error", getStatusMessage(0x3C)[1])
+	is.Equal("Temporary error", getStatusMessage(0x3C)[2])
+	is.Equal("Leak", getStatusMessage(0x3C)[3])
+
+	// ...
+
+	is.Equal("Power low", getStatusMessage(0xBC)[0])
+	is.Equal("Permanent error", getStatusMessage(0xBC)[1])
+	is.Equal("Temporary error", getStatusMessage(0xBC)[2])
+	is.Equal("Burst", getStatusMessage(0xBC)[3])
+
+	is.Equal("Unknown", getStatusMessage(0x02)[0])
 }
 
 func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
@@ -260,8 +330,6 @@ const elsysCO2 string = `{
 	}
 }`
 
-//const anotherCO2 string = `{"deviceName":"mcg-ers-co2-01","deviceProfileName":"ELSYS","deviceProfileID":"0b765672-274a-41eb-b1c5-bb2bec9d14e8","devEUI":"a81758fffe05e6fb","data":"AQD5AhMEAa8FCgYCcQcONA==","object":{"co2":625,"humidity":19,"light":431,"motion":10,"temperature":24.9,"vdd":3636}}`
-
 const enviot string = `{
 	"deviceProfileName":"Enviot",
 	"devEUI":"10a52aaa84ffffff",
@@ -308,50 +376,132 @@ const livboj string = `
     }
 }`
 
-const watermetering string = `
+const qalcosonic_w24h string = `
 {
   "applicationID": "2",
   "applicationName": "Watermetering",
-  "deviceName": "05394167",
+  "deviceName": "e6c58aad",
   "deviceProfileName": "Axioma_Universal_Codec",
-  "deviceProfileID": "8be301da",
-  "devEUI": "3489573498573459",
-  "txInfo": { "frequency": 867100000, "dr": 0 },
+  "deviceProfileID": "72205a4d-a38a-4a0c-8bc8-116c52b4274f",
+  "devEUI": "116c52b4274f",
+  "rxInfo": [
+    {
+      "gatewayID": "f1861610fe6782f0",
+      "uplinkID": "e6c58aad-7a14-42cb-82f0-f1861610fe67",
+      "name": "SN-LGW-034",
+      "time": "2022-09-02T13:45:28.605718289Z",
+      "rssi": -113,
+      "loRaSNR": -4.8,
+      "location": {
+        "latitude": 63.4,
+        "longitude": 17.5,
+        "altitude": 0
+      }
+    }
+  ],
+  "txInfo": { "frequency": 867100000, "dr": 3 },
   "adr": true,
-  "fCnt": 182,
+  "fCnt": 1675,
   "fPort": 100,
-  "data": "//8VAQ==",
+  "data": "AcAHEmMAyPsAAAAAAHAAAAAAgAJwAIgAB8ACIAC0ABOABpABIAARwAUAADQAAAAAQAAA",
   "object": {
-    "curDateTime": "2022-02-10 15:13:57",
-    "curVol": 1009,
+    "curDateTime": "2022-09-02 15:40:16",
+    "curVol": 64456,
     "deltaVol": {
       "id1": 0,
-      "id10": 13,
-      "id11": 10,
-      "id12": 2,
-      "id13": 0,
-      "id14": 1,
-      "id15": 0,
-      "id16": 5,
-      "id17": 0,
-      "id18": 0,
+      "id10": 11,
+      "id11": 2,
+      "id12": 45,
+      "id13": 19,
+      "id14": 26,
+      "id15": 25,
+      "id16": 8,
+      "id17": 17,
+      "id18": 23,
       "id19": 0,
-      "id2": 8,
-      "id20": 2,
+      "id2": 0,
+      "id20": 13,
       "id21": 0,
       "id22": 0,
-      "id23": 0,
-      "id3": 0,
+      "id23": 4,
+      "id3": 7,
       "id4": 0,
       "id5": 0,
-      "id6": 0,
-      "id7": 0,
-      "id8": 5,
-      "id9": 6
+      "id6": 10,
+      "id7": 7,
+      "id8": 34,
+      "id9": 7
     },
     "frameVersion": 1,
     "statusCode": 0
   },
-  "tags": { "Location": "UnSet", "SerialNo": "05394167" }
+  "tags": { "Location": "UnSet", "SerialNo": "116c52b4274f" }
+}
+`
+const qalcosonic_w1h string = `
+{
+  "devEui": "116c52b4274f",
+  "sensorType": "qalcosonic_w1h",
+  "messageType": "payload",
+  "timestamp": "2022-08-25T07:35:21.834484Z",
+  "payload": "a827076300ca86010000a80363878401002300240023002a002400230023002400230051001e001d001b001d001c00",
+  "fCntUp": 1490,
+  "toa": null,
+  "freq": 867900000,
+  "batteryLevel": "255",
+  "ack": false,
+  "spreadingFactor": "8",
+  "rssi": "-115",
+  "snr": "-1.8",
+  "gatewayIdentifier": "000",
+  "fPort": "100",
+  "tags": {
+    "application": ["ambiductor_test"],
+    "customer": ["customer"],
+    "deviceType": ["w1e"],
+    "serial": ["00000000"]
+  },
+  "gateways": [
+    {
+      "rssi": "-115",
+      "snr": "-1.8",
+      "gatewayIdentifier": "000",
+      "antenna": 0
+    }
+  ]
+}
+`
+
+const qalcosonic_w1h_temp string = `
+{
+  "devEui": "116c52b4274f",
+  "sensorType": "qalcosonic_w1h_temp",
+  "messageType": "payload",
+  "timestamp": "2022-08-25T07:35:21.834484Z",
+  "payload": "55cb585f7cf29d0400120ae0fe575f8a570400cd04cb04cc04cd04ca04c404c504c404f004e604dc04d604b9057905",
+  "fCntUp": 1490,
+  "toa": null,
+  "freq": 867900000,
+  "batteryLevel": "255",
+  "ack": false,
+  "spreadingFactor": "8",
+  "rssi": "-115",
+  "snr": "-1.8",
+  "gatewayIdentifier": "000",
+  "fPort": "100",
+  "tags": {
+    "application": ["ambiductor_test"],
+    "customer": ["customer"],
+    "deviceType": ["w1e"],
+    "serial": ["00000000"]
+  },
+  "gateways": [
+    {
+      "rssi": "-115",
+      "snr": "-1.8",
+      "gatewayIdentifier": "000",
+      "antenna": 0
+    }
+  ]
 }
 `
