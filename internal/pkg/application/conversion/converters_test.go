@@ -76,13 +76,13 @@ func TestThatWatermeterDecodesValuesCorrectly(t *testing.T) {
 		Timestamp:  time.Now().Format(time.RFC3339),
 	}
 	curDateTime := struct {
-		CurrentDateTime string `json:"curDateTime"`
+		CurrentDateTime string `json:"currentTime"`
 	}{
 		"2006-01-02T15:04:05Z",
 	}
 	payload.Measurements = append(payload.Measurements, curDateTime)
 	curVol := struct {
-		CurrentVolume float64 `json:"curVol"`
+		CurrentVolume float64 `json:"currentVolume"`
 	}{
 		1009,
 	}

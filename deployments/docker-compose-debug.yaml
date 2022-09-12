@@ -1,13 +1,13 @@
 version: '3'
 services:
-  rabbitmq: 
+  rabbitmq:
     image: 'bitnami/rabbitmq:3.8'
     #image: 'arm64v8/rabbitmq:3.8'
     environment:
       RABBITMQ_DEFAULT_USER: 'user'
       RABBITMQ_DEFAULT_PASS: 'bitnami'
     expose:
-      - "5672"      
+      - "5672"
     ports:
       - '4369'
       - '5672:5672'
@@ -15,31 +15,35 @@ services:
       - '15672'
     volumes:
       - 'rabbitmq_data:/bitnami'
-      
-  otel-collector:
-    image: 'otel/opentelemetry-collector:0.48.0'
-    command: '--config /etc/otel-config.yaml'
-    expose:
-      - 4318
-    volumes:
-     - ./configs/otel-config.yaml:/etc/otel-config.yaml
-    restart: always
-    ports:
-      - '4318:4318' 
 
-  iot-device-mgmt:
-    image: 'ghcr.io/diwise/iot-device-mgmt@sha256:10cf0fb65c753d5b4a0699d4a2f58f34316c2e19d523f69dcaaeabd692cfdb33'
-    restart: always
+  keycloak:
+    image: quay.io/keycloak/keycloak:19.0
+    command:
+    - 'start-dev'
+    - '--hostname=iam.diwise.local'
+    - '--hostname-port=8444'
+    - '--proxy=edge'
+    - '--health-enabled=true'
+    - '-Dkeycloak.migration.action=import'
+    - '-Dkeycloak.migration.provider=singleFile'
+    - '-Dkeycloak.migration.strategy=OVERWRITE_EXISTING'
+    - '-Dkeycloak.migration.file=/application-realm.json'
     environment:
-      RABBITMQ_HOST: 'rabbitmq'
-      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://otel-collector:4318'
-    volumes:
-      - ./configs/diwise/devices.csv:/opt/diwise/config/devices.csv
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
-      - '8080:8080'     
-    expose:
-      - 8080
-    
+      - '8080:8080'
+      - '8444:8444'
+      - '8443:8443'
+    volumes:
+     - ./configs/keycloak/realm.json:/application-realm.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
 volumes:
   rabbitmq_data:
-    driver: local  
+    driver: local

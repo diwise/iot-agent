@@ -19,9 +19,9 @@ type IoTAgent interface {
 }
 
 type iotAgent struct {
-	mp  messageprocessor.MessageProcessor
-	dr  decoder.DecoderRegistry
-	dmc dmc.DeviceManagementClient
+	messageProcessor  messageprocessor.MessageProcessor
+	decoderRegistry  decoder.DecoderRegistry
+	devicemanagementClient dmc.DeviceManagementClient
 }
 
 func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
@@ -30,28 +30,27 @@ func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) Io
 	msgprcs := messageprocessor.NewMessageReceivedProcessor(dmc, conreg, eventPub)
 
 	return &iotAgent{
-		mp:  msgprcs,
-		dr:  decreg,
-		dmc: dmc,
+		messageProcessor:  msgprcs,
+		decoderRegistry:  decreg,
+		devicemanagementClient: dmc,
 	}
 }
 
 func (a *iotAgent) MessageReceived(ctx context.Context, msg []byte) error {
-
 	devEUI, err := getDevEUIFromMessage(msg)
 	if err != nil {
 		return fmt.Errorf("unable to get DevEUI from payload (%w)", err)
 	}
 
-	device, err := a.dmc.FindDeviceFromDevEUI(ctx, devEUI)
+	device, err := a.devicemanagementClient.FindDeviceFromDevEUI(ctx, devEUI)
 	if err != nil {
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
 
-	d := a.dr.GetDecoderForSensorType(ctx, device.SensorType())
+	decoderFn := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 
-	err = d(ctx, msg, func(c context.Context, m decoder.Payload) error {
-		err = a.mp.ProcessMessage(c, m)
+	err = decoderFn(ctx, msg, func(ctx context.Context, payload decoder.Payload) error {
+		err := a.messageProcessor.ProcessMessage(ctx, payload)
 		if err != nil {
 			err = fmt.Errorf("failed to process message (%w)", err)
 		}
