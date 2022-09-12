@@ -10,18 +10,21 @@ import (
 )
 
 type Payload struct {
-	DevEUI       string  `json:"devEUI"`
-	DeviceName   string  `json:"deviceName,omitempty"`
-	FPort        string  `json:"fPort,omitempty"`
-	Latitude     float64 `json:"latitude,omitempty"`
-	Longitude    float64 `json:"longitude,omitempty"`
-	Rssi         string  `json:"rssi,omitempty"`
-	SensorType   string  `json:"sensorType,omitempty"`
-	Timestamp    string  `json:"timestamp,omitempty"`
-	Type         string  `json:"type,omitempty"`
-	Error        string  `json:"error,omitempty"`
-	Measurements []any   `json:"measurements"`
-	Status       Status  `json:"status"`
+	DevEUI            string  `json:"devEUI"`
+	DeviceName        string  `json:"deviceName,omitempty"`
+	FPort             string  `json:"fPort,omitempty"`
+	SpreadingFactor   string  `json:"spreadingFactor,omitempty"`
+	Latitude          float64 `json:"latitude,omitempty"`
+	Longitude         float64 `json:"longitude,omitempty"`
+	Rssi              string  `json:"rssi,omitempty"`
+	Snr               string  `json:"snr,omitempty"`
+	GatewayIdentifier string  `json:"gatewayIdentifier,omitempty"`
+	SensorType        string  `json:"sensorType,omitempty"`
+	Timestamp         string  `json:"timestamp,omitempty"`
+	Type              string  `json:"type,omitempty"`
+	Error             string  `json:"error,omitempty"`
+	Measurements      []any   `json:"measurements"`
+	Status            Status  `json:"status"`
 }
 
 type Status struct {
