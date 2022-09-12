@@ -22,6 +22,7 @@ func NewDecoderRegistry() DecoderRegistry {
 		"enviot":           EnviotDecoder,
 		"presence":         PresenceDecoder,
 		"qalcosonic":       AxiomaWatermeteringDecoder,
+		"cube02":           SensefarmBasicDecoder,
 	}
 
 	return &decoderRegistry{
