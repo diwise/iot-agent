@@ -133,7 +133,7 @@ func w1h(buf *bytes.Reader) ([]interface{}, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
-		currentTime := time.Unix(int64(epoch), 0)
+		currentTime := time.Unix(int64(epoch), 0).UTC()
 		if currentTime.After(time.Now().UTC()) {
 			return nil, fmt.Errorf("invalid time")
 		}
@@ -213,7 +213,7 @@ func w1hTemp(buf *bytes.Reader) ([]interface{}, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
-		currentTime := time.Unix(int64(epoch), 0)
+		currentTime := time.Unix(int64(epoch), 0).UTC()
 		if currentTime.After(time.Now().UTC()) {
 			return nil, fmt.Errorf("invalid time")
 		}
@@ -305,7 +305,7 @@ func w24h(buf *bytes.Reader) ([]interface{}, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
-		currentTime := time.Unix(int64(epoch), 0)
+		currentTime := time.Unix(int64(epoch), 0).UTC()
 		if currentTime.After(time.Now().UTC()) {
 			return nil, fmt.Errorf("invalid time")
 		}
