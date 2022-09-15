@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
 	"github.com/riandyrn/otelchi"
@@ -72,14 +72,7 @@ func (a *api) incomingMessageHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracer.Start(r.Context(), "incoming-message")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	log := a.log
-
-	traceID := span.SpanContext().TraceID()
-	if traceID.IsValid() {
-		log = log.With().Str("traceID", traceID.String()).Logger()
-	}
-
-	ctx = logging.NewContextWithLogger(ctx, log)
+	_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, a.log, ctx)
 
 	msg, _ := io.ReadAll(r.Body)
 	defer r.Body.Close()
