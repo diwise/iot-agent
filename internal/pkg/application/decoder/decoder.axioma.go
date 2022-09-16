@@ -120,7 +120,7 @@ func AxiomaWatermeteringDecoder(ctx context.Context, msg []byte, fn func(context
 	return nil
 }
 
-func w1h(buf *bytes.Reader) ([]interface{}, error) {
+func w1h(buf *bytes.Reader) ([]any, error) {
 	var err error
 
 	var epoch uint32
@@ -133,15 +133,21 @@ func w1h(buf *bytes.Reader) ([]interface{}, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
-		currentTime := time.Unix(int64(epoch), 0).UTC()
-		if currentTime.After(time.Now().UTC()) {
-			return nil, fmt.Errorf("invalid time")
+		sensorTime := time.Unix(int64(epoch), 0).UTC()
+		now := time.Now().UTC()
+
+		// Handle clock skew by setting sensor time to current time if it is from
+		// within a 48 hour window around current time
+		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
+			sensorTime = now
+		} else if sensorTime.After(now.Add(24 * time.Hour)) {
+			return nil, fmt.Errorf("sensor time %s is too far off in the future", sensorTime.Format(time.RFC3339Nano))
 		}
 
 		m := struct {
 			CurrentTime string `json:"currentTime"`
 		}{
-			CurrentTime: currentTime.Format(time.RFC3339),
+			CurrentTime: sensorTime.Format(time.RFC3339Nano),
 		}
 
 		measurements = append(measurements, m)
@@ -213,15 +219,21 @@ func w1hTemp(buf *bytes.Reader) ([]interface{}, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
-		currentTime := time.Unix(int64(epoch), 0).UTC()
-		if currentTime.After(time.Now().UTC()) {
-			return nil, fmt.Errorf("invalid time")
+		sensorTime := time.Unix(int64(epoch), 0).UTC()
+		now := time.Now().UTC()
+
+		// Handle clock skew by setting sensor time to current time if it is from
+		// within a 48 hour window around current time
+		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
+			sensorTime = now
+		} else if sensorTime.After(now.Add(24 * time.Hour)) {
+			return nil, fmt.Errorf("sensor time %s is too far off in the future", sensorTime.Format(time.RFC3339Nano))
 		}
 
 		m := struct {
 			CurrentTime string `json:"currentTime"`
 		}{
-			CurrentTime: currentTime.Format(time.RFC3339),
+			CurrentTime: sensorTime.Format(time.RFC3339Nano),
 		}
 		measurements = append(measurements, m)
 	} else {
@@ -305,15 +317,21 @@ func w24h(buf *bytes.Reader) ([]interface{}, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
-		currentTime := time.Unix(int64(epoch), 0).UTC()
-		if currentTime.After(time.Now().UTC()) {
-			return nil, fmt.Errorf("invalid time")
+		sensorTime := time.Unix(int64(epoch), 0).UTC()
+		now := time.Now().UTC()
+
+		// Handle clock skew by setting sensor time to current time if it is from
+		// within a 48 hour window around current time
+		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
+			sensorTime = now
+		} else if sensorTime.After(now.Add(24 * time.Hour)) {
+			return nil, fmt.Errorf("sensor time %s is too far off in the future", sensorTime.Format(time.RFC3339Nano))
 		}
 
 		m := struct {
 			CurrentTime string `json:"currentTime"`
 		}{
-			CurrentTime: currentTime.Format(time.RFC3339),
+			CurrentTime: sensorTime.Format(time.RFC3339Nano),
 		}
 		measurements = append(measurements, m)
 	} else {
