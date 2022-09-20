@@ -7,6 +7,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
 	lwm2m "github.com/diwise/iot-core/pkg/lwm2m"
+
 	measurements "github.com/diwise/iot-core/pkg/measurements"
 	"github.com/farshidtz/senml/v2"
 )
@@ -175,6 +176,88 @@ func Watermeter(ctx context.Context, deviceID string, payload decoder.Payload) (
 			rec := senml.Record{
 				Name:        "CurrentDateTime",
 				StringValue: *m.CurrentDateTime,
+			}
+
+			pack = append(pack, rec)
+		}
+	}
+
+	return pack, nil
+}
+
+func Battery(ctx context.Context, deviceID string, payload decoder.Payload) (senml.Pack, error) {
+	dm := struct {
+		Timestamp    string `json:"timestamp"`
+		Measurements []struct {
+			Battery *float64 `json:"battery,omitempty"`
+		} `json:"measurements"`
+	}{}
+
+	if err := payload.ConvertToStruct(&dm); err != nil {
+		return nil, fmt.Errorf("failed to convert payload: %s", err.Error())
+	}
+
+	baseTime, err := parseTime(dm.Timestamp)
+	if err != nil {
+		return nil, err
+	}
+
+	var pack senml.Pack
+	pack = append(pack, senml.Record{
+		BaseName:    "urn:oma:lwm2m:ext:3411",
+		BaseTime:    baseTime,
+		Name:        "0",
+		StringValue: deviceID,
+	})
+
+	for _, m := range dm.Measurements {
+		if m.Battery != nil {
+			rec := senml.Record{
+				Name:  "Battery", // pkg/measurements/constants.go <todo> impl senare från core
+				Value: m.Battery,
+			}
+
+			pack = append(pack, rec)
+		}
+	}
+
+	return pack, nil
+}
+
+func Humidity(ctx context.Context, deviceID string, payload decoder.Payload) (senml.Pack, error) {
+	dm := struct {
+		Timestamp    string `json:"timestamp"`
+		DeviceName   string `json:"deviceName"`
+		Measurements []struct {
+			Humidity *float64 `json:"humidity,omitempty"`
+		} `json:"measurements"`
+	}{}
+
+	if err := payload.ConvertToStruct(&dm); err != nil {
+		return nil, fmt.Errorf("failed to convert payload: %s", err.Error())
+	}
+
+	baseTime, err := parseTime(dm.Timestamp)
+	if err != nil {
+		return nil, err
+	}
+
+	var pack senml.Pack
+	pack = append(pack, senml.Record{
+		BaseName:    "urn:oma:lwm2m:ext:3304", //lwm2m.Humidity,	<todo> impl senare från core
+		BaseTime:    baseTime,
+		Name:        "0",
+		StringValue: deviceID,
+	}, senml.Record{
+		Name:        "DeviceName",
+		StringValue: dm.DeviceName,
+	})
+
+	for _, m := range dm.Measurements {
+		if m.Humidity != nil {
+			rec := senml.Record{
+				Name:  "Humidity", // pkg/measurements/constants.go <todo> impl senare från core
+				Value: m.Humidity,
 			}
 
 			pack = append(pack, rec)
