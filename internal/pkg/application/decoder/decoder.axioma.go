@@ -398,7 +398,7 @@ func qalcosonic(ctx context.Context, msg []byte, decoder func(buf *bytes.Reader)
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 	if buf.Len() < 42 {
-		return fmt.Errorf("short decoder not implemented")
+		return fmt.Errorf("w1b decoder not implemented")
 	}
 
 	measurements, err := decoder(buf)
