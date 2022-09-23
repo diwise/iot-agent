@@ -123,12 +123,29 @@ func TestDefaultDecoder(t *testing.T) {
 	is.True(r.DevEUI == "xxxxxxxxxxxxxx")
 }
 
-func TestQalcosonic_w1h_temp(t *testing.T) {
+func TestQalcosonic_w1t(t *testing.T) {
 	is, _ := testSetup(t)
 
 	payload := &Payload{}
 
-	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1h_temp), func(ctx context.Context, p Payload) error {
+	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1t), func(ctx context.Context, p Payload) error {
+		payload = &p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(payload.DevEUI, "116c52b4274f")
+	is.Equal(payload.ValueOf("CurrentTime"), "2020-09-09T12:32:21Z")
+	is.Equal(payload.ValueOf("CurrentVolume"), 302.57800000000003)
+	is.Equal(payload.Status.Code, 0x7c)
+}
+
+func TestQalcosonic_w1t_(t *testing.T) {
+	is, _ := testSetup(t)
+
+	payload := &Payload{}
+
+	err := Qalcosonic_w1t(context.Background(), []byte(qalcosonic_w1t), func(ctx context.Context, p Payload) error {
 		payload = &p
 		return nil
 	})
@@ -157,12 +174,12 @@ func TestQalcosonic_w1h(t *testing.T) {
 	is.Equal(payload.Status.Code, 0)
 }
 
-func TestQalcosonic_w24h(t *testing.T) {
+func TestQalcosonic_w1e(t *testing.T) {
 	is, _ := testSetup(t)
 
 	payload := &Payload{}
 
-	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w24h), func(ctx context.Context, p Payload) error {
+	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1e), func(ctx context.Context, p Payload) error {
 		payload = &p
 		return nil
 	})
@@ -376,7 +393,7 @@ const livboj string = `
     }
 }`
 
-const qalcosonic_w24h string = `
+const qalcosonic_w1e string = `
 {
   "applicationID": "2",
   "applicationName": "Watermetering",
@@ -472,7 +489,7 @@ const qalcosonic_w1h string = `
 }
 `
 
-const qalcosonic_w1h_temp string = `
+const qalcosonic_w1t string = `
 {
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1h_temp",

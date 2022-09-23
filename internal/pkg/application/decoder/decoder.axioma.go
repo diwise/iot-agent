@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"strings"
 
 	"encoding/json"
@@ -13,98 +14,39 @@ import (
 	"time"
 )
 
+var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
+
 func AxiomaWatermeteringDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
-	d := struct {
-		DevEUI            string      `json:"devEui"`
-		SensorType        *string     `json:"sensorType,omitempty"`
-		DeviceName        *string     `json:"deviceName,omitempty"`
-		DeviceProfileName *string     `json:"deviceProfileName,omitempty"`
-		Timestamp         string      `json:"timestamp"`
-		BatteryLevel      string      `json:"batteryLevel"`
-		FPort             interface{} `json:"fPort"`
-		Payload           *string     `json:"payload,omitempty"`
-		Data              *string     `json:"data,omitempty"`
-	}{}
-
-	err := json.Unmarshal(msg, &d)
+	payload, buf, err := initialize(msg)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal payload: %s", err.Error())
-	}
-
-	q := strings.Trim(fmt.Sprintf("%v", d.FPort), "\"")
-	if q != "100" {
-		return fmt.Errorf("only incomming messages with fPort 100 are supported")
-	}
-
-	var sensorType *string
-	if d.SensorType != nil {
-		sensorType = d.SensorType
-	} else if d.DeviceProfileName != nil {
-		sensorType = d.DeviceProfileName
-	} else {
-		return fmt.Errorf("unable to resolve type of sensor")
-	}
-
-	var deviceName string
-	if d.DeviceName == nil {
-		deviceName = *sensorType
-	} else {
-		deviceName = *d.DeviceName
-	}
-
-	payload := Payload{
-		DevEUI:     d.DevEUI,
-		DeviceName: deviceName,
-		FPort:      q,
-		SensorType: *sensorType,
-		Timestamp:  time.Now().Format(time.RFC3339),
-	}
-
-	var buf *bytes.Reader = nil
-
-	if d.Payload != nil {
-		b, err := readPayload(*d.Payload)
-		if err != nil {
-			return err
-		}
-		buf = bytes.NewReader(b)
-
-	} else if d.Data != nil {
-		b, err := readPayload(*d.Data)
-		if err != nil {
-			return err
-		}
-		buf = bytes.NewReader(b)
-	}
-
-	if buf == nil {
-		return fmt.Errorf("unable to read payload")
+		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
 	if buf.Len() < 42 {
-		return fmt.Errorf("short decoder not implemented")
+		return fmt.Errorf("w1b decoder not implemented")
 	}
 
-	if strings.EqualFold(*sensorType, "qalcosonic_w1h") {
+	if buf.Len() == 51 || buf.Len() == 52 {
+		measurements, err := w1e(buf)
+		if err != nil {
+			return fmt.Errorf("unable to decode w1e measurements")
+		}
+		payload.Measurements = append(payload.Measurements, measurements...)
+	} else if buf.Len() <= 47 {
 		measurements, err := w1h(buf)
 		if err != nil {
-			return err
+			if errors.Is(err, ErrTimeTooFarOff) {
+				measurements, err = w1t(buf)
+				if err != nil {
+					return fmt.Errorf("unable to decode w1t measurements")
+				}
+			} else {
+				return fmt.Errorf("unable to decode w1h measurements")
+			}
 		}
 		payload.Measurements = append(payload.Measurements, measurements...)
-
-	} else if strings.EqualFold(*sensorType, "qalcosonic_w1h_temp") {
-		measurements, err := w1hTemp(buf)
-		if err != nil {
-			return err
-		}
-		payload.Measurements = append(payload.Measurements, measurements...)
-
 	} else {
-		measurements, err := w24h(buf)
-		if err != nil {
-			return err
-		}
-		payload.Measurements = append(payload.Measurements, measurements...)
+		return fmt.Errorf("unable to resolve decoder")
 	}
 
 	code := payload.ValueOf("StatusCode").(int)
@@ -112,12 +54,24 @@ func AxiomaWatermeteringDecoder(ctx context.Context, msg []byte, fn func(context
 
 	payload.SetStatus(code, messages)
 
-	err = fn(ctx, payload)
+	err = fn(ctx, *payload)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func Qalcosonic_w1h(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+	return qalcosonic(ctx, msg, w1h, fn)
+}
+
+func Qalcosonic_w1t(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+	return qalcosonic(ctx, msg, w1t, fn)
+}
+
+func Qalcosonic_w1e(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+	return qalcosonic(ctx, msg, w1e, fn)
 }
 
 func w1h(buf *bytes.Reader) ([]any, error) {
@@ -141,7 +95,7 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
 			sensorTime = now
 		} else if sensorTime.After(now.Add(24 * time.Hour)) {
-			return nil, fmt.Errorf("sensor time %s is too far off in the future", sensorTime.Format(time.RFC3339Nano))
+			return nil, ErrTimeTooFarOff
 		}
 
 		m := struct {
@@ -206,7 +160,7 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 	return measurements, nil
 }
 
-func w1hTemp(buf *bytes.Reader) ([]interface{}, error) {
+func w1t(buf *bytes.Reader) ([]interface{}, error) {
 	var err error
 
 	var epoch uint32
@@ -227,7 +181,7 @@ func w1hTemp(buf *bytes.Reader) ([]interface{}, error) {
 		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
 			sensorTime = now
 		} else if sensorTime.After(now.Add(24 * time.Hour)) {
-			return nil, fmt.Errorf("sensor time %s is too far off in the future", sensorTime.Format(time.RFC3339Nano))
+			return nil, ErrTimeTooFarOff
 		}
 
 		m := struct {
@@ -293,7 +247,7 @@ func w1hTemp(buf *bytes.Reader) ([]interface{}, error) {
 	return measurements, nil
 }
 
-func w24h(buf *bytes.Reader) ([]interface{}, error) {
+func w1e(buf *bytes.Reader) ([]interface{}, error) {
 	var err error
 
 	var frameVersion uint8
@@ -325,7 +279,7 @@ func w24h(buf *bytes.Reader) ([]interface{}, error) {
 		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
 			sensorTime = now
 		} else if sensorTime.After(now.Add(24 * time.Hour)) {
-			return nil, fmt.Errorf("sensor time %s is too far off in the future", sensorTime.Format(time.RFC3339Nano))
+			return nil, ErrTimeTooFarOff
 		}
 
 		m := struct {
@@ -365,6 +319,105 @@ func w24h(buf *bytes.Reader) ([]interface{}, error) {
 	}
 
 	return measurements, nil
+}
+
+func initialize(msg []byte) (*Payload, *bytes.Reader, error) {
+	d := struct {
+		DevEUI            string      `json:"devEui"`
+		SensorType        *string     `json:"sensorType,omitempty"`
+		DeviceName        *string     `json:"deviceName,omitempty"`
+		DeviceProfileName *string     `json:"deviceProfileName,omitempty"`
+		Timestamp         string      `json:"timestamp"`
+		BatteryLevel      string      `json:"batteryLevel"`
+		FPort             interface{} `json:"fPort"`
+		Payload           *string     `json:"payload,omitempty"`
+		Data              *string     `json:"data,omitempty"`
+	}{}
+
+	err := json.Unmarshal(msg, &d)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal payload: %s", err.Error())
+	}
+
+	q := strings.Trim(fmt.Sprintf("%v", d.FPort), "\"")
+	if q != "100" {
+		return nil, nil, fmt.Errorf("only incomming messages with fPort 100 are supported")
+	}
+
+	var sensorType *string
+	if d.SensorType != nil {
+		sensorType = d.SensorType
+	} else if d.DeviceProfileName != nil {
+		sensorType = d.DeviceProfileName
+	} else {
+		return nil, nil, fmt.Errorf("unable to resolve type of sensor")
+	}
+
+	var deviceName string
+	if d.DeviceName == nil {
+		deviceName = *sensorType
+	} else {
+		deviceName = *d.DeviceName
+	}
+
+	payload := Payload{
+		DevEUI:     d.DevEUI,
+		DeviceName: deviceName,
+		FPort:      q,
+		SensorType: *sensorType,
+		Timestamp:  time.Now().Format(time.RFC3339),
+	}
+
+	var buf *bytes.Reader = nil
+
+	if d.Payload != nil {
+		b, err := readPayload(*d.Payload)
+		if err != nil {
+			return nil, nil, err
+		}
+		buf = bytes.NewReader(b)
+
+	} else if d.Data != nil {
+		b, err := readPayload(*d.Data)
+		if err != nil {
+			return nil, nil, err
+		}
+		buf = bytes.NewReader(b)
+	}
+
+	if buf == nil {
+		return nil, nil, fmt.Errorf("unable to read payload")
+	}
+
+	return &payload, buf, nil
+}
+
+func qalcosonic(ctx context.Context, msg []byte, decoder func(buf *bytes.Reader) ([]any, error), fn func(context.Context, Payload) error) error {
+	payload, buf, err := initialize(msg)
+	if err != nil {
+		return fmt.Errorf("failed to initialize: %w", err)
+	}
+	if buf.Len() < 42 {
+		return fmt.Errorf("w1b decoder not implemented")
+	}
+
+	measurements, err := decoder(buf)
+	if err != nil {
+		return fmt.Errorf("unable to decode measurements")
+	}
+	payload.Measurements = append(payload.Measurements, measurements...)
+
+	code := payload.ValueOf("StatusCode").(int)
+	messages := payload.ValueOf("StatusMessages").([]string)
+
+	payload.SetStatus(code, messages)
+
+	err = fn(ctx, *payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func readPayload(payload string) ([]byte, error) {
