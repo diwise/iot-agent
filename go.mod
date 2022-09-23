@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/diwise/iot-device-mgmt v0.0.0-20220830120854-88ad99f95f95
-	github.com/diwise/messaging-golang v0.0.0-20220413073613-1dcf3cdf0dcd
+	github.com/diwise/messaging-golang v0.0.0-20220923081351-faac9424f748
 	github.com/diwise/service-chassis v0.0.0-20220609153321-22f72f7f5e21
 	github.com/eclipse/paho.mqtt.golang v1.4.1
 	github.com/farshidtz/senml/v2 v2.0.0
