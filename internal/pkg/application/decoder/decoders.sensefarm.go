@@ -50,31 +50,31 @@ func SensefarmBasicDecoder(ctx context.Context, msg []byte, fn func(context.Cont
 		}
 
 		transmissionReason := struct {
-			TransmissionReason int8 `json:"transmission_reason"`
+			TransmissionReason int8 `json:"transmissionReason"`
 		}{
 			int8(p.TransmissionReason),
 		}
 
 		protocolVersion := struct {
-			ProtocolVersion int8 `json:"protocol_version"`
+			ProtocolVersion int8 `json:"protocolVersion"`
 		}{
 			int8(p.ProtocolVersion),
 		}
 
 		batteryVoltage := struct {
-			BatteryVoltage int16 `json:"battery_voltage"`
+			BatteryVoltage int16 `json:"battery"`
 		}{
 			p.BatteryVoltage,
 		}
 
-		resistance := struct {
-			Resistance []int32 `json:"resistance"`
+		resistances := struct {
+			Resistance []int32 `json:"conductivity"`
 		}{
 			p.Resistances,
 		}
 
-		soilMoisture := struct {
-			SoilMoisture []int16 `json:"soil_moisture"`
+		soilMoistures := struct {
+			SoilMoisture []int16 `json:"pressure"`
 		}{
 			p.SoilMoistures,
 		}
@@ -102,8 +102,8 @@ func SensefarmBasicDecoder(ctx context.Context, msg []byte, fn func(context.Cont
 		pp.Measurements[0] = transmissionReason
 		pp.Measurements[1] = protocolVersion
 		pp.Measurements[2] = batteryVoltage
-		pp.Measurements[3] = resistance
-		pp.Measurements[4] = soilMoisture
+		pp.Measurements[3] = resistances
+		pp.Measurements[4] = soilMoistures
 		pp.Measurements[5] = temperature
 
 		err = fn(ctx, *pp)
