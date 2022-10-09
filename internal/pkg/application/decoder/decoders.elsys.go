@@ -98,6 +98,7 @@ func ElsysDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payl
 		}{
 			*d.Object.Vdd, // TODO: Adjust for max VDD
 		}
+		pp.BatteryLevel = bat.BatteryLevel
 		pp.Measurements = append(pp.Measurements, bat)
 	}
 

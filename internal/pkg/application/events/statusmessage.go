@@ -6,10 +6,11 @@ import (
 )
 
 type StatusMessage struct {
-	DeviceID  string  `json:"deviceID"`
-	Error     *string `json:"error,omitempty"`
-	Status    Status  `json:"status"`
-	Timestamp string  `json:"timestamp"`
+	DeviceID     string  `json:"deviceID"`
+	BatteryLevel int     `json:"batteryLevel"`
+	Error        *string `json:"error,omitempty"`
+	Status       Status  `json:"status"`
+	Timestamp    string  `json:"timestamp"`
 }
 
 type Status struct {
@@ -36,6 +37,12 @@ func WithStatus(code int, messages []string) func(*StatusMessage) {
 			Code:     code,
 			Messages: messages,
 		}
+	}
+}
+
+func WithBatteryLevel(batteryLevel int) func(*StatusMessage) {
+	return func(sm *StatusMessage) {
+		sm.BatteryLevel = batteryLevel
 	}
 }
 

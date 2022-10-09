@@ -66,6 +66,7 @@ func SenlabTBasicDecoder(ctx context.Context, msg []byte, fn func(context.Contex
 			Rssi:       d.Rssi,
 			SensorType: d.SensorType,
 			Timestamp:  d.Timestamp,
+			BatteryLevel: bat.BatteryLevel,
 		}
 		pp.Measurements = append(pp.Measurements, temp)
 		pp.Measurements = append(pp.Measurements, bat)

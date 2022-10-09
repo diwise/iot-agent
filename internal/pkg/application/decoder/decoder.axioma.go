@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 
 	"encoding/json"
@@ -360,12 +361,18 @@ func initialize(msg []byte) (*Payload, *bytes.Reader, error) {
 		deviceName = *d.DeviceName
 	}
 
+	batteryLevel, err := strconv.Atoi(d.BatteryLevel)
+	if err != nil {
+		batteryLevel = 0
+	}
+
 	payload := Payload{
-		DevEUI:     d.DevEUI,
-		DeviceName: deviceName,
-		FPort:      q,
-		SensorType: *sensorType,
-		Timestamp:  time.Now().Format(time.RFC3339),
+		DevEUI:       d.DevEUI,
+		DeviceName:   deviceName,
+		BatteryLevel: batteryLevel / 255 * 100,
+		FPort:        q,
+		SensorType:   *sensorType,
+		Timestamp:    time.Now().Format(time.RFC3339),
 	}
 
 	var buf *bytes.Reader = nil
