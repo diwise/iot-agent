@@ -13,7 +13,6 @@ type Payload struct {
 	BatteryLevel      int     `json:"batteryLevel"`
 	DevEUI            string  `json:"devEUI"`
 	DeviceName        string  `json:"deviceName,omitempty"`
-	Error             string  `json:"error,omitempty"`
 	FPort             string  `json:"fPort,omitempty"`
 	GatewayIdentifier string  `json:"gatewayIdentifier,omitempty"`
 	Latitude          float64 `json:"latitude,omitempty"`
@@ -27,6 +26,8 @@ type Payload struct {
 	Timestamp         string  `json:"timestamp,omitempty"`
 	Type              string  `json:"type,omitempty"`
 }
+
+const PAYLOAD_ERROR = 100
 
 type Status struct {
 	Code     int      `json:"statusCode"`
