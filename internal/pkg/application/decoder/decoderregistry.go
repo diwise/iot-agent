@@ -22,6 +22,9 @@ func NewDecoderRegistry() DecoderRegistry {
 		"enviot":           EnviotDecoder,
 		"presence":         PresenceDecoder,
 		"qalcosonic":       AxiomaWatermeteringDecoder,
+		"qalcosonic_w1h":   Qalcosonic_w1h,
+		"qalcosonic_w1t":   Qalcosonic_w1t,
+		"qalcosonic_w1e":   Qalcosonic_w1e,
 		"cube02":           SensefarmBasicDecoder,
 	}
 

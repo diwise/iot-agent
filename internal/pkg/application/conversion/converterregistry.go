@@ -17,13 +17,12 @@ type converterRegistry struct {
 func NewConverterRegistry() ConverterRegistry {
 
 	converters := map[string]MessageConverterFunc{
-		lwm2m.Temperature:        Temperature,
-		lwm2m.AirQuality:         AirQuality,
-		lwm2m.Presence:           Presence,
-		lwm2m.Watermeter:         Watermeter,
-		"urn:oma:lwm2m:ext:3323": Pressure,     //lwm2m.Pressure:      Pressure,
-		"urn:oma:lwm2m:ext:3327": Conductivity, //lwm2m.Conductivity:	Conductivity
-		//		"w3org.SoilHumidity": SoilMoisture, // "http://purl.org/iot/vocab/m3-lite#SoilHumidity", 	<todo> impl senare från core
+		lwm2m.Temperature:  Temperature,
+		lwm2m.AirQuality:   AirQuality,
+		lwm2m.Presence:     Presence,
+		lwm2m.Watermeter:   Watermeter,
+		lwm2m.Pressure:     Pressure,
+		lwm2m.Conductivity: Conductivity,
 	}
 
 	return &converterRegistry{
