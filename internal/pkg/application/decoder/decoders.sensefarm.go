@@ -96,6 +96,7 @@ func SensefarmBasicDecoder(ctx context.Context, msg []byte, fn func(context.Cont
 			GatewayIdentifier: d.GatewayIdentifier,
 			SensorType:        d.SensorType,
 			Timestamp:         d.Timestamp,
+			BatteryLevel:      int(batteryVoltage.BatteryVoltage),
 		}
 
 		pp.Measurements = make([]interface{}, 6)

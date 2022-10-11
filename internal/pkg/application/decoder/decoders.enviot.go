@@ -54,6 +54,7 @@ func EnviotDecoder(ctx context.Context, msg []byte, fn func(context.Context, Pay
 		}{
 			*d.Object.Payload.Battery,
 		}
+		pp.BatteryLevel = bat.BatteryLevel
 		pp.Measurements = append(pp.Measurements, bat)
 	}
 

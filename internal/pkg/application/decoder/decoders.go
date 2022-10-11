@@ -10,22 +10,24 @@ import (
 )
 
 type Payload struct {
+	BatteryLevel      int     `json:"batteryLevel"`
 	DevEUI            string  `json:"devEUI"`
 	DeviceName        string  `json:"deviceName,omitempty"`
 	FPort             string  `json:"fPort,omitempty"`
-	SpreadingFactor   string  `json:"spreadingFactor,omitempty"`
+	GatewayIdentifier string  `json:"gatewayIdentifier,omitempty"`
 	Latitude          float64 `json:"latitude,omitempty"`
 	Longitude         float64 `json:"longitude,omitempty"`
+	Measurements      []any   `json:"measurements"`
 	Rssi              string  `json:"rssi,omitempty"`
-	Snr               string  `json:"snr,omitempty"`
-	GatewayIdentifier string  `json:"gatewayIdentifier,omitempty"`
 	SensorType        string  `json:"sensorType,omitempty"`
+	Snr               string  `json:"snr,omitempty"`
+	SpreadingFactor   string  `json:"spreadingFactor,omitempty"`
+	Status            Status  `json:"status"`
 	Timestamp         string  `json:"timestamp,omitempty"`
 	Type              string  `json:"type,omitempty"`
-	Error             string  `json:"error,omitempty"`
-	Measurements      []any   `json:"measurements"`
-	Status            Status  `json:"status"`
 }
+
+const PayloadError = 100
 
 type Status struct {
 	Code     int      `json:"statusCode"`

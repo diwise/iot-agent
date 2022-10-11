@@ -40,12 +40,16 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, payload decoder.Payl
 		return err
 	}
 
-	err = mp.event.Publish(ctx, events.NewStatusMessage(device.ID(), events.WithStatus(payload.Status.Code, payload.Status.Messages), events.WithError(payload.Error)))
+	statusMessage := events.NewStatusMessage(device.ID(),
+		events.WithStatus(payload.Status.Code, payload.Status.Messages),
+		events.WithBatteryLevel(payload.BatteryLevel))
+
+	err = mp.event.Publish(ctx, statusMessage)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to publish status message")
 	}
 
-	if payload.Error != "" {
+	if payload.Status.Code == decoder.PayloadError {
 		log.Info().Msg("ignoring payload due to device error")
 		return nil
 	}

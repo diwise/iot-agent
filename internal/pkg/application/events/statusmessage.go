@@ -1,20 +1,15 @@
 package events
 
 import (
-	"strings"
 	"time"
 )
 
 type StatusMessage struct {
-	DeviceID  string  `json:"deviceID"`
-	Error     *string `json:"error,omitempty"`
-	Status    Status  `json:"status"`
-	Timestamp string  `json:"timestamp"`
-}
-
-type Status struct {
-	Code     int      `json:"statusCode"`
-	Messages []string `json:"statusMessages,omitempty"`
+	DeviceID     string   `json:"deviceID"`
+	BatteryLevel int      `json:"batteryLevel"`
+	Code         int      `json:"statusCode"`
+	Messages     []string `json:"statusMessages,omitempty"`
+	Timestamp    string   `json:"timestamp"`
 }
 
 func NewStatusMessage(deviceID string, options ...func(*StatusMessage)) *StatusMessage {
@@ -32,20 +27,14 @@ func NewStatusMessage(deviceID string, options ...func(*StatusMessage)) *StatusM
 
 func WithStatus(code int, messages []string) func(*StatusMessage) {
 	return func(sm *StatusMessage) {
-		sm.Status = Status{
-			Code:     code,
-			Messages: messages,
-		}
+		sm.Code = code
+		sm.Messages = messages
 	}
 }
 
-func WithError(err string) func(*StatusMessage) {
+func WithBatteryLevel(batteryLevel int) func(*StatusMessage) {
 	return func(sm *StatusMessage) {
-		if strings.Trim(err, " ") == "" {
-			sm.Error = nil
-		} else {
-			sm.Error = &err
-		}
+		sm.BatteryLevel = batteryLevel
 	}
 }
 
