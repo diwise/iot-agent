@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"io"
 	"strconv"
 	"strings"
 
@@ -37,6 +38,7 @@ func AxiomaWatermeteringDecoder(ctx context.Context, msg []byte, fn func(context
 		measurements, err := w1h(buf)
 		if err != nil {
 			if errors.Is(err, ErrTimeTooFarOff) {
+				buf.Seek(0, 0)
 				measurements, err = w1t(buf)
 				if err != nil {
 					return fmt.Errorf("unable to decode w1t measurements")
@@ -138,11 +140,21 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &logDateTime)
 	if err == nil {
+		dateTime := time.Unix(int64(logDateTime), 0).UTC()
+		now := time.Now().UTC()
+
+		if dateTime.After(now.Add(-24*time.Hour)) && dateTime.Before(now.Add(24*time.Hour)) {
+			dateTime = now
+		} else if dateTime.After(now.Add(24 * time.Hour)) {
+			return nil, ErrTimeTooFarOff
+		}
+
 		m := struct {
 			LogDateTime string `json:"logDateTime"`
 		}{
-			LogDateTime: time.Unix(int64(logDateTime), 0).Format(time.RFC3339),
+			LogDateTime: dateTime.Format(time.RFC3339Nano),
 		}
+
 		measurements = append(measurements, m)
 	}
 
@@ -158,6 +170,10 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 		return nil, err
 	}
 
+	if d, ok := deltaVolumes(buf); ok {
+		measurements = append(measurements, d...)
+	}
+
 	return measurements, nil
 }
 
@@ -168,7 +184,8 @@ func w1t(buf *bytes.Reader) ([]interface{}, error) {
 	var statusCode uint8
 	var currentVolume uint32
 	var temperature uint16
-	var logDateTime uint32
+	var lastLogValueDate uint32
+	var lastLogValue uint32
 
 	var measurements []interface{}
 
@@ -226,26 +243,73 @@ func w1t(buf *bytes.Reader) ([]interface{}, error) {
 		m := struct {
 			Temperature float64 `json:"temperature"`
 		}{
-			Temperature: float64(temperature) * 0.001,
+			Temperature: float64(temperature) * 0.01,
 		}
 		measurements = append(measurements, m)
 	} else {
 		return nil, err
 	}
 
-	err = binary.Read(buf, binary.LittleEndian, &logDateTime)
+	err = binary.Read(buf, binary.LittleEndian, &lastLogValueDate)
 	if err == nil {
 		m := struct {
-			LogDateTime string `json:"logDateTime"`
+			LastLogValueDate string `json:"LastLogValueDate"`
 		}{
-			LogDateTime: time.Unix(int64(logDateTime), 0).Format(time.RFC3339),
+			LastLogValueDate: time.Unix(int64(lastLogValueDate), 0).UTC().Format(time.RFC3339Nano),
 		}
 		measurements = append(measurements, m)
 	} else {
 		return nil, err
+	}
+
+	err = binary.Read(buf, binary.LittleEndian, &lastLogValue)
+	if err == nil {
+		m := struct {
+			LastLogValue float64 `json:"lastLogValue"`
+		}{
+			LastLogValue: float64(lastLogValue) * 0.001,
+		}
+		measurements = append(measurements, m)
+	} else {
+		return nil, err
+	}
+
+	if d, ok := deltaVolumes(buf); ok {
+		measurements = append(measurements, d...)
 	}
 
 	return measurements, nil
+}
+
+func deltaVolumes(buf *bytes.Reader) ([]interface{}, bool) {
+	var deltaVolume uint16
+	var measurements []interface{}
+
+	deltas := struct {
+		DeltaVolumes []struct {
+			Volume float64 `json:"volume"`
+		} `json:"deltaVolumes"`
+	}{}
+
+	for {
+		err := binary.Read(buf, binary.LittleEndian, &deltaVolume)
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			break
+		} else if err != nil {
+			return nil, false
+		}
+		vol := struct {
+			Volume float64 `json:"volume"`
+		}{
+			Volume: float64(deltaVolume) * 0.001,
+		}
+
+		deltas.DeltaVolumes = append(deltas.DeltaVolumes, vol)
+	}
+
+	measurements = append(measurements, deltas)
+
+	return measurements, true
 }
 
 func w1e(buf *bytes.Reader) ([]interface{}, error) {

@@ -191,6 +191,20 @@ func TestQalcosonic_w1e(t *testing.T) {
 	is.Equal(payload.Status.Code, 0)
 }
 
+func TestQalcosonic_w1e_(t *testing.T) {
+	is, _ := testSetup(t)
+	payload := &Payload{}
+
+	err := Qalcosonic_w1e(context.Background(), []byte(qalcosonic_w1e_), func(ctx context.Context, p Payload) error {
+		payload = &p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal("116c52b4274f", payload.DevEUI)
+	is.Equal("2020-05-29T07:51:59Z", payload.ValueOf("CurrentTime"))
+}
+
 func TestQalcosonicStatusCodes(t *testing.T) {
 	is, _ := testSetup(t)
 
@@ -392,6 +406,40 @@ const livboj string = `
         "prevHistSeqNr": 65535
     }
 }`
+
+const qalcosonic_w1e_ string = `
+{
+  "devEui": "116c52b4274f",
+  "sensorType": "qalcosonic_w1e",
+  "messageType": "payload",
+  "timestamp": "2022-08-25T07:35:21.834484Z",
+  "payload": "011fbfd05e30cd0f0800d4879e41865c1b42470d7283b8201608fec181981dd007f3919460218247b631784c1c9e87b8e17600",
+  "fCntUp": 1490,
+  "toa": null,
+  "freq": 867900000,
+  "batteryLevel": "255",
+  "ack": false,
+  "spreadingFactor": "8",
+  "rssi": "-115",
+  "snr": "-1.8",
+  "gatewayIdentifier": "000",
+  "fPort": "100",
+  "tags": {
+    "application": ["ambiductor_test"],
+    "customer": ["customer"],
+    "deviceType": ["w1e"],
+    "serial": ["00000000"]
+  },
+  "gateways": [
+    {
+      "rssi": "-115",
+      "snr": "-1.8",
+      "gatewayIdentifier": "000",
+      "antenna": 0
+    }
+  ]
+}
+`
 
 const qalcosonic_w1e string = `
 {
