@@ -203,7 +203,7 @@ func Pressure(ctx context.Context, deviceID string, payload decoder.Payload) (se
 
 	var pack senml.Pack
 	pack = append(pack, senml.Record{
-		BaseName:    "urn:oma:lwm2m:ext:3323", //  	<todo> impl senare från core
+		BaseName:    lwm2m.Pressure,
 		BaseTime:    baseTime,
 		Name:        "0",
 		StringValue: deviceID,
@@ -215,7 +215,7 @@ func Pressure(ctx context.Context, deviceID string, payload decoder.Payload) (se
 				var pressureFloat64 = float64(p)
 
 				rec := senml.Record{
-					Name:  "Pressure", // pkg/measurements/constants.go <todo> impl senare från core
+					Name:  lwm2m.Pressure,
 					Value: &pressureFloat64,
 				}
 
@@ -246,7 +246,7 @@ func Conductivity(ctx context.Context, deviceID string, payload decoder.Payload)
 
 	var pack senml.Pack
 	pack = append(pack, senml.Record{
-		BaseName:    "urn:oma:lwm2m:ext:3327", //  	<todo> impl senare från core
+		BaseName:    lwm2m.Conductivity,
 		BaseTime:    baseTime,
 		Name:        "0",
 		StringValue: deviceID,
@@ -258,7 +258,7 @@ func Conductivity(ctx context.Context, deviceID string, payload decoder.Payload)
 				var conductivityFloat64 = float64(c)
 
 				rec := senml.Record{
-					Name:  "Conductivity", // pkg/measurements/constants.go <todo> impl senare från core
+					Name:  lwm2m.Conductivity,
 					Value: &conductivityFloat64,
 				}
 
