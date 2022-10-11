@@ -369,7 +369,7 @@ func initialize(msg []byte) (*Payload, *bytes.Reader, error) {
 	payload := Payload{
 		DevEUI:       d.DevEUI,
 		DeviceName:   deviceName,
-		BatteryLevel: batteryLevel / 255 * 100,
+		BatteryLevel: batteryLevel * 100 / 255,
 		FPort:        q,
 		SensorType:   *sensorType,
 		Timestamp:    time.Now().Format(time.RFC3339),

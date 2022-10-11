@@ -49,7 +49,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, payload decoder.Payl
 		log.Error().Err(err).Msg("failed to publish status message")
 	}
 
-	if payload.Status.Code == decoder.PAYLOAD_ERROR {
+	if payload.Status.Code == decoder.PayloadError {
 		log.Info().Msg("ignoring payload due to device error")
 		return nil
 	}

@@ -27,7 +27,7 @@ type Payload struct {
 	Type              string  `json:"type,omitempty"`
 }
 
-const PAYLOAD_ERROR = 100
+const PayloadError = 100
 
 type Status struct {
 	Code     int      `json:"statusCode"`
