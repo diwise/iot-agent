@@ -170,7 +170,7 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 		return nil, err
 	}
 
-	if d, ok := deltaVolumes(buf); ok {
+	if d, ok := deltaVolumes(buf, lastLogValue, logDateTime); ok {
 		measurements = append(measurements, d...)
 	}
 
@@ -253,7 +253,7 @@ func w1t(buf *bytes.Reader) ([]interface{}, error) {
 	err = binary.Read(buf, binary.LittleEndian, &lastLogValueDate)
 	if err == nil {
 		m := struct {
-			LastLogValueDate string `json:"LastLogValueDate"`
+			LastLogValueDate string `json:"lastLogValueDate"`
 		}{
 			LastLogValueDate: time.Unix(int64(lastLogValueDate), 0).UTC().Format(time.RFC3339Nano),
 		}
@@ -274,22 +274,27 @@ func w1t(buf *bytes.Reader) ([]interface{}, error) {
 		return nil, err
 	}
 
-	if d, ok := deltaVolumes(buf); ok {
+	if d, ok := deltaVolumes(buf, lastLogValue, lastLogValueDate); ok {
 		measurements = append(measurements, d...)
 	}
 
 	return measurements, nil
 }
 
-func deltaVolumes(buf *bytes.Reader) ([]interface{}, bool) {
+func deltaVolumes(buf *bytes.Reader, lastLogValue, lastLogValueDate uint32) ([]interface{}, bool) {
 	var deltaVolume uint16
 	var measurements []interface{}
 
 	deltas := struct {
 		DeltaVolumes []struct {
-			Volume float64 `json:"volume"`
+			Volume       float64 `json:"volume"`
+			Cumulated    float64 `json:"cumulated"`
+			LogValueDate string  `json:"logValueDate"`
 		} `json:"deltaVolumes"`
 	}{}
+
+	t := time.Unix(int64(lastLogValueDate), 0).UTC()
+	v := lastLogValue
 
 	for {
 		err := binary.Read(buf, binary.LittleEndian, &deltaVolume)
@@ -298,11 +303,19 @@ func deltaVolumes(buf *bytes.Reader) ([]interface{}, bool) {
 		} else if err != nil {
 			return nil, false
 		}
+
 		vol := struct {
-			Volume float64 `json:"volume"`
+			Volume       float64 `json:"volume"`
+			Cumulated    float64 `json:"cumulated"`
+			LogValueDate string  `json:"logValueDate"`
 		}{
-			Volume: float64(deltaVolume) * 0.001,
+			Volume:       float64(deltaVolume) * 0.001,
+			Cumulated:    float64(v+uint32(deltaVolume)) * 0.001,
+			LogValueDate: t.Add(time.Hour).Format(time.RFC3339Nano),
 		}
+
+		t = t.Add(time.Hour)
+		v = v + uint32(deltaVolume)
 
 		deltas.DeltaVolumes = append(deltas.DeltaVolumes, vol)
 	}

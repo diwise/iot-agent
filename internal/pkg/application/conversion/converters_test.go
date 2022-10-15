@@ -88,6 +88,25 @@ func TestThatWatermeterDecodesValuesCorrectly(t *testing.T) {
 	}
 	payload.Measurements = append(payload.Measurements, curVol)
 
+	delta := struct {
+		Volume       float64 `json:"volume"`
+		Cumulated    float64 `json:"cumulated"`
+		LogValueDate string  `json:"logValueDate"`
+	}{
+		Volume: 100,
+		Cumulated: 2000,
+		LogValueDate: "2020-09-09T12:32:21Z",
+	}
+	deltas := struct {
+		DeltaVolumes []struct {
+			Volume       float64 `json:"volume"`
+			Cumulated    float64 `json:"cumulated"`
+			LogValueDate string  `json:"logValueDate"`
+		} `json:"deltaVolumes"`
+	}{}
+	deltas.DeltaVolumes = append(deltas.DeltaVolumes, delta)
+	payload.Measurements = append(payload.Measurements, deltas)
+
 	msg, err := Watermeter(ctx, "internalID", payload)
 
 	is.NoErr(err)

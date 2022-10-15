@@ -138,6 +138,11 @@ func Watermeter(ctx context.Context, deviceID string, payload decoder.Payload) (
 		Measurements []struct {
 			CurrentVolume   *float64 `json:"currentVolume,omitempty"`
 			CurrentDateTime *string  `json:"currentTime,omitempty"`
+			DeltaVolumes    *[]struct {
+				Volume       float64 `json:"volume"`
+				Cumulated    float64 `json:"cumulated"`
+				LogValueDate string  `json:"logValueDate"`
+			} `json:"deltaVolumes,omitempty"`
 		} `json:"measurements"`
 	}{}
 
@@ -178,6 +183,20 @@ func Watermeter(ctx context.Context, deviceID string, payload decoder.Payload) (
 			}
 
 			pack = append(pack, rec)
+		}
+
+		if m.DeltaVolumes != nil && len(*m.DeltaVolumes) > 0 {
+			for _, dv := range *m.DeltaVolumes {
+				t, _ := time.Parse(time.RFC3339Nano, dv.LogValueDate)
+
+				rec := senml.Record{
+					Name:  "DeltaVolume",
+					Value: &dv.Volume,
+					Time:  float64(t.UTC().UnixMilli()) * 1000,
+					Sum:   &dv.Cumulated,
+				}
+				pack = append(pack, rec)
+			}
 		}
 	}
 
