@@ -35,7 +35,7 @@ func main() {
 
 	app, err := SetupIoTAgent(ctx, logger, serviceName, deviceMgmtClientURL, tokenURL, clientID, clientSecret)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to serup iot agent")
+		logger.Fatal().Err(err).Msg("failed to setup iot agent")
 	}
 
 	mqttConfig, err := mqtt.NewConfigFromEnvironment()
