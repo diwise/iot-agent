@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
@@ -32,7 +33,7 @@ func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T)
 
 	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages", bytes.NewBuffer([]byte(msgfromMQTT)))
 	is.Equal(resp.StatusCode, http.StatusCreated)
-	is.Equal(len(app.MessageReceivedCalls()), 1)
+	is.Equal(len(app.MessageReceivedFnCalls()), 1)
 }
 
 func testSetup(t *testing.T) (*is.I, *api, *iotagent.IoTAgentMock) {
@@ -40,7 +41,10 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.IoTAgentMock) {
 	r := chi.NewRouter()
 
 	app := &iotagent.IoTAgentMock{
-		MessageReceivedFunc: func(ctx context.Context, msg []byte) error {
+		MessageReceivedFunc: func(ctx context.Context, ue mqtt.UplinkEvent) error {
+			return nil
+		},
+		MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue mqtt.UplinkASFunc) error {
 			return nil
 		},
 	}

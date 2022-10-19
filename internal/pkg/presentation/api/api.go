@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
@@ -77,10 +78,12 @@ func (a *api) incomingMessageHandler(w http.ResponseWriter, r *http.Request) {
 	msg, _ := io.ReadAll(r.Body)
 	defer r.Body.Close()
 
-	log.Info().Msg("attempting to process message")
-	err = a.app.MessageReceived(ctx, msg)
+	log.Debug().Msg("starting to process message")
+
+	err = a.app.MessageReceivedFn(ctx, msg, mqtt.GetFacade(r.URL.Query().Get("as")))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to handle message")
+		log.Debug().Msgf("body: \n%s", msg)
 
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))

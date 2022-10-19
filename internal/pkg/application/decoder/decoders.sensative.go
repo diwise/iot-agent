@@ -3,63 +3,34 @@ package decoder
 import (
 	"context"
 	"encoding/binary"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 )
 
-func SensativeDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+func SensativeDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
 
-	dm := []struct {
-		DevEUI     string  `json:"devEUI"`
-		FPort      string  `json:"fPort,omitempty"`
-		Latitude   float64 `json:"latitude,omitempty"`
-		Longitude  float64 `json:"longitude,omitempty"`
-		Rssi       string  `json:"rssi,omitempty"`
-		SensorType string  `json:"sensorType,omitempty"`
-		Timestamp  string  `json:"timestamp,omitempty"`
-		Payload    string  `json:"payload"`
-	}{}
+	if len(ue.Data) < 2 {
+		return errors.New("payload too short")
+	}
 
-	err := json.Unmarshal(msg, &dm)
+	pp := &Payload{
+		DevEUI:       ue.DevEui,
+		Timestamp:    ue.Timestamp.Format(time.RFC3339Nano),
+	}
+
+	err := decodeSensativeMeasurements(ue.Data, func(m Measurement) {
+		pp.Measurements = append(pp.Measurements, m)
+	})
 	if err != nil {
 		return err
 	}
 
-	for _, d := range dm {
-
-		b, err := hex.DecodeString(d.Payload)
-		if err != nil {
-			return err
-		}
-
-		if len(b) < 2 {
-			return errors.New("payload too short")
-		}
-
-		pp := &Payload{
-			DevEUI:       d.DevEUI,
-			FPort:        d.FPort,
-			Latitude:     d.Latitude,
-			Longitude:    d.Longitude,
-			Rssi:         d.Rssi,
-			SensorType:   d.SensorType,
-			Timestamp:    d.Timestamp,
-			Measurements: []any{},
-		}
-
-		err = decodeSensativeMeasurements(b, func(m Measurement) {
-			pp.Measurements = append(pp.Measurements, m)
-		})
-		if err != nil {
-			return err
-		}
-
-		err = fn(ctx, *pp)
-		if err != nil {
-			return err
-		}
+	err = fn(ctx, *pp)
+	if err != nil {
+		return err
 	}
 
 	return nil

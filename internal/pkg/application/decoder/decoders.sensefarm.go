@@ -4,113 +4,80 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 )
 
-func SensefarmBasicDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+func SensefarmBasicDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
 
-	dm := []struct {
-		DevEUI            string  `json:"devEUI"`
-		SensorType        string  `json:"sensorType,omitempty"`
-		Timestamp         string  `json:"timestamp,omitempty"`
-		Payload           string  `json:"payload"`
-		SpreadingFactor   string  `json:"spreadingfactor,omitempty"`
-		Rssi              string  `json:"rssi,omitempty"`
-		Snr               string  `json:"snr,omitempty"`
-		Latitude          float64 `json:"latitude,omitempty"`
-		Longitude         float64 `json:"longitude,omitempty"`
-		GatewayIdentifier string  `json:"gatewayIdentifier,omitempty"`
-		FPort             string  `json:"fPort,omitempty"`
-	}{}
+	var p payloadSensefarm
 
-	err := json.Unmarshal(msg, &dm)
+	// At minimum we must receive 2 bytes, one for header type and one for value
+	if len(ue.Data) < 2 {
+		return errors.New("payload too short")
+	}
+
+	err := decodeSensefarmPayload(ue.Data, &p)
 	if err != nil {
 		return err
 	}
 
-	var p payloadSensefarm
-	for _, d := range dm {
+	transmissionReason := struct {
+		TransmissionReason int8 `json:"transmission_reason"`
+	}{
+		int8(p.TransmissionReason),
+	}
 
-		b, err := hex.DecodeString(d.Payload)
-		if err != nil {
-			return err
-		}
+	protocolVersion := struct {
+		ProtocolVersion int8 `json:"protocol_version"`
+	}{
+		int8(p.ProtocolVersion),
+	}
 
-		// At minimum we must receive 2 bytes, one for header type and one for value
-		if len(b) < 2 {
-			return errors.New("payload too short")
-		}
+	batteryVoltage := struct {
+		BatteryVoltage int16 `json:"battery_voltage"`
+	}{
+		p.BatteryVoltage,
+	}
 
-		err = decodeSensefarmPayload(b, &p)
-		if err != nil {
-			return err
-		}
+	resistance := struct {
+		Resistance []int32 `json:"resistance"`
+	}{
+		p.Resistances,
+	}
 
-		transmissionReason := struct {
-			TransmissionReason int8 `json:"transmission_reason"`
-		}{
-			int8(p.TransmissionReason),
-		}
+	soilMoisture := struct {
+		SoilMoisture []int16 `json:"soil_moisture"`
+	}{
+		p.SoilMoistures,
+	}
 
-		protocolVersion := struct {
-			ProtocolVersion int8 `json:"protocol_version"`
-		}{
-			int8(p.ProtocolVersion),
-		}
+	temperature := struct {
+		Temperature float32 `json:"temperature"`
+	}{
+		p.Temperature,
+	}
 
-		batteryVoltage := struct {
-			BatteryVoltage int16 `json:"battery_voltage"`
-		}{
-			p.BatteryVoltage,
-		}
+	pp := &Payload{
+		DevEUI:       ue.DevEui,
+		Timestamp:    ue.Timestamp.Format(time.RFC3339Nano),
+		BatteryLevel: int(batteryVoltage.BatteryVoltage),
+	}
 
-		resistance := struct {
-			Resistance []int32 `json:"resistance"`
-		}{
-			p.Resistances,
-		}
+	pp.Measurements = make([]interface{}, 6)
+	pp.Measurements[0] = transmissionReason
+	pp.Measurements[1] = protocolVersion
+	pp.Measurements[2] = batteryVoltage
+	pp.Measurements[3] = resistance
+	pp.Measurements[4] = soilMoisture
+	pp.Measurements[5] = temperature
 
-		soilMoisture := struct {
-			SoilMoisture []int16 `json:"soil_moisture"`
-		}{
-			p.SoilMoistures,
-		}
-
-		temperature := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			p.Temperature,
-		}
-
-		pp := &Payload{
-			DevEUI:            d.DevEUI,
-			FPort:             d.FPort,
-			SpreadingFactor:   d.SpreadingFactor,
-			Rssi:              d.Rssi,
-			Snr:               d.Snr,
-			Latitude:          d.Latitude,
-			Longitude:         d.Longitude,
-			GatewayIdentifier: d.GatewayIdentifier,
-			SensorType:        d.SensorType,
-			Timestamp:         d.Timestamp,
-			BatteryLevel:      int(batteryVoltage.BatteryVoltage),
-		}
-
-		pp.Measurements = make([]interface{}, 6)
-		pp.Measurements[0] = transmissionReason
-		pp.Measurements[1] = protocolVersion
-		pp.Measurements[2] = batteryVoltage
-		pp.Measurements[3] = resistance
-		pp.Measurements[4] = soilMoisture
-		pp.Measurements[5] = temperature
-
-		err = fn(ctx, *pp)
-		if err != nil {
-			return err
-		}
+	err = fn(ctx, *pp)
+	if err != nil {
+		return err
 	}
 
 	return nil

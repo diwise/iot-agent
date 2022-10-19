@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
@@ -68,22 +69,13 @@ func (p *Payload) ValueOf(name string) any {
 	return nil
 }
 
-type MessageDecoderFunc func(context.Context, []byte, func(context.Context, Payload) error) error
+type MessageDecoderFunc func(context.Context, mqtt.UplinkEvent, func(context.Context, Payload) error) error
 
-func DefaultDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+func DefaultDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
 	log := logging.GetFromContext(ctx)
 
-	d := struct {
-		DevEUI string `json:"devEUI"`
-	}{}
-
-	err := json.Unmarshal(msg, &d)
-	if err != nil {
-		return err
-	}
-
 	p := Payload{
-		DevEUI: d.DevEUI,
+		DevEUI: ue.DevEui,
 	}
 
 	log.Info().Msgf("default decoder used for devEUI %s", p.DevEUI)

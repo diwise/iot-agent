@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
@@ -14,8 +15,8 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	r := &Payload{}
-
-	err := SenlabTBasicDecoder(context.Background(), []byte(senlabT), func(c context.Context, m Payload) error {
+	ue, _ := mqtt.Netmore([]byte(senlabT))
+	err := SenlabTBasicDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
 		r = &m
 		return nil
 	})
@@ -24,12 +25,21 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 	is.Equal(r.Timestamp, "2022-04-12T05:08:50.301732Z")
 }
 
+func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
+	is, _ := testSetup(t)
+	ue, _ := mqtt.Netmore([]byte(senlabT_sensorReadingError))
+	err := SenlabTBasicDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
+		return nil
+	})
+
+	is.True(err != nil)
+}
 func TestElsysTemperatureDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	r := &Payload{}
-
-	err := ElsysDecoder(context.Background(), []byte(elsysTemp), func(c context.Context, m Payload) error {
+	ue, _ := mqtt.ChirpStack([]byte(elsysTemp))
+	err := ElsysDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
 		r = &m
 		return nil
 	})
@@ -42,8 +52,8 @@ func TestElsysCO2Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	r := &Payload{}
-
-	err := ElsysDecoder(context.Background(), []byte(elsysCO2), func(c context.Context, m Payload) error {
+	ue, _ := mqtt.ChirpStack([]byte(elsysCO2))
+	err := ElsysDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
 		r = &m
 		return nil
 	})
@@ -56,8 +66,8 @@ func TestEnviotDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	r := &Payload{}
-
-	err := EnviotDecoder(context.Background(), []byte(enviot), func(c context.Context, m Payload) error {
+	ue, _ := mqtt.ChirpStack([]byte(enviot))
+	err := EnviotDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
 		r = &m
 		return nil
 	})
@@ -67,22 +77,12 @@ func TestEnviotDecoder(t *testing.T) {
 	is.Equal(len(r.Measurements), 4) // expected four measurements
 }
 
-func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
-	is, _ := testSetup(t)
-
-	err := SenlabTBasicDecoder(context.Background(), []byte(senlabT_sensorReadingError), func(c context.Context, m Payload) error {
-		return nil
-	})
-
-	is.True(err != nil)
-}
-
 func TestSensefarmBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	r := &Payload{}
-
-	err := SensefarmBasicDecoder(context.Background(), []byte(sensefarm), func(c context.Context, m Payload) error {
+	ue, _ := mqtt.Netmore([]byte(sensefarm))
+	err := SensefarmBasicDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
 		r = &m
 		return nil
 	})
@@ -93,8 +93,8 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 
 func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
-
-	err := PresenceDecoder(context.Background(), []byte(livboj), func(ctx context.Context, p Payload) error {
+	ue, _ := mqtt.ChirpStack([]byte(livboj))
+	err := PresenceDecoder(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		return nil
 	})
 
@@ -115,7 +115,8 @@ func TestTimeStringConvert(t *testing.T) {
 func TestDefaultDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 	r := &Payload{}
-	err := DefaultDecoder(context.Background(), []byte(elsysTemp), func(c context.Context, m Payload) error {
+	ue, _ := mqtt.ChirpStack([]byte(elsysTemp))
+	err := DefaultDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
 		r = &m
 		return nil
 	})
@@ -127,8 +128,8 @@ func TestQalcosonic_w1t(t *testing.T) {
 	is, _ := testSetup(t)
 
 	payload := &Payload{}
-
-	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1t), func(ctx context.Context, p Payload) error {
+	ue, _ := mqtt.Netmore([]byte(qalcosonic_w1t))
+	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		payload = &p
 		return nil
 	})
@@ -144,8 +145,8 @@ func TestQalcosonic_w1t_(t *testing.T) {
 	is, _ := testSetup(t)
 
 	payload := &Payload{}
-
-	err := Qalcosonic_w1t(context.Background(), []byte(qalcosonic_w1t), func(ctx context.Context, p Payload) error {
+	ue, _ := mqtt.Netmore([]byte(qalcosonic_w1t))
+	err := Qalcosonic_w1t(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		payload = &p
 		return nil
 	})
@@ -161,8 +162,8 @@ func TestQalcosonic_w1h(t *testing.T) {
 	is, _ := testSetup(t)
 
 	payload := &Payload{}
-
-	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1h), func(ctx context.Context, p Payload) error {
+	ue, _ := mqtt.Netmore([]byte(qalcosonic_w1h))
+	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		payload = &p
 		return nil
 	})
@@ -179,7 +180,8 @@ func TestQalcosonic_w1e(t *testing.T) {
 
 	payload := &Payload{}
 
-	err := AxiomaWatermeteringDecoder(context.Background(), []byte(qalcosonic_w1e), func(ctx context.Context, p Payload) error {
+	ue, _ := mqtt.ChirpStack([]byte(qalcosonic_w1e))
+	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		payload = &p
 		return nil
 	})
@@ -195,7 +197,8 @@ func TestQalcosonic_w1e_(t *testing.T) {
 	is, _ := testSetup(t)
 	payload := &Payload{}
 
-	err := Qalcosonic_w1e(context.Background(), []byte(qalcosonic_w1e_), func(ctx context.Context, p Payload) error {
+	ue, _ := mqtt.Netmore([]byte(qalcosonic_w1e_))
+	err := Qalcosonic_w1e(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		payload = &p
 		return nil
 	})
@@ -261,10 +264,10 @@ const senlabT string = `[{
 	"sensorType": "tem_lab_14ns",
 	"timestamp": "2022-04-12T05:08:50.301732Z",
 	"payload": "01FE90619c10006A",
-	"spreadingFactor": 12,
+	"spreadingFactor": "12",
 	"rssi": "-113",
 	"snr": "-11.8",
-	"gatewayIdentifier": 184,
+	"gatewayIdentifier": "184",
 	"fPort": "3",
 	"latitude": 57.806266,
 	"longitude": 12.07727
@@ -276,10 +279,10 @@ const senlabT_sensorReadingError string = `[{
 	"sensorType": "tem_lab_14ns",
 	"timestamp": "2022-04-12T05:08:50.301732Z",
 	"payload": "01FE90619c10FD14",
-	"spreadingFactor": 12,
+	"spreadingFactor": "12",
 	"rssi": "-113",
 	"snr": "-11.8",
-	"gatewayIdentifier": 184,
+	"gatewayIdentifier": "184",
 	"fPort": "3",
 	"latitude": 57.806266,
 	"longitude": 12.07727
@@ -408,7 +411,7 @@ const livboj string = `
 }`
 
 const qalcosonic_w1e_ string = `
-{
+[{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1e",
   "messageType": "payload",
@@ -438,7 +441,7 @@ const qalcosonic_w1e_ string = `
       "antenna": 0
     }
   ]
-}
+}]
 `
 
 const qalcosonic_w1e string = `
@@ -504,7 +507,7 @@ const qalcosonic_w1e string = `
 }
 `
 const qalcosonic_w1h string = `
-{
+[{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1h",
   "messageType": "payload",
@@ -534,11 +537,11 @@ const qalcosonic_w1h string = `
       "antenna": 0
     }
   ]
-}
+}]
 `
 
 const qalcosonic_w1t string = `
-{
+[{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1h_temp",
   "messageType": "payload",
@@ -568,5 +571,5 @@ const qalcosonic_w1t string = `
       "antenna": 0
     }
   ]
-}
+}]
 `

@@ -4,77 +4,50 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
+	"time"
+
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 )
 
-func SenlabTBasicDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+func SenlabTBasicDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
 
-	dm := []struct {
-		DevEUI     string  `json:"devEUI"`
-		FPort      string  `json:"fPort,omitempty"`
-		Latitude   float64 `json:"latitude,omitempty"`
-		Longitude  float64 `json:"longitude,omitempty"`
-		Rssi       string  `json:"rssi,omitempty"`
-		SensorType string  `json:"sensorType,omitempty"`
-		Timestamp  string  `json:"timestamp,omitempty"`
-		Payload    string  `json:"payload"`
-	}{}
+	var p payload
 
-	err := json.Unmarshal(msg, &dm)
+	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
+	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2) | Temp(2)
+	if len(ue.Data) < 4 {
+		return errors.New("payload too short")
+	}
+
+	err := decodePayload(ue.Data, &p)
 	if err != nil {
 		return err
 	}
 
-	var p payload
-	for _, d := range dm {
+	temp := struct {
+		Temperature float32 `json:"temperature"`
+	}{
+		p.Temperature,
+	}
 
-		b, err := hex.DecodeString(d.Payload)
-		if err != nil {
-			return err
-		}
+	bat := struct {
+		BatteryLevel int `json:"battery_level"`
+	}{
+		p.BatteryLevel,
+	}
 
-		// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
-		// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2) | Temp(2)
-		if len(b) < 4 {
-			return errors.New("payload too short")
-		}
+	pp := &Payload{
+		DevEUI:       ue.DevEui,
+		Timestamp:    ue.Timestamp.Format(time.RFC3339Nano),
+		BatteryLevel: bat.BatteryLevel,
+	}
+	pp.Measurements = append(pp.Measurements, temp)
+	pp.Measurements = append(pp.Measurements, bat)
 
-		err = decodePayload(b, &p)
-		if err != nil {
-			return err
-		}
-
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			p.Temperature,
-		}
-
-		bat := struct {
-			BatteryLevel int `json:"battery_level"`
-		}{
-			p.BatteryLevel,
-		}
-
-		pp := &Payload{
-			DevEUI:     d.DevEUI,
-			FPort:      d.FPort,
-			Latitude:   d.Latitude,
-			Longitude:  d.Longitude,
-			Rssi:       d.Rssi,
-			SensorType: d.SensorType,
-			Timestamp:  d.Timestamp,
-			BatteryLevel: bat.BatteryLevel,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
-		pp.Measurements = append(pp.Measurements, bat)
-
-		err = fn(ctx, *pp)
-		if err != nil {
-			return err
-		}
+	err = fn(ctx, *pp)
+	if err != nil {
+		return err
 	}
 
 	return nil
