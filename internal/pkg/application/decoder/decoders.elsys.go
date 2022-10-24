@@ -4,18 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func ElsysDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
-	pp := &Payload{
-		DevEUI:     ue.DevEui,
-		SensorType: ue.SensorType,
-		Timestamp:  ue.Timestamp.Format(time.RFC3339Nano),
-	}
-
+func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	d := struct {
 		Temperature         *float32 `json:"temperature,omitempty"`
 		ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
@@ -31,74 +25,43 @@ func ElsysDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Cont
 		return fmt.Errorf("failed to unmarshal elsys payload: %s", err.Error())
 	}
 
+	var decorators []payload.PayloadDecoratorFunc
+
 	if d.Temperature != nil {
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			*d.Temperature,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
+		decorators = append(decorators, payload.Temperature(*d.Temperature))
 	}
 
 	if d.ExternalTemperature != nil {
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			*d.ExternalTemperature,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
+		decorators = append(decorators, payload.Temperature(*d.ExternalTemperature))
 	}
 
 	if d.CO2 != nil {
-		co2 := struct {
-			CO2 int `json:"co2"`
-		}{
-			*d.CO2,
-		}
-		pp.Measurements = append(pp.Measurements, co2)
+		decorators = append(decorators, payload.CO2(*d.CO2))
 	}
 
 	if d.Humidity != nil {
-		hmd := struct {
-			Humidity int `json:"humidity"`
-		}{
-			*d.Humidity,
-		}
-		pp.Measurements = append(pp.Measurements, hmd)
+		decorators = append(decorators, payload.Humidity(*d.Humidity))
 	}
 
 	if d.Light != nil {
-		lght := struct {
-			Light int `json:"light"`
-		}{
-			*d.Light,
-		}
-		pp.Measurements = append(pp.Measurements, lght)
+		decorators = append(decorators, payload.Light(*d.Light))
 	}
 
 	if d.Motion != nil {
-		mtn := struct {
-			Motion int `json:"motion"`
-		}{
-			*d.Motion,
-		}
-		pp.Measurements = append(pp.Measurements, mtn)
+		decorators = append(decorators, payload.Motion(*d.Motion))
 	}
 
 	if d.Vdd != nil {
-		bat := struct {
-			BatteryLevel int `json:"battery_level"`
-		}{
-			*d.Vdd, // TODO: Adjust for max VDD
-		}
-		pp.BatteryLevel = bat.BatteryLevel
-		pp.Measurements = append(pp.Measurements, bat)
+		decorators = append(decorators, payload.BatteryLevel(*d.Vdd))
 	}
 
-	err = fn(ctx, *pp)
-	if err != nil {
+	if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
+		err := fn(ctx, p)
+		if err != nil {
+			return err
+		}
+	} else {
 		return err
 	}
-
 	return nil
 }

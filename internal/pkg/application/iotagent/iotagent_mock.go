@@ -5,7 +5,7 @@ package iotagent
 
 import (
 	"context"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	app "github.com/diwise/iot-agent/internal/pkg/application"
 	"sync"
 )
 
@@ -19,10 +19,10 @@ var _ IoTAgent = &IoTAgentMock{}
 //
 // 		// make and configure a mocked IoTAgent
 // 		mockedIoTAgent := &IoTAgentMock{
-// 			MessageReceivedFunc: func(ctx context.Context, ue mqtt.UplinkEvent) error {
+// 			MessageReceivedFunc: func(ctx context.Context, ue app.UplinkEvent) error {
 // 				panic("mock out the MessageReceived method")
 // 			},
-// 			MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue mqtt.UplinkASFunc) error {
+// 			MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue app.UplinkASFunc) error {
 // 				panic("mock out the MessageReceivedFn method")
 // 			},
 // 		}
@@ -33,10 +33,10 @@ var _ IoTAgent = &IoTAgentMock{}
 // 	}
 type IoTAgentMock struct {
 	// MessageReceivedFunc mocks the MessageReceived method.
-	MessageReceivedFunc func(ctx context.Context, ue mqtt.UplinkEvent) error
+	MessageReceivedFunc func(ctx context.Context, ue app.SensorEvent) error
 
 	// MessageReceivedFnFunc mocks the MessageReceivedFn method.
-	MessageReceivedFnFunc func(ctx context.Context, msg []byte, ue mqtt.UplinkASFunc) error
+	MessageReceivedFnFunc func(ctx context.Context, msg []byte, ue app.UplinkASFunc) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -45,7 +45,7 @@ type IoTAgentMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Ue is the ue argument value.
-			Ue mqtt.UplinkEvent
+			Ue app.SensorEvent
 		}
 		// MessageReceivedFn holds details about calls to the MessageReceivedFn method.
 		MessageReceivedFn []struct {
@@ -54,7 +54,7 @@ type IoTAgentMock struct {
 			// Msg is the msg argument value.
 			Msg []byte
 			// Ue is the ue argument value.
-			Ue mqtt.UplinkASFunc
+			Ue app.UplinkASFunc
 		}
 	}
 	lockMessageReceived   sync.RWMutex
@@ -62,13 +62,13 @@ type IoTAgentMock struct {
 }
 
 // MessageReceived calls MessageReceivedFunc.
-func (mock *IoTAgentMock) MessageReceived(ctx context.Context, ue mqtt.UplinkEvent) error {
+func (mock *IoTAgentMock) MessageReceived(ctx context.Context, ue app.SensorEvent) error {
 	if mock.MessageReceivedFunc == nil {
 		panic("IoTAgentMock.MessageReceivedFunc: method is nil but IoTAgent.MessageReceived was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Ue  mqtt.UplinkEvent
+		Ue  app.SensorEvent
 	}{
 		Ctx: ctx,
 		Ue:  ue,
@@ -84,11 +84,11 @@ func (mock *IoTAgentMock) MessageReceived(ctx context.Context, ue mqtt.UplinkEve
 //     len(mockedIoTAgent.MessageReceivedCalls())
 func (mock *IoTAgentMock) MessageReceivedCalls() []struct {
 	Ctx context.Context
-	Ue  mqtt.UplinkEvent
+	Ue  app.SensorEvent
 } {
 	var calls []struct {
 		Ctx context.Context
-		Ue  mqtt.UplinkEvent
+		Ue  app.SensorEvent
 	}
 	mock.lockMessageReceived.RLock()
 	calls = mock.calls.MessageReceived
@@ -97,14 +97,14 @@ func (mock *IoTAgentMock) MessageReceivedCalls() []struct {
 }
 
 // MessageReceivedFn calls MessageReceivedFnFunc.
-func (mock *IoTAgentMock) MessageReceivedFn(ctx context.Context, msg []byte, ue mqtt.UplinkASFunc) error {
+func (mock *IoTAgentMock) MessageReceivedFn(ctx context.Context, msg []byte, ue app.UplinkASFunc) error {
 	if mock.MessageReceivedFnFunc == nil {
 		panic("IoTAgentMock.MessageReceivedFnFunc: method is nil but IoTAgent.MessageReceivedFn was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
 		Msg []byte
-		Ue  mqtt.UplinkASFunc
+		Ue  app.UplinkASFunc
 	}{
 		Ctx: ctx,
 		Msg: msg,
@@ -122,12 +122,12 @@ func (mock *IoTAgentMock) MessageReceivedFn(ctx context.Context, msg []byte, ue 
 func (mock *IoTAgentMock) MessageReceivedFnCalls() []struct {
 	Ctx context.Context
 	Msg []byte
-	Ue  mqtt.UplinkASFunc
+	Ue  app.UplinkASFunc
 } {
 	var calls []struct {
 		Ctx context.Context
 		Msg []byte
-		Ue  mqtt.UplinkASFunc
+		Ue  app.UplinkASFunc
 	}
 	mock.lockMessageReceivedFn.RLock()
 	calls = mock.calls.MessageReceivedFn

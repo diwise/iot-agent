@@ -1,4 +1,4 @@
-package mqtt
+package application
 
 import (
 	"encoding/base64"
@@ -9,31 +9,7 @@ import (
 	"time"
 )
 
-type RXInfo struct {
-	GatewayId string  `json:"gatewayId,omitempty"`
-	UplinkId  string  `json:"uplinkId,omitempty"`
-	Rssi      int32   `json:"rssi,omitempty"`
-	Snr       float32 `json:"snr,omitempty"`
-}
-
-type TXInfo struct {
-	Frequency uint32 `json:"frequency,omitempty"`
-}
-
-type UplinkEvent struct {
-	DevEui     string              `json:"devEui"`
-	DeviceName string              `json:"deviceName"`
-	SensorType string              `json:"sensorType"`
-	FPort      uint8               `json:"fPort"`
-	Data       []byte              `json:"data"`
-	Object     json.RawMessage     `json:"object,omitempty"`
-	Tags       map[string][]string `json:"tags,omitempty"`
-	Timestamp  time.Time           `json:"timestamp"`
-	RXInfo     RXInfo              `json:"rxInfo,omitempty"`
-	TXInfo     TXInfo              `json:"txInfo,omitempty"`
-}
-
-type UplinkASFunc func([]byte) (UplinkEvent, error)
+type UplinkASFunc func([]byte) (SensorEvent, error)
 
 func GetFacade(as string) UplinkASFunc {
 	if strings.EqualFold("chirpstack", as) {
@@ -46,7 +22,7 @@ func GetFacade(as string) UplinkASFunc {
 	return ChirpStack
 }
 
-func ChirpStack(uplinkPayload []byte) (UplinkEvent, error) {
+func ChirpStack(uplinkPayload []byte) (SensorEvent, error) {
 	m := struct {
 		ApplicationId     string          `json:"applicationId,omitempty"`
 		ApplicationName   string          `json:"applicationName,omitempty"`
@@ -72,7 +48,7 @@ func ChirpStack(uplinkPayload []byte) (UplinkEvent, error) {
 
 	err := json.Unmarshal(uplinkPayload, &m)
 	if err != nil {
-		return UplinkEvent{}, err
+		return SensorEvent{}, err
 	}
 
 	var bytes []byte
@@ -80,11 +56,11 @@ func ChirpStack(uplinkPayload []byte) (UplinkEvent, error) {
 	if err != nil {
 		bytes, err = base64.RawStdEncoding.DecodeString(m.Data)
 		if err != nil {
-			return UplinkEvent{}, err
+			return SensorEvent{}, err
 		}
 	}
 
-	ue := UplinkEvent{
+	ue := SensorEvent{
 		SensorType: m.DeviceProfileName,
 		DeviceName: m.DeviceName,
 		DevEui:     m.DevEui,
@@ -109,7 +85,7 @@ func ChirpStack(uplinkPayload []byte) (UplinkEvent, error) {
 	return ue, nil
 }
 
-func Netmore(uplinkPayload []byte) (UplinkEvent, error) {
+func Netmore(uplinkPayload []byte) (SensorEvent, error) {
 	m := []struct {
 		DevEui            string              `json:"devEui"`
 		SensorType        string              `json:"sensorType"`
@@ -126,16 +102,16 @@ func Netmore(uplinkPayload []byte) (UplinkEvent, error) {
 
 	err := json.Unmarshal(uplinkPayload, &m)
 	if err != nil {
-		return UplinkEvent{}, err
+		return SensorEvent{}, err
 	}
 
 	var bytes []byte
 	bytes, err = hex.DecodeString(m[0].Data)
 	if err != nil {
-		return UplinkEvent{}, err
+		return SensorEvent{}, err
 	}
 
-	ue := UplinkEvent{
+	ue := SensorEvent{
 		DevEui:     m[0].DevEui,
 		DeviceName: m[0].SensorType, // no DeviceName is received from Netmore
 		SensorType: m[0].SensorType,

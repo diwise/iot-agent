@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/application"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
@@ -77,7 +77,7 @@ func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	app := NewIoTAgent(dmc, e)
-	ue, _ := mqtt.ChirpStack([]byte(livboj))
+	ue, _ := application.ChirpStack([]byte(livboj))
 	err := app.MessageReceived(context.Background(), ue)
 
 	is.NoErr(err)

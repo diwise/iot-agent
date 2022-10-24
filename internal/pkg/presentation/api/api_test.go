@@ -9,10 +9,11 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
+
+	"github.com/diwise/iot-agent/internal/pkg/application"
 )
 
 func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
@@ -41,10 +42,10 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.IoTAgentMock) {
 	r := chi.NewRouter()
 
 	app := &iotagent.IoTAgentMock{
-		MessageReceivedFunc: func(ctx context.Context, ue mqtt.UplinkEvent) error {
+		MessageReceivedFunc: func(ctx context.Context, ue application.SensorEvent) error {
 			return nil
 		},
-		MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue mqtt.UplinkASFunc) error {
+		MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue application.UplinkASFunc) error {
 			return nil
 		},
 	}

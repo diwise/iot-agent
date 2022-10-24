@@ -5,75 +5,61 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func SensativeDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
+func SensativeDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 
 	if len(ue.Data) < 2 {
 		return errors.New("payload too short")
 	}
 
-	pp := &Payload{
-		DevEUI:       ue.DevEui,
-		Timestamp:    ue.Timestamp.Format(time.RFC3339Nano),
-	}
+	var decorators []payload.PayloadDecoratorFunc
 
-	err := decodeSensativeMeasurements(ue.Data, func(m Measurement) {
-		pp.Measurements = append(pp.Measurements, m)
+	err := decodeSensativeMeasurements(ue.Data, func(m payload.PayloadDecoratorFunc) {
+		decorators = append(decorators, m)
 	})
 	if err != nil {
 		return err
 	}
 
-	err = fn(ctx, *pp)
+	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return fn(ctx, p)
 }
 
-func decodeSensativeMeasurements(payload []byte, callback func(m Measurement)) error {
-
+func decodeSensativeMeasurements(b []byte, callback func(m payload.PayloadDecoratorFunc)) error {
 	pos := 2
 
-	for pos < len(payload) {
-		channel := payload[pos] & 0x7F
+	for pos < len(b) {
+		channel := b[pos] & 0x7F
 		pos = pos + 1
 		size := 1
 
 		switch channel {
 		case 1: // battery
-			callback(struct {
-				Value int `json:"battery_level"`
-			}{int(payload[pos])})
+			callback(payload.BatteryLevel(int(b[pos])))
 		case 2: // temp report
 			size = 2
 			// TODO: Handle sub zero readings
-			callback(struct {
-				Value float64 `json:"temperature"`
-			}{float64(binary.BigEndian.Uint16(payload[pos:pos+2])) / 10})
+			callback(payload.Temperature(float32(binary.BigEndian.Uint16(b[pos:pos+2]) / 10)))
 		case 4: // average temp report
 			size = 2
 		case 6: // humidity report
-			callback(struct {
-				Value int `json:"humidity"`
-			}{int(payload[pos] / 2)})
+			callback(payload.Humidity(int(b[pos] / 2)))
 		case 7: // lux report
 			size = 2
 		case 8: // lux2 report
 			size = 2
 		case 9: // door report
-			callback(struct {
-				Value bool `json:"door_report"`
-			}{payload[pos] != 0})
+			callback(payload.DoorReport(b[pos] != 0))
 		case 10: // door alarm
-			callback(struct {
-				Value bool `json:"door_alarm"`
-			}{payload[pos] != 0})
+			callback(payload.DoorAlarm(b[pos] != 0))
 		default:
 			fmt.Printf("unknown channel %d\n", channel)
 			size = 20

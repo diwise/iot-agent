@@ -4,18 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func EnviotDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
-	pp := Payload{
-		DevEUI:     ue.DevEui,
-		SensorType: ue.SensorType,
-		Timestamp:  ue.Timestamp.Format(time.RFC3339Nano),
-	}
-
+func EnviotDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	obj := struct {
 		Payload struct {
 			Battery      *int     `json:"battery,omitempty"`
@@ -31,44 +25,30 @@ func EnviotDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Con
 		return fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
 	}
 
+	var decorators []payload.PayloadDecoratorFunc
+
 	if obj.Payload.Temperature != nil {
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			*obj.Payload.Temperature,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
+		decorators = append(decorators, payload.Temperature(*obj.Payload.Temperature))
 	}
 
 	if obj.Payload.Battery != nil {
-		bat := struct {
-			BatteryLevel int `json:"battery_level"`
-		}{
-			*obj.Payload.Battery,
-		}
-		pp.BatteryLevel = bat.BatteryLevel
-		pp.Measurements = append(pp.Measurements, bat)
+		decorators = append(decorators, payload.BatteryLevel(*obj.Payload.Battery))
 	}
 
 	if obj.Payload.Humidity != nil {
-		hmd := struct {
-			Humidity int `json:"humidity"`
-		}{
-			*obj.Payload.Humidity,
-		}
-		pp.Measurements = append(pp.Measurements, hmd)
+		decorators = append(decorators, payload.Humidity(*obj.Payload.Humidity))
 	}
 
 	if obj.Payload.SensorStatus == 0 && obj.Payload.SnowHeight != nil {
-		snow := struct {
-			SnowHeight int `json:"snow_height"`
-		}{
-			*obj.Payload.SnowHeight,
-		}
-		pp.Measurements = append(pp.Measurements, snow)
+		decorators = append(decorators, payload.Humidity(*obj.Payload.SnowHeight))
 	}
 
-	pp.SetStatus(obj.Payload.SensorStatus, nil)
+	decorators = append(decorators, payload.Status(uint8(obj.Payload.SensorStatus), nil))
 
-	return fn(ctx, pp)
+	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
+	if err != nil {
+		return err
+	}
+
+	return fn(ctx, p)
 }

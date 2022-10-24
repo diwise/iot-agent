@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
@@ -56,7 +57,7 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conver
 	cr := &conversion.ConverterRegistryMock{
 		DesignateConvertersFunc: func(ctx context.Context, types []string) []conversion.MessageConverterFunc {
 			return []conversion.MessageConverterFunc{
-				func(ctx context.Context, internalID string, payload decoder.Payload) (senml.Pack, error) {
+				func(ctx context.Context, internalID string, p payload.Payload) (senml.Pack, error) {
 					return senml.Pack{}, nil
 				},
 			}
@@ -74,21 +75,8 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conver
 	return is, dmc, cr, ep
 }
 
-func newPayload() decoder.Payload {
-	payload := decoder.Payload{
-		DevEUI:    "ncaknlclkdanklcd",
-		Timestamp: "2006-01-02T15:04:05Z",
-		Status: decoder.Status{
-			Code: 0,
-			Messages: nil,
-		},
-	}
-	temp := struct {
-		Temperature float32 `json:"temperature"`
-	}{
-		23.5,
-	}
-	payload.Measurements = append(payload.Measurements, temp)
-
-	return payload
+func newPayload() payload.Payload {
+	ts, _ := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+	p, _ := payload.New("ncaknlclkdanklcd", ts, payload.Temperature(23.5), payload.Status(0, nil))
+	return p
 }

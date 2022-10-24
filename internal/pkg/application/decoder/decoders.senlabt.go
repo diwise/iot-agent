@@ -5,14 +5,20 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func SenlabTBasicDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
+type sensorData struct {
+	ID           int
+	BatteryLevel int
+	Temperature  float32
+}
 
-	var p payload
+func SenlabTBasicDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+
+	var d sensorData
 
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2) | Temp(2)
@@ -20,46 +26,20 @@ func SenlabTBasicDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(conte
 		return errors.New("payload too short")
 	}
 
-	err := decodePayload(ue.Data, &p)
+	err := decodePayload(ue.Data, &d)
 	if err != nil {
 		return err
 	}
 
-	temp := struct {
-		Temperature float32 `json:"temperature"`
-	}{
-		p.Temperature,
-	}
-
-	bat := struct {
-		BatteryLevel int `json:"battery_level"`
-	}{
-		p.BatteryLevel,
-	}
-
-	pp := &Payload{
-		DevEUI:       ue.DevEui,
-		Timestamp:    ue.Timestamp.Format(time.RFC3339Nano),
-		BatteryLevel: bat.BatteryLevel,
-	}
-	pp.Measurements = append(pp.Measurements, temp)
-	pp.Measurements = append(pp.Measurements, bat)
-
-	err = fn(ctx, *pp)
+	p, err := payload.New(ue.DevEui, ue.Timestamp, payload.BatteryLevel(d.BatteryLevel), payload.Temperature(d.Temperature))
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return fn(ctx, p)
 }
 
-type payload struct {
-	ID           int
-	BatteryLevel int
-	Temperature  float32
-}
-
-func decodePayload(b []byte, p *payload) error {
+func decodePayload(b []byte, p *sensorData) error {
 	id := int(b[0])
 	if id == 1 {
 		err := singleProbe(b, p)
@@ -82,7 +62,7 @@ func decodePayload(b []byte, p *payload) error {
 	return nil
 }
 
-func singleProbe(b []byte, p *payload) error {
+func singleProbe(b []byte, p *sensorData) error {
 	var temp int16
 	err := binary.Read(bytes.NewReader(b[len(b)-2:]), binary.BigEndian, &temp)
 	if err != nil {
@@ -96,6 +76,6 @@ func singleProbe(b []byte, p *payload) error {
 	return nil
 }
 
-func dualProbe(b []byte, p *payload) error {
+func dualProbe(b []byte, p *sensorData) error {
 	return errors.New("unsupported dual probe payload")
 }

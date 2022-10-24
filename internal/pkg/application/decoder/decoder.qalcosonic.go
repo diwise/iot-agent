@@ -10,18 +10,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 
-func Qalcosonic_Auto(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
+func Qalcosonic_Auto(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	var err error
 
 	buf := bytes.NewReader(ue.Data)
 	if buf.Len() < 42 {
 		return fmt.Errorf("w1b decoder not implemented or payload to short")
 	}
+
 	var m measurementDecoder
 	if buf.Len() == 51 || buf.Len() == 52 {
 		m = w1e
@@ -37,41 +39,35 @@ func Qalcosonic_Auto(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.C
 	return err
 }
 
-func Qalcosonic_w1h(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
+func Qalcosonic_w1h(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	return qalcosonicW1(ctx, ue, w1h, fn)
 }
 
-func Qalcosonic_w1t(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
+func Qalcosonic_w1t(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	return qalcosonicW1(ctx, ue, w1t, fn)
 }
 
-func Qalcosonic_w1e(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
+func Qalcosonic_w1e(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	return qalcosonicW1(ctx, ue, w1e, fn)
 }
 
-func qalcosonicW1(ctx context.Context, ue mqtt.UplinkEvent, m measurementDecoder, fn func(context.Context, Payload) error) error {
+func qalcosonicW1(ctx context.Context, ue application.SensorEvent, m measurementDecoder, fn func(context.Context, payload.Payload) error) error {
 	if ue.FPort != 100 {
 		return fmt.Errorf("fPort %d not implemented", ue.FPort)
 	}
 
-	p := Payload{
-		DevEUI:    ue.DevEui,
-		Timestamp: ue.Timestamp.Format(time.RFC3339Nano),
-	}
+	var decorators []payload.PayloadDecoratorFunc
 
 	buf := bytes.NewReader(ue.Data)
 	if m, err := m(buf); err == nil {
-		p.Measurements = append(p.Measurements, m...)
+		decorators = append(decorators, m...)
 	} else {
 		return fmt.Errorf("unable to decode measurements, %w", err)
 	}
 
-	code := p.ValueOf("StatusCode").(int)
-	messages := p.ValueOf("StatusMessages").([]string)
+	pp, _ := payload.New(ue.DevEui, ue.Timestamp, decorators...)
 
-	p.SetStatus(code, messages)
-
-	err := fn(ctx, p)
+	err := fn(ctx, pp)
 	if err != nil {
 		return err
 	}
@@ -79,9 +75,9 @@ func qalcosonicW1(ctx context.Context, ue mqtt.UplinkEvent, m measurementDecoder
 	return nil
 }
 
-type measurementDecoder = func(buf *bytes.Reader) ([]any, error)
+type measurementDecoder = func(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error)
 
-func w1h(buf *bytes.Reader) ([]any, error) {
+func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
 	var epoch uint32
@@ -90,7 +86,7 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 	var logDateTime uint32
 	var lastLogValue uint32
 
-	var measurements []interface{}
+	var decorators []payload.PayloadDecoratorFunc
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
@@ -105,39 +101,21 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 			return nil, ErrTimeTooFarOff
 		}
 
-		m := struct {
-			CurrentTime string `json:"currentTime"`
-		}{
-			CurrentTime: sensorTime.Format(time.RFC3339Nano),
-		}
-
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.CurrentTime(sensorTime))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
-		m := struct {
-			StatusCode     int      `json:"statusCode"`
-			StatusMessages []string `json:"statusMessages"`
-		}{
-			StatusCode:     int(statusCode),
-			StatusMessages: getStatusMessage(statusCode),
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.Status(statusCode, getStatusMessage(statusCode)))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &currentVolume)
 	if err == nil {
-		m := struct {
-			CurrentVolume float64 `json:"currentVolume"`
-		}{
-			CurrentVolume: float64(currentVolume) * 0.001,
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.CurrentVolume(float64(currentVolume)*0.001))
 	} else {
 		return nil, err
 	}
@@ -153,35 +131,24 @@ func w1h(buf *bytes.Reader) ([]any, error) {
 			return nil, ErrTimeTooFarOff
 		}
 
-		m := struct {
-			LogDateTime string `json:"logDateTime"`
-		}{
-			LogDateTime: dateTime.Format(time.RFC3339Nano),
-		}
-
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.LogDateTime(dateTime))
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &lastLogValue)
 	if err == nil {
-		m := struct {
-			LastLogValue float64 `json:"lastLogValue"`
-		}{
-			LastLogValue: float64(lastLogValue) * 0.001,
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.LastLogValue(float64(lastLogValue)*0.001))
 	} else {
 		return nil, err
 	}
 
 	if d, ok := deltaVolumes(buf, lastLogValue, logDateTime); ok {
-		measurements = append(measurements, d...)
+		decorators = append(decorators, d...)
 	}
 
-	return measurements, nil
+	return decorators, nil
 }
 
-func w1t(buf *bytes.Reader) ([]interface{}, error) {
+func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
 	var epoch uint32
@@ -191,7 +158,7 @@ func w1t(buf *bytes.Reader) ([]interface{}, error) {
 	var lastLogValueDate uint32
 	var lastLogValue uint32
 
-	var measurements []interface{}
+	var decorators []payload.PayloadDecoratorFunc
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
@@ -206,96 +173,56 @@ func w1t(buf *bytes.Reader) ([]interface{}, error) {
 			return nil, ErrTimeTooFarOff
 		}
 
-		m := struct {
-			CurrentTime string `json:"currentTime"`
-		}{
-			CurrentTime: sensorTime.Format(time.RFC3339Nano),
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.CurrentTime(sensorTime))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
-		m := struct {
-			StatusCode     int      `json:"statusCode"`
-			StatusMessages []string `json:"statusMessages"`
-		}{
-			StatusCode:     int(statusCode),
-			StatusMessages: getStatusMessage(statusCode),
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.Status(statusCode, getStatusMessage(statusCode)))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &currentVolume)
 	if err == nil {
-		m := struct {
-			CurrentVolume float64 `json:"currentVolume"`
-		}{
-			CurrentVolume: float64(currentVolume) * 0.001,
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.CurrentVolume(float64(currentVolume)*0.001))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &temperature)
 	if err == nil {
-		m := struct {
-			Temperature float64 `json:"temperature"`
-		}{
-			Temperature: float64(temperature) * 0.01,
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.Temperature(float32(temperature)*0.01))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &lastLogValueDate)
 	if err == nil {
-		m := struct {
-			LastLogValueDate string `json:"lastLogValueDate"`
-		}{
-			LastLogValueDate: time.Unix(int64(lastLogValueDate), 0).UTC().Format(time.RFC3339Nano),
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.LogDateTime(time.Unix(int64(lastLogValueDate), 0).UTC()))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &lastLogValue)
 	if err == nil {
-		m := struct {
-			LastLogValue float64 `json:"lastLogValue"`
-		}{
-			LastLogValue: float64(lastLogValue) * 0.001,
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.LastLogValue(float64(lastLogValue)*0.001))
 	} else {
 		return nil, err
 	}
 
 	if d, ok := deltaVolumes(buf, lastLogValue, lastLogValueDate); ok {
-		measurements = append(measurements, d...)
+		decorators = append(decorators, d...)
 	}
 
-	return measurements, nil
+	return decorators, nil
 }
 
-func deltaVolumes(buf *bytes.Reader, lastLogValue, lastLogValueDate uint32) ([]interface{}, bool) {
+func deltaVolumes(buf *bytes.Reader, lastLogValue, lastLogValueDate uint32) ([]payload.PayloadDecoratorFunc, bool) {
 	var deltaVolume uint16
-	var measurements []interface{}
-
-	deltas := struct {
-		DeltaVolumes []struct {
-			Volume       float64 `json:"volume"`
-			Cumulated    float64 `json:"cumulated"`
-			LogValueDate string  `json:"logValueDate"`
-		} `json:"deltaVolumes"`
-	}{}
+	var decorators []payload.PayloadDecoratorFunc
 
 	t := time.Unix(int64(lastLogValueDate), 0).UTC()
 	v := lastLogValue
@@ -308,28 +235,16 @@ func deltaVolumes(buf *bytes.Reader, lastLogValue, lastLogValueDate uint32) ([]i
 			return nil, false
 		}
 
-		vol := struct {
-			Volume       float64 `json:"volume"`
-			Cumulated    float64 `json:"cumulated"`
-			LogValueDate string  `json:"logValueDate"`
-		}{
-			Volume:       float64(deltaVolume) * 0.001,
-			Cumulated:    float64(v+uint32(deltaVolume)) * 0.001,
-			LogValueDate: t.Add(time.Hour).Format(time.RFC3339Nano),
-		}
+		decorators = append(decorators, payload.DeltaVolume(float64(deltaVolume)*0.001, float64(v+uint32(deltaVolume))*0.001, t.Add(time.Hour)))
 
 		t = t.Add(time.Hour)
 		v = v + uint32(deltaVolume)
-
-		deltas.DeltaVolumes = append(deltas.DeltaVolumes, vol)
 	}
 
-	measurements = append(measurements, deltas)
-
-	return measurements, true
+	return decorators, true
 }
 
-func w1e(buf *bytes.Reader) ([]interface{}, error) {
+func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
 	var frameVersion uint8
@@ -337,16 +252,11 @@ func w1e(buf *bytes.Reader) ([]interface{}, error) {
 	var statusCode uint8
 	var currentVolume uint32
 
-	var measurements []interface{}
+	var decorators []payload.PayloadDecoratorFunc
 
 	err = binary.Read(buf, binary.LittleEndian, &frameVersion)
 	if err == nil {
-		m := struct {
-			FrameVersion int `json:"frameVersion"`
-		}{
-			FrameVersion: int(frameVersion),
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.FrameVersion(frameVersion))
 	} else {
 		return nil, err
 	}
@@ -363,44 +273,27 @@ func w1e(buf *bytes.Reader) ([]interface{}, error) {
 		} else if sensorTime.After(now.Add(24 * time.Hour)) {
 			return nil, ErrTimeTooFarOff
 		}
+		decorators = append(decorators, payload.CurrentTime(sensorTime))
 
-		m := struct {
-			CurrentTime string `json:"currentTime"`
-		}{
-			CurrentTime: sensorTime.Format(time.RFC3339Nano),
-		}
-		measurements = append(measurements, m)
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
-		m := struct {
-			StatusCode     int      `json:"statusCode"`
-			StatusMessages []string `json:"statusMessages"`
-		}{
-			StatusCode:     int(statusCode),
-			StatusMessages: getStatusMessage(statusCode),
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.Status(statusCode, getStatusMessage(statusCode)))
 	} else {
 		return nil, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &currentVolume)
 	if err == nil {
-		m := struct {
-			CurrentVolume float64 `json:"currentVolume"`
-		}{
-			CurrentVolume: float64(currentVolume) * 0.001,
-		}
-		measurements = append(measurements, m)
+		decorators = append(decorators, payload.CurrentVolume(float64(currentVolume)*0.001))
 	} else {
 		return nil, err
 	}
 
-	return measurements, nil
+	return decorators, nil
 }
 
 func getStatusMessage(code uint8) []string {

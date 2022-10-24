@@ -4,17 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func PresenceDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.Context, Payload) error) error {
-	p := Payload{
-		DevEUI:    ue.DevEui,
-		Timestamp: ue.Timestamp.Format(time.RFC3339Nano),
-	}
-
+func PresenceDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	obj := struct {
 		Presence struct {
 			Value *bool `json:"value"`
@@ -26,14 +21,14 @@ func PresenceDecoder(ctx context.Context, ue mqtt.UplinkEvent, fn func(context.C
 		return fmt.Errorf("failed to unmarshal presence payload: %s", err.Error())
 	}
 
+	var decorators []payload.PayloadDecoratorFunc
 	if obj.Presence.Value != nil {
-		present := struct {
-			Presence bool `json:"present"`
-		}{
-			*obj.Presence.Value,
-		}
-		p.Measurements = append(p.Measurements, present)
+		decorators = append(decorators, payload.Presence(*obj.Presence.Value))
 	}
 
-	return fn(ctx, p)
+	if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
+		return fn(ctx, p)
+	} else {
+		return err
+	}
 }
