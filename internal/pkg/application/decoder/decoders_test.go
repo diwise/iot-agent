@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"context"
+	"fmt"
 
 	"testing"
 	"time"
@@ -140,99 +141,80 @@ func TestQalcosonic_w1t(t *testing.T) {
 	is.NoErr(err)
 	is.True(r != nil)
 	is.Equal("116c52b4274f", r.DevEui())
-	v, _ := r.ValueOf("CurrentVolume")
-	is.Equal(302.57800000000003, v)
-	v, _ = r.ValueOf("temperature")
-	is.Equal(float32(25.779999), v)
-	v, _ = Get[float32](r, "temperature")
+	is.Equal(302.57800000000003, r.ValueOf("CurrentVolume"))
+	is.Equal(float32(25.779999), r.ValueOf("temperature"))
+	v, _ := Get[float32](r, "temperature")
 	is.Equal(v, float32(25.779999))
 }
 
-/*
-	func TestQalcosonic_w1t(t *testing.T) {
-		is, _ := testSetup(t)
+func TestQalcosonic_w1t_(t *testing.T) {
+	is, _ := testSetup(t)
 
-		payload := &Payload{}
-		ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-		err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
-			payload = &p
-			return nil
-		})
+	var r Payload
+	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
+	err := Qalcosonic_w1t(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
+		return nil
+	})
 
-		is.NoErr(err)
-		is.Equal(payload.DevEUI, "116c52b4274f")
-		is.Equal(payload.ValueOf("CurrentTime"), "2020-09-09T12:32:21Z")
-		is.Equal(payload.ValueOf("CurrentVolume"), 302.57800000000003)
-		is.Equal(payload.Status.Code, 0x7c)
-	}
+	is.NoErr(err)
+	is.Equal(r.DevEui(), "116c52b4274f")
+	ct, _ := time.Parse(time.RFC3339Nano, "2020-09-09T12:32:21Z")
+	is.Equal(ct, r.ValueOf("CurrentTime"))
+	is.Equal(r.ValueOf("CurrentVolume"), 302.57800000000003)
+	is.Equal(r.Status().Code, 0x7c)
+}
 
-	func TestQalcosonic_w1t_(t *testing.T) {
-		is, _ := testSetup(t)
+func TestQalcosonic_w1h(t *testing.T) {
+	is, _ := testSetup(t)
 
-		payload := &Payload{}
-		ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-		err := Qalcosonic_w1t(context.Background(), ue, func(ctx context.Context, p Payload) error {
-			payload = &p
-			return nil
-		})
+	var r Payload
+	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
+	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
+		return nil
+	})
 
-		is.NoErr(err)
-		is.Equal(payload.DevEUI, "116c52b4274f")
-		is.Equal(payload.ValueOf("CurrentTime"), "2020-09-09T12:32:21Z")
-		is.Equal(payload.ValueOf("CurrentVolume"), 302.57800000000003)
-		is.Equal(payload.Status.Code, 0x7c)
-	}
+	is.NoErr(err)
+	is.Equal(r.DevEui(), "116c52b4274f")
+	is.Equal(r.ValueOf("CurrentTime"), toT("2022-08-25T07:41:28Z"))
+	is.Equal(r.ValueOf("CurrentVolume"), 100.042)
+	is.Equal(r.Status().Code, 0)
+}
 
-	func TestQalcosonic_w1h(t *testing.T) {
-		is, _ := testSetup(t)
+func TestQalcosonic_w1e(t *testing.T) {
+	is, _ := testSetup(t)
 
-		payload := &Payload{}
-		ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-		err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
-			payload = &p
-			return nil
-		})
+	var r Payload
 
-		is.NoErr(err)
-		is.Equal(payload.DevEUI, "116c52b4274f")
-		is.Equal(payload.ValueOf("CurrentTime"), "2022-08-25T07:41:28Z")
-		is.Equal(payload.ValueOf("CurrentVolume"), 100.042)
-		is.Equal(payload.Status.Code, 0)
-	}
+	ue, _ := application.ChirpStack([]byte(qalcosonic_w1e))
+	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
+		return nil
+	})
 
-	func TestQalcosonic_w1e(t *testing.T) {
-		is, _ := testSetup(t)
+	is.NoErr(err)
+	is.Equal(r.DevEui(), "116c52b4274f")
+	is.Equal(r.ValueOf("CurrentTime"), toT("2022-09-02T13:40:16Z"))
+	is.Equal(r.ValueOf("CurrentVolume"), 64.456)
+	is.Equal(r.Status().Code, 0)
+}
 
-		payload := &Payload{}
+func TestQalcosonic_w1e_(t *testing.T) {
+	is, _ := testSetup(t)
+	var r Payload
 
-		ue, _ := application.ChirpStack([]byte(qalcosonic_w1e))
-		err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
-			payload = &p
-			return nil
-		})
+	ue, _ := application.Netmore([]byte(qalcosonic_w1e_))
+	err := Qalcosonic_w1e(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
+		return nil
+	})
 
-		is.NoErr(err)
-		is.Equal(payload.DevEUI, "116c52b4274f")
-		is.Equal(payload.ValueOf("CurrentTime"), "2022-09-02T13:40:16Z")
-		is.Equal(payload.ValueOf("CurrentVolume"), 64.456)
-		is.Equal(payload.Status.Code, 0)
-	}
+	is.NoErr(err)
+	is.Equal("116c52b4274f", r.DevEui())
+	is.Equal(toT("2020-05-29T07:51:59Z"), r.ValueOf("CurrentTime"))
+}
 
-	func TestQalcosonic_w1e_(t *testing.T) {
-		is, _ := testSetup(t)
-		payload := &Payload{}
-
-		ue, _ := application.Netmore([]byte(qalcosonic_w1e_))
-		err := Qalcosonic_w1e(context.Background(), ue, func(ctx context.Context, p Payload) error {
-			payload = &p
-			return nil
-		})
-
-		is.NoErr(err)
-		is.Equal("116c52b4274f", payload.DevEUI)
-		is.Equal("2020-05-29T07:51:59Z", payload.ValueOf("CurrentTime"))
-	}
-*/
 func TestQalcosonicStatusCodes(t *testing.T) {
 	is, _ := testSetup(t)
 
@@ -282,6 +264,18 @@ func TestQalcosonicStatusCodes(t *testing.T) {
 func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
 	is := is.New(t)
 	return is, zerolog.Logger{}
+}
+
+func toT(s any) time.Time {
+	if str, ok := s.(string); ok {
+		if t, err := time.Parse(time.RFC3339, str); err == nil {
+			return t
+		} else {
+			panic(err)
+		}
+	} else {
+		panic(fmt.Errorf("could not cast to string"))
+	}
 }
 
 const senlabT string = `[{

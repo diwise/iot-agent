@@ -44,14 +44,13 @@ type Payload interface {
 	Timestamp() time.Time
 	Status() StatusImpl
 	Measurements() []any
-	ValueOf(name string) (any, bool)
+	ValueOf(name string) any
 	Get(name string) (any, bool)
 }
 
 type PayloadImpl struct {
 	devEui       string
 	measurements map[string]any
-	status       StatusImpl
 	timestamp    time.Time
 }
 
@@ -67,7 +66,12 @@ func (p *PayloadImpl) Timestamp() time.Time {
 	return p.timestamp
 }
 func (p *PayloadImpl) Status() StatusImpl {
-	return p.status
+	if s, ok := p.Get("status"); ok {
+		if si, ok := s.(StatusImpl); ok {
+			return si
+		}
+	}
+	return StatusImpl{}
 }
 func (p *PayloadImpl) Measurements() []any {
 	var m []any
@@ -76,7 +80,7 @@ func (p *PayloadImpl) Measurements() []any {
 	}
 	return m
 }
-func (p *PayloadImpl) ValueOf(name string) (any, bool) {
+func (p *PayloadImpl) ValueOf(name string) any {
 	name = strings.ToLower(name)
 
 	reflectValue := func(m any) (any, bool) {
@@ -94,16 +98,20 @@ func (p *PayloadImpl) ValueOf(name string) (any, bool) {
 	}
 
 	if m, ok := p.measurements[name]; ok {
-		return reflectValue(m)
+		if v, ok := reflectValue(m); ok {
+			return v
+		} else {
+			return nil
+		}
 	}
 
 	for _, m := range p.measurements {
 		if v, ok := reflectValue(m); ok {
-			return v, ok
+			return v
 		}
 	}
 
-	return nil, false
+	return nil
 }
 func (p *PayloadImpl) Get(name string) (any, bool) {
 	name = strings.ToLower(name)
@@ -184,12 +192,9 @@ func CurrentTime(t time.Time) PayloadDecoratorFunc {
 	})
 }
 func Status(c uint8, msg []string) PayloadDecoratorFunc {
-	return S("status", struct {
-		StatusCode     uint8
-		StatusMessages []string
-	}{
-		c,
-		msg,
+	return S("status", StatusImpl{
+		Code:     int(c),
+		Messages: msg,
 	})
 }
 func CurrentVolume(v float64) PayloadDecoratorFunc {

@@ -15,22 +15,22 @@ var _ IoTAgent = &IoTAgentMock{}
 
 // IoTAgentMock is a mock implementation of IoTAgent.
 //
-// 	func TestSomethingThatUsesIoTAgent(t *testing.T) {
+//	func TestSomethingThatUsesIoTAgent(t *testing.T) {
 //
-// 		// make and configure a mocked IoTAgent
-// 		mockedIoTAgent := &IoTAgentMock{
-// 			MessageReceivedFunc: func(ctx context.Context, ue app.UplinkEvent) error {
-// 				panic("mock out the MessageReceived method")
-// 			},
-// 			MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue app.UplinkASFunc) error {
-// 				panic("mock out the MessageReceivedFn method")
-// 			},
-// 		}
+//		// make and configure a mocked IoTAgent
+//		mockedIoTAgent := &IoTAgentMock{
+//			MessageReceivedFunc: func(ctx context.Context, ue app.UplinkEvent) error {
+//				panic("mock out the MessageReceived method")
+//			},
+//			MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue app.UplinkASFunc) error {
+//				panic("mock out the MessageReceivedFn method")
+//			},
+//		}
 //
-// 		// use mockedIoTAgent in code that requires IoTAgent
-// 		// and then make assertions.
+//		// use mockedIoTAgent in code that requires IoTAgent
+//		// and then make assertions.
 //
-// 	}
+//	}
 type IoTAgentMock struct {
 	// MessageReceivedFunc mocks the MessageReceived method.
 	MessageReceivedFunc func(ctx context.Context, ue app.SensorEvent) error
@@ -81,7 +81,8 @@ func (mock *IoTAgentMock) MessageReceived(ctx context.Context, ue app.SensorEven
 
 // MessageReceivedCalls gets all the calls that were made to MessageReceived.
 // Check the length with:
-//     len(mockedIoTAgent.MessageReceivedCalls())
+//
+//	len(mockedIoTAgent.MessageReceivedCalls())
 func (mock *IoTAgentMock) MessageReceivedCalls() []struct {
 	Ctx context.Context
 	Ue  app.SensorEvent
@@ -118,7 +119,8 @@ func (mock *IoTAgentMock) MessageReceivedFn(ctx context.Context, msg []byte, ue 
 
 // MessageReceivedFnCalls gets all the calls that were made to MessageReceivedFn.
 // Check the length with:
-//     len(mockedIoTAgent.MessageReceivedFnCalls())
+//
+//	len(mockedIoTAgent.MessageReceivedFnCalls())
 func (mock *IoTAgentMock) MessageReceivedFnCalls() []struct {
 	Ctx context.Context
 	Msg []byte

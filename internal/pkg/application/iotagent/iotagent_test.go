@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
@@ -15,63 +15,63 @@ import (
 )
 
 /*
-func TestSenlabTPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	func TestSenlabTPayload(t *testing.T) {
+		is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
-	err := app.MessageReceived(context.Background(), []byte(senlabT))
+		app := NewIoTAgent(dmc, e)
+		err := app.MessageReceived(context.Background(), []byte(senlabT))
 
-	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+		is.NoErr(err)
+		is.True(len(e.SendCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 0)
-	is.True(*pack[1].Value == 6.625)
-}
+		pack := getPackFromSendCalls(e, 0)
+		is.True(*pack[1].Value == 6.625)
+	}
 
-func TestStripsPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	func TestStripsPayload(t *testing.T) {
+		is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
-	err := app.MessageReceived(context.Background(), []byte(stripsPayload))
+		app := NewIoTAgent(dmc, e)
+		err := app.MessageReceived(context.Background(), []byte(stripsPayload))
 
-	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+		is.NoErr(err)
+		is.True(len(e.SendCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 0)
-	is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3303")
-}
+		pack := getPackFromSendCalls(e, 0)
+		is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3303")
+	}
 
-func TestElsysPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	func TestElsysPayload(t *testing.T) {
+		is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
-	err := app.MessageReceived(context.Background(), []byte(elsys))
+		app := NewIoTAgent(dmc, e)
+		err := app.MessageReceived(context.Background(), []byte(elsys))
 
-	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+		is.NoErr(err)
+		is.True(len(e.SendCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 0)
-	is.True(*pack[1].Value == 19.3)
-}
+		pack := getPackFromSendCalls(e, 0)
+		is.True(*pack[1].Value == 19.3)
+	}
 
-func TestErsPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	func TestErsPayload(t *testing.T) {
+		is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
-	err := app.MessageReceived(context.Background(), []byte(ers))
+		app := NewIoTAgent(dmc, e)
+		err := app.MessageReceived(context.Background(), []byte(ers))
 
-	is.NoErr(err)
-	is.True(len(e.SendCalls()) == 2) // expecting two calls since payload should produce measurement for both temperature and co2.
+		is.NoErr(err)
+		is.True(len(e.SendCalls()) == 2) // expecting two calls since payload should produce measurement for both temperature and co2.
 
-	tempPack := getPackFromSendCalls(e, 0) // the first call to send is for the temperature pack.
-	is.True(tempPack[0].BaseName == "urn:oma:lwm2m:ext:3303")
-	is.True(tempPack[1].Name == "Temperature")
+		tempPack := getPackFromSendCalls(e, 0) // the first call to send is for the temperature pack.
+		is.True(tempPack[0].BaseName == "urn:oma:lwm2m:ext:3303")
+		is.True(tempPack[1].Name == "Temperature")
 
-	co2Pack := getPackFromSendCalls(e, 1) // the second call to send is for the co2 pack.
+		co2Pack := getPackFromSendCalls(e, 1) // the second call to send is for the co2 pack.
 
-	is.True(co2Pack[0].BaseName == "urn:oma:lwm2m:ext:3428")
-	is.True(co2Pack[1].Name == "CO2")
-}
+		is.True(co2Pack[0].BaseName == "urn:oma:lwm2m:ext:3428")
+		is.True(co2Pack[1].Name == "CO2")
+	}
 */
 func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)

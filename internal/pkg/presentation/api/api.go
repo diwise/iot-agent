@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -12,7 +13,6 @@ import (
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
-	"github.com/diwise/iot-agent/internal/pkg/application"
 )
 
 var tracer = otel.Tracer("iot-agent/api")
