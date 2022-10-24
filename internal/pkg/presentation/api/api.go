@@ -6,6 +6,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
@@ -41,6 +42,8 @@ func newAPI(logger zerolog.Logger, r chi.Router, app iotagent.IoTAgent) *api {
 		app: app,
 	}
 
+	facade := env.GetVariableOrDefault(logger, "APPSERVER_FACADE", "chirpstack")
+
 	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
@@ -52,7 +55,7 @@ func newAPI(logger zerolog.Logger, r chi.Router, app iotagent.IoTAgent) *api {
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
 
 	r.Get("/health", a.health)
-	r.Post("/api/v0/messages", a.incomingMessageHandler)
+	r.Post("/api/v0/messages", a.incomingMessageHandler(facade))
 
 	return a
 }
@@ -67,29 +70,31 @@ func (a *api) health(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (a *api) incomingMessageHandler(w http.ResponseWriter, r *http.Request) {
-	var err error
+func (a *api) incomingMessageHandler(facade string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
 
-	ctx, span := tracer.Start(r.Context(), "incoming-message")
-	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+		ctx, span := tracer.Start(r.Context(), "incoming-message")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, a.log, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, a.log, ctx)
 
-	msg, _ := io.ReadAll(r.Body)
-	defer r.Body.Close()
+		msg, _ := io.ReadAll(r.Body)
+		defer r.Body.Close()
 
-	log.Debug().Msg("starting to process message")
+		log.Debug().Msg("starting to process message")
 
-	err = a.app.MessageReceivedFn(ctx, msg, application.GetFacade(r.URL.Query().Get("as")))
-	if err != nil {
-		log.Error().Err(err).Msg("failed to handle message")
-		log.Debug().Msgf("body: \n%s", msg)
+		err = a.app.MessageReceivedFn(ctx, msg, application.GetFacade(facade))
+		if err != nil {
+			log.Error().Err(err).Msg("failed to handle message")
+			log.Debug().Msgf("body: \n%s", msg)
 
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
 
-		return
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
 	}
-
-	w.WriteHeader(http.StatusCreated)
 }

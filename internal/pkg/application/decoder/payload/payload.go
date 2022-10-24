@@ -10,35 +10,6 @@ var PayloadError = 100
 
 type PayloadDecoratorFunc func(p *PayloadImpl)
 
-func S(name string, value any) PayloadDecoratorFunc {
-	name = strings.ToLower(name)
-	return func(p *PayloadImpl) {
-		p.measurements[name] = value
-	}
-}
-func M(name string, value any) PayloadDecoratorFunc {
-	name = strings.ToLower(name)
-	return func(p *PayloadImpl) {
-		if _, ok := p.measurements[name]; ok {
-			p.measurements[name] = append(p.measurements[name].([]any), value)
-		} else {
-			p.measurements[name] = []any{value}
-		}
-	}
-}
-
-func New(devEui string, timestamp time.Time, decorators ...PayloadDecoratorFunc) (Payload, error) {
-	p := &PayloadImpl{
-		devEui:       devEui,
-		timestamp:    timestamp,
-		measurements: make(map[string]any),
-	}
-	for _, decorator := range decorators {
-		decorator(p)
-	}
-	return p, nil
-}
-
 type Payload interface {
 	DevEui() string
 	Timestamp() time.Time
@@ -57,6 +28,35 @@ type PayloadImpl struct {
 type StatusImpl struct {
 	Code     int
 	Messages []string
+}
+
+func New(devEui string, timestamp time.Time, decorators ...PayloadDecoratorFunc) (Payload, error) {
+	p := &PayloadImpl{
+		devEui:       devEui,
+		timestamp:    timestamp,
+		measurements: make(map[string]any),
+	}
+	for _, decorator := range decorators {
+		decorator(p)
+	}
+	return p, nil
+}
+
+func S(name string, value any) PayloadDecoratorFunc {
+	name = strings.ToLower(name)
+	return func(p *PayloadImpl) {
+		p.measurements[name] = value
+	}
+}
+func M(name string, value any) PayloadDecoratorFunc {
+	name = strings.ToLower(name)
+	return func(p *PayloadImpl) {
+		if _, ok := p.measurements[name]; ok {
+			p.measurements[name] = append(p.measurements[name].([]any), value)
+		} else {
+			p.measurements[name] = []any{value}
+		}
+	}
 }
 
 func (p *PayloadImpl) DevEui() string {

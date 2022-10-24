@@ -46,9 +46,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload) e
 		d = append(d, events.WithBatteryLevel(bat))
 	}
 
-	statusMessage := events.NewStatusMessage(device.ID(), d...)
-
-	err = mp.event.Publish(ctx, statusMessage)
+	err = mp.event.Publish(ctx, events.NewStatusMessage(device.ID(), d...))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to publish status message")
 	}
