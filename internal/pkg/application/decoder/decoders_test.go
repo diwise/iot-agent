@@ -313,15 +313,6 @@ const senlabT_sensorReadingError string = `[{
 	"longitude": 12.07727
 }]`
 
-/*const sensinglabstemp string = `{
-	"devEUI":"70b3d580a010c589",
-	"deviceName":"sk-senlab-temp-32",
-	"rxInfo":[],"txInfo":{},
-	"adr":true,"fCnt":1347,"fPort":3,
-	"data":"AdCNeZwQARk=",
-	"object":{"batlevel":81,"logValue":17.5625}
-}`*/
-
 const sensefarm string = `[
 	{
 	  "devEui":"71b4d554600002b0",
