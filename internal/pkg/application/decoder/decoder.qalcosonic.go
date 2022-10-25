@@ -51,7 +51,7 @@ func Qalcosonic_w1e(ctx context.Context, ue application.SensorEvent, fn func(con
 	return qalcosonicW1(ctx, ue, w1e, fn)
 }
 
-func qalcosonicW1(ctx context.Context, ue application.SensorEvent, m measurementDecoder, fn func(context.Context, payload.Payload) error) error {
+func qalcosonicW1(ctx context.Context, ue application.SensorEvent, measurementDecoder measurementDecoder, fn func(context.Context, payload.Payload) error) error {
 	if ue.FPort != 100 {
 		return fmt.Errorf("fPort %d not implemented", ue.FPort)
 	}
@@ -59,20 +59,15 @@ func qalcosonicW1(ctx context.Context, ue application.SensorEvent, m measurement
 	var decorators []payload.PayloadDecoratorFunc
 
 	buf := bytes.NewReader(ue.Data)
-	if m, err := m(buf); err == nil {
-		decorators = append(decorators, m...)
+	if d, err := measurementDecoder(buf); err == nil {
+		decorators = append(decorators, d...)
 	} else {
 		return fmt.Errorf("unable to decode measurements, %w", err)
 	}
 
 	pp, _ := payload.New(ue.DevEui, ue.Timestamp, decorators...)
 
-	err := fn(ctx, pp)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return fn(ctx, pp)
 }
 
 type measurementDecoder = func(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error)

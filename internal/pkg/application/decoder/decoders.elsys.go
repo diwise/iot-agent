@@ -56,12 +56,8 @@ func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(conte
 	}
 
 	if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
-		err := fn(ctx, p)
-		if err != nil {
-			return err
-		}
+		return fn(ctx, p)
 	} else {
 		return err
 	}
-	return nil
 }

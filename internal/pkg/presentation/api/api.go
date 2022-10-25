@@ -70,7 +70,9 @@ func (a *api) health(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (a *api) incomingMessageHandler(facade string) http.HandlerFunc {
+func (a *api) incomingMessageHandler(defaultFacade string) http.HandlerFunc {
+	facade := application.GetFacade(defaultFacade)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
@@ -84,7 +86,11 @@ func (a *api) incomingMessageHandler(facade string) http.HandlerFunc {
 
 		log.Debug().Msg("starting to process message")
 
-		err = a.app.MessageReceivedFn(ctx, msg, application.GetFacade(facade))
+		if r.URL.Query().Has("facade") {
+			facade = application.GetFacade(r.URL.Query().Get("facade"))
+		}
+
+		err = a.app.MessageReceivedFn(ctx, msg, facade)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to handle message")
 			log.Debug().Msgf("body: \n%s", msg)
