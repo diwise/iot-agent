@@ -4,77 +4,51 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"time"
+
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func EnviotDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
-
-	d := struct {
-		DevEUI     string `json:"devEUI"`
-		FCnt       int    `json:"fCnt"`
-		FPort      int    `json:"fPort"`
-		SensorType string `json:"deviceProfileName"`
-		Data       string `json:"data"`
-		Object     struct {
-			Payload struct {
-				Battery      *int     `json:"battery,omitempty"`
-				Humidity     *int     `json:"humidity,omitempty"`
-				SensorStatus int      `json:"sensorStatus"`
-				SnowHeight   *int     `json:"snowHeight,omitempty"`
-				Temperature  *float32 `json:"temperature,omitempty"`
-			} `json:"payload"`
-		} `json:"object"`
+func EnviotDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+	obj := struct {
+		Payload struct {
+			Battery      *int     `json:"battery,omitempty"`
+			Humidity     *int     `json:"humidity,omitempty"`
+			SensorStatus int      `json:"sensorStatus"`
+			SnowHeight   *int     `json:"snowHeight,omitempty"`
+			Temperature  *float32 `json:"temperature,omitempty"`
+		} `json:"payload"`
 	}{}
 
-	err := json.Unmarshal(msg, &d)
+	err := json.Unmarshal(ue.Object, &obj)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
 	}
 
-	pp := &Payload{
-		DevEUI:     d.DevEUI,
-		FPort:      strconv.Itoa(d.FPort),
-		SensorType: d.SensorType,
-		Timestamp:  time.Now().Format(time.RFC3339),
+	var decorators []payload.PayloadDecoratorFunc
+
+	if obj.Payload.Temperature != nil {
+		decorators = append(decorators, payload.Temperature(float64(*obj.Payload.Temperature)))
 	}
 
-	if d.Object.Payload.Temperature != nil {
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			*d.Object.Payload.Temperature,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
+	if obj.Payload.Battery != nil {
+		decorators = append(decorators, payload.BatteryLevel(*obj.Payload.Battery))
 	}
 
-	if d.Object.Payload.Battery != nil {
-		bat := struct {
-			BatteryLevel int `json:"battery_level"`
-		}{
-			*d.Object.Payload.Battery,
-		}
-		pp.BatteryLevel = bat.BatteryLevel
-		pp.Measurements = append(pp.Measurements, bat)
+	if obj.Payload.Humidity != nil {
+		decorators = append(decorators, payload.Humidity(*obj.Payload.Humidity))
 	}
 
-	if d.Object.Payload.Humidity != nil {
-		hmd := struct {
-			Humidity int `json:"humidity"`
-		}{
-			*d.Object.Payload.Humidity,
-		}
-		pp.Measurements = append(pp.Measurements, hmd)
+	if obj.Payload.SensorStatus == 0 && obj.Payload.SnowHeight != nil {
+		decorators = append(decorators, payload.Humidity(*obj.Payload.SnowHeight))
 	}
 
-	if d.Object.Payload.SensorStatus == 0 && d.Object.Payload.SnowHeight != nil {
-		snow := struct {
-			SnowHeight int `json:"snow_height"`
-		}{
-			*d.Object.Payload.SnowHeight,
-		}
-		pp.Measurements = append(pp.Measurements, snow)
+	decorators = append(decorators, payload.Status(uint8(obj.Payload.SensorStatus), nil))
+
+	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
+	if err != nil {
+		return err
 	}
 
-	return fn(ctx, *pp)
+	return fn(ctx, p)
 }

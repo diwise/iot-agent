@@ -5,25 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/matryer/is"
 )
 
 func TestThatTemperatureDecodesValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
-	payload := decoder.Payload{
-		DevEUI:    "ncaknlclkdanklcd",
-		Timestamp: "2006-01-02T15:04:05Z",
-	}
-	temp := struct {
-		Temperature float32 `json:"temperature"`
-	}{
-		22.2,
-	}
-	payload.Measurements = append(payload.Measurements, temp)
+	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Temperature(22.2))
 
-	msg, err := Temperature(ctx, "internalID", payload)
+	msg, err := Temperature(ctx, "internalID", p)
 
 	is.NoErr(err)
 	is.Equal(22.2, *msg[1].Value)
@@ -31,37 +22,19 @@ func TestThatTemperatureDecodesValueCorrectly(t *testing.T) {
 
 func TestThatCO2DecodesValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
-	payload := decoder.Payload{
-		DevEUI:    "ncaknlclkdanklcd",
-		Timestamp: "2006-01-02T15:04:05Z",
-	}
-	co2 := struct {
-		CO2 int `json:"co2"`
-	}{
-		22,
-	}
-	payload.Measurements = append(payload.Measurements, co2)
+	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.CO2(22))
 
-	msg, err := AirQuality(ctx, "internalID", payload)
+	msg, err := AirQuality(ctx, "internalID", p)
 
 	is.NoErr(err)
-	is.Equal(22.0, *msg[1].Value)
+	is.Equal(float64(22), *msg[1].Value)
 }
 
 func TestThatPresenceDecodesValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
-	payload := decoder.Payload{
-		DevEUI:    "ncaknlclkdanklcd",
-		Timestamp: "2006-01-02T15:04:05Z",
-	}
-	present := struct {
-		Presence bool `json:"present"`
-	}{
-		true,
-	}
-	payload.Measurements = append(payload.Measurements, present)
+	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Presence(true))
 
-	msg, err := Presence(ctx, "internalID", payload)
+	msg, err := Presence(ctx, "internalID", p)
 
 	is.NoErr(err)
 	is.True(*msg[1].BoolValue)
@@ -70,59 +43,32 @@ func TestThatPresenceDecodesValueCorrectly(t *testing.T) {
 func TestThatWatermeterDecodesValuesCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 
-	payload := decoder.Payload{
-		DevEUI:     "3489573498573459",
-		DeviceName: "deviceName",
-		Timestamp:  time.Now().Format(time.RFC3339),
-	}
-	curDateTime := struct {
-		CurrentDateTime string `json:"currentTime"`
-	}{
-		"2006-01-02T15:04:05Z",
-	}
-	payload.Measurements = append(payload.Measurements, curDateTime)
-	curVol := struct {
-		CurrentVolume float64 `json:"currentVolume"`
-	}{
-		1009,
-	}
-	payload.Measurements = append(payload.Measurements, curVol)
+	p, _ := payload.New("3489573498573459", time.Now(),
+		payload.CurrentTime(toT("2006-01-02T15:04:05Z")),
+		payload.CurrentVolume(1009),
+		payload.DeltaVolume(100, 2000, toT("2020-09-09T12:32:21Z")))
 
-	delta := struct {
-		Volume       float64 `json:"volume"`
-		Cumulated    float64 `json:"cumulated"`
-		LogValueDate string  `json:"logValueDate"`
-	}{
-		Volume: 100,
-		Cumulated: 2000,
-		LogValueDate: "2020-09-09T12:32:21Z",
-	}
-	deltas := struct {
-		DeltaVolumes []struct {
-			Volume       float64 `json:"volume"`
-			Cumulated    float64 `json:"cumulated"`
-			LogValueDate string  `json:"logValueDate"`
-		} `json:"deltaVolumes"`
-	}{}
-	deltas.DeltaVolumes = append(deltas.DeltaVolumes, delta)
-	payload.Measurements = append(payload.Measurements, deltas)
-
-	msg, err := Watermeter(ctx, "internalID", payload)
+	msg, err := Watermeter(ctx, "internalID", p)
 
 	is.NoErr(err)
 	is.True(msg != nil)
 
-	is.Equal(msg[1].Name, "DeviceName")
-	is.Equal(msg[1].StringValue, "deviceName")
-
 	is.Equal(msg[2].Name, "CurrentDateTime")
 	is.Equal(msg[2].StringValue, "2006-01-02T15:04:05Z")
 
-	is.Equal(msg[3].Name, "CumulatedWaterVolume")
-	is.Equal(*msg[3].Value, 1009.0)
+	is.Equal(msg[1].Name, "CumulatedWaterVolume")
+	is.Equal(*msg[1].Value, 1009.0)
 }
 
 func mcmTestSetup(t *testing.T) (*is.I, context.Context) {
 	ctx, _ := logging.NewLogger(context.Background(), "test", "")
 	return is.New(t), ctx
+}
+
+func toT(s string) time.Time {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	} else {
+		panic(err)
+	}
 }

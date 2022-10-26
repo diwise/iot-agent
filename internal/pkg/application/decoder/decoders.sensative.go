@@ -3,106 +3,63 @@ package decoder
 import (
 	"context"
 	"encoding/binary"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func SensativeDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+func SensativeDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 
-	dm := []struct {
-		DevEUI     string  `json:"devEUI"`
-		FPort      string  `json:"fPort,omitempty"`
-		Latitude   float64 `json:"latitude,omitempty"`
-		Longitude  float64 `json:"longitude,omitempty"`
-		Rssi       string  `json:"rssi,omitempty"`
-		SensorType string  `json:"sensorType,omitempty"`
-		Timestamp  string  `json:"timestamp,omitempty"`
-		Payload    string  `json:"payload"`
-	}{}
+	if len(ue.Data) < 2 {
+		return errors.New("payload too short")
+	}
 
-	err := json.Unmarshal(msg, &dm)
+	var decorators []payload.PayloadDecoratorFunc
+
+	err := decodeSensativeMeasurements(ue.Data, func(m payload.PayloadDecoratorFunc) {
+		decorators = append(decorators, m)
+	})
 	if err != nil {
 		return err
 	}
 
-	for _, d := range dm {
-
-		b, err := hex.DecodeString(d.Payload)
-		if err != nil {
-			return err
-		}
-
-		if len(b) < 2 {
-			return errors.New("payload too short")
-		}
-
-		pp := &Payload{
-			DevEUI:       d.DevEUI,
-			FPort:        d.FPort,
-			Latitude:     d.Latitude,
-			Longitude:    d.Longitude,
-			Rssi:         d.Rssi,
-			SensorType:   d.SensorType,
-			Timestamp:    d.Timestamp,
-			Measurements: []any{},
-		}
-
-		err = decodeSensativeMeasurements(b, func(m Measurement) {
-			pp.Measurements = append(pp.Measurements, m)
-		})
-		if err != nil {
-			return err
-		}
-
-		err = fn(ctx, *pp)
-		if err != nil {
-			return err
-		}
+	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return fn(ctx, p)
 }
 
-func decodeSensativeMeasurements(payload []byte, callback func(m Measurement)) error {
-
+func decodeSensativeMeasurements(b []byte, callback func(m payload.PayloadDecoratorFunc)) error {
 	pos := 2
 
-	for pos < len(payload) {
-		channel := payload[pos] & 0x7F
+	for pos < len(b) {
+		channel := b[pos] & 0x7F
 		pos = pos + 1
 		size := 1
 
 		switch channel {
 		case 1: // battery
-			callback(struct {
-				Value int `json:"battery_level"`
-			}{int(payload[pos])})
+			callback(payload.BatteryLevel(int(b[pos])))
 		case 2: // temp report
 			size = 2
 			// TODO: Handle sub zero readings
-			callback(struct {
-				Value float64 `json:"temperature"`
-			}{float64(binary.BigEndian.Uint16(payload[pos:pos+2])) / 10})
+			callback(payload.Temperature(float64(binary.BigEndian.Uint16(b[pos:pos+2]) / 10)))
 		case 4: // average temp report
 			size = 2
 		case 6: // humidity report
-			callback(struct {
-				Value int `json:"humidity"`
-			}{int(payload[pos] / 2)})
+			callback(payload.Humidity(int(b[pos] / 2)))
 		case 7: // lux report
 			size = 2
 		case 8: // lux2 report
 			size = 2
 		case 9: // door report
-			callback(struct {
-				Value bool `json:"door_report"`
-			}{payload[pos] != 0})
+			callback(payload.DoorReport(b[pos] != 0))
 		case 10: // door alarm
-			callback(struct {
-				Value bool `json:"door_alarm"`
-			}{payload[pos] != 0})
+			callback(payload.DoorAlarm(b[pos] != 0))
 		default:
 			fmt.Printf("unknown channel %d\n", channel)
 			size = 20

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
@@ -14,7 +14,7 @@ import (
 )
 
 type MessageProcessor interface {
-	ProcessMessage(ctx context.Context, payload decoder.Payload) error
+	ProcessMessage(ctx context.Context, p payload.Payload) error
 }
 
 type msgProcessor struct {
@@ -31,25 +31,27 @@ func NewMessageReceivedProcessor(dmc dmc.DeviceManagementClient, conReg conversi
 	}
 }
 
-func (mp *msgProcessor) ProcessMessage(ctx context.Context, payload decoder.Payload) error {
+func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload) error {
 	log := logging.GetFromContext(ctx)
 
-	device, err := mp.dmc.FindDeviceFromDevEUI(ctx, payload.DevEUI)
+	device, err := mp.dmc.FindDeviceFromDevEUI(ctx, p.DevEui())
 	if err != nil {
 		log.Error().Err(err).Msg("device lookup failure")
 		return err
 	}
 
-	statusMessage := events.NewStatusMessage(device.ID(),
-		events.WithStatus(payload.Status.Code, payload.Status.Messages),
-		events.WithBatteryLevel(payload.BatteryLevel))
+	var d []func(*events.StatusMessage)
+	d = append(d, events.WithStatus(p.Status().Code, p.Status().Messages))
+	if bat, ok := payload.Get[int](p, "batteryLevel"); ok {
+		d = append(d, events.WithBatteryLevel(bat))
+	}
 
-	err = mp.event.Publish(ctx, statusMessage)
+	err = mp.event.Publish(ctx, events.NewStatusMessage(device.ID(), d...))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to publish status message")
 	}
 
-	if payload.Status.Code == decoder.PayloadError {
+	if p.Status().Code == payload.PayloadError {
 		log.Info().Msg("ignoring payload due to device error")
 		return nil
 	}
@@ -60,7 +62,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, payload decoder.Payl
 	}
 
 	for _, convert := range messageConverters {
-		pack, err := convert(ctx, device.ID(), payload)
+		pack, err := convert(ctx, device.ID(), p)
 		if err != nil {
 			log.Error().Err(err).Msg("conversion failed")
 			continue

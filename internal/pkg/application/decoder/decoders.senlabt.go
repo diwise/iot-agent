@@ -4,89 +4,42 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
+
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func SenlabTBasicDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
+type sensorData struct {
+	ID           int
+	BatteryLevel int
+	Temperature  float64
+}
 
-	dm := []struct {
-		DevEUI     string  `json:"devEUI"`
-		FPort      string  `json:"fPort,omitempty"`
-		Latitude   float64 `json:"latitude,omitempty"`
-		Longitude  float64 `json:"longitude,omitempty"`
-		Rssi       string  `json:"rssi,omitempty"`
-		SensorType string  `json:"sensorType,omitempty"`
-		Timestamp  string  `json:"timestamp,omitempty"`
-		Payload    string  `json:"payload"`
-	}{}
+func SenlabTBasicDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 
-	err := json.Unmarshal(msg, &dm)
+	var d sensorData
+
+	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
+	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2) | Temp(2)
+	if len(ue.Data) < 4 {
+		return errors.New("payload too short")
+	}
+
+	err := decodePayload(ue.Data, &d)
 	if err != nil {
 		return err
 	}
 
-	var p payload
-	for _, d := range dm {
-
-		b, err := hex.DecodeString(d.Payload)
-		if err != nil {
-			return err
-		}
-
-		// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
-		// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2) | Temp(2)
-		if len(b) < 4 {
-			return errors.New("payload too short")
-		}
-
-		err = decodePayload(b, &p)
-		if err != nil {
-			return err
-		}
-
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			p.Temperature,
-		}
-
-		bat := struct {
-			BatteryLevel int `json:"battery_level"`
-		}{
-			p.BatteryLevel,
-		}
-
-		pp := &Payload{
-			DevEUI:     d.DevEUI,
-			FPort:      d.FPort,
-			Latitude:   d.Latitude,
-			Longitude:  d.Longitude,
-			Rssi:       d.Rssi,
-			SensorType: d.SensorType,
-			Timestamp:  d.Timestamp,
-			BatteryLevel: bat.BatteryLevel,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
-		pp.Measurements = append(pp.Measurements, bat)
-
-		err = fn(ctx, *pp)
-		if err != nil {
-			return err
-		}
+	p, err := payload.New(ue.DevEui, ue.Timestamp, payload.BatteryLevel(d.BatteryLevel), payload.Temperature(d.Temperature))
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return fn(ctx, p)
 }
 
-type payload struct {
-	ID           int
-	BatteryLevel int
-	Temperature  float32
-}
-
-func decodePayload(b []byte, p *payload) error {
+func decodePayload(b []byte, p *sensorData) error {
 	id := int(b[0])
 	if id == 1 {
 		err := singleProbe(b, p)
@@ -109,7 +62,7 @@ func decodePayload(b []byte, p *payload) error {
 	return nil
 }
 
-func singleProbe(b []byte, p *payload) error {
+func singleProbe(b []byte, p *sensorData) error {
 	var temp int16
 	err := binary.Read(bytes.NewReader(b[len(b)-2:]), binary.BigEndian, &temp)
 	if err != nil {
@@ -118,11 +71,11 @@ func singleProbe(b []byte, p *payload) error {
 
 	p.ID = int(b[0])
 	p.BatteryLevel = (int(b[1]) * 100) / 254
-	p.Temperature = float32(temp) / 16.0
+	p.Temperature = float64(temp) / 16.0
 
 	return nil
 }
 
-func dualProbe(b []byte, p *payload) error {
+func dualProbe(b []byte, p *sensorData) error {
 	return errors.New("unsupported dual probe payload")
 }
