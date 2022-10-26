@@ -16,15 +16,15 @@ type decoderRegistry struct {
 func NewDecoderRegistry() DecoderRegistry {
 
 	Decoders := map[string]MessageDecoderFunc{
-		"tem_lab_14ns":     SenlabTBasicDecoder,
-		"elsys_codec":      ElsysDecoder,
-		"strips_lora_ms_h": SensativeDecoder,
-		"enviot":           EnviotDecoder,
-		"presence":         PresenceDecoder,
-		"qalcosonic":       AxiomaWatermeteringDecoder,
+		"qalcosonic":       Qalcosonic_Auto,
 		"qalcosonic_w1h":   Qalcosonic_w1h,
 		"qalcosonic_w1t":   Qalcosonic_w1t,
 		"qalcosonic_w1e":   Qalcosonic_w1e,
+		"presence":         PresenceDecoder,
+		"elsys_codec":      ElsysDecoder,
+		"enviot":           EnviotDecoder,
+		"tem_lab_14ns":     SenlabTBasicDecoder,
+		"strips_lora_ms_h": SensativeDecoder,
 		"cube02":           SensefarmBasicDecoder,
 	}
 

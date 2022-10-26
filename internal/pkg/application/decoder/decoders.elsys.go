@@ -4,108 +4,60 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"time"
+
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func ElsysDecoder(ctx context.Context, msg []byte, fn func(context.Context, Payload) error) error {
-
+func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	d := struct {
-		DevEUI     string `json:"devEUI"`
-		FPort      int    `json:"fPort"`
-		SensorType string `json:"deviceProfileName"`
-		Data       string `json:"data"`
-		Object     struct {
-			Temperature         *float32 `json:"temperature,omitempty"`
-			ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
-			Vdd                 *int     `json:"vdd,omitempty"`
-			CO2                 *int     `json:"co2,omitempty"`
-			Humidity            *int     `json:"humidity,omitempty"`
-			Light               *int     `json:"lights,omitempty"`
-			Motion              *int     `json:"motion,omitempty"`
-		} `json:"object"`
+		Temperature         *float32 `json:"temperature,omitempty"`
+		ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
+		Vdd                 *int     `json:"vdd,omitempty"`
+		CO2                 *int     `json:"co2,omitempty"`
+		Humidity            *int     `json:"humidity,omitempty"`
+		Light               *int     `json:"lights,omitempty"`
+		Motion              *int     `json:"motion,omitempty"`
 	}{}
 
-	err := json.Unmarshal(msg, &d)
+	err := json.Unmarshal(ue.Object, &d)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal elsys payload: %s", err.Error())
 	}
 
-	pp := &Payload{
-		DevEUI:     d.DevEUI,
-		FPort:      strconv.Itoa(d.FPort),
-		SensorType: d.SensorType,
-		Timestamp:  time.Now().Format(time.RFC3339),
+	var decorators []payload.PayloadDecoratorFunc
+
+	if d.Temperature != nil {
+		decorators = append(decorators, payload.Temperature(float64(*d.Temperature)))
 	}
 
-	if d.Object.Temperature != nil {
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			*d.Object.Temperature,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
+	if d.ExternalTemperature != nil {
+		decorators = append(decorators, payload.Temperature(float64(*d.ExternalTemperature)))
 	}
 
-	if d.Object.ExternalTemperature != nil {
-		temp := struct {
-			Temperature float32 `json:"temperature"`
-		}{
-			*d.Object.ExternalTemperature,
-		}
-		pp.Measurements = append(pp.Measurements, temp)
+	if d.CO2 != nil {
+		decorators = append(decorators, payload.CO2(*d.CO2))
 	}
 
-	if d.Object.CO2 != nil {
-		co2 := struct {
-			CO2 int `json:"co2"`
-		}{
-			*d.Object.CO2,
-		}
-		pp.Measurements = append(pp.Measurements, co2)
+	if d.Humidity != nil {
+		decorators = append(decorators, payload.Humidity(*d.Humidity))
 	}
 
-	if d.Object.Humidity != nil {
-		hmd := struct {
-			Humidity int `json:"humidity"`
-		}{
-			*d.Object.Humidity,
-		}
-		pp.Measurements = append(pp.Measurements, hmd)
+	if d.Light != nil {
+		decorators = append(decorators, payload.Light(*d.Light))
 	}
 
-	if d.Object.Light != nil {
-		lght := struct {
-			Light int `json:"light"`
-		}{
-			*d.Object.Light,
-		}
-		pp.Measurements = append(pp.Measurements, lght)
+	if d.Motion != nil {
+		decorators = append(decorators, payload.Motion(*d.Motion))
 	}
 
-	if d.Object.Motion != nil {
-		mtn := struct {
-			Motion int `json:"motion"`
-		}{
-			*d.Object.Motion,
-		}
-		pp.Measurements = append(pp.Measurements, mtn)
+	if d.Vdd != nil {
+		decorators = append(decorators, payload.BatteryLevel(*d.Vdd))
 	}
 
-	if d.Object.Vdd != nil {
-		bat := struct {
-			BatteryLevel int `json:"battery_level"`
-		}{
-			*d.Object.Vdd, // TODO: Adjust for max VDD
-		}
-		pp.BatteryLevel = bat.BatteryLevel
-		pp.Measurements = append(pp.Measurements, bat)
-	}
-
-	err = fn(ctx, *pp)
-	if err != nil {
+	if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
+		return fn(ctx, p)
+	} else {
 		return err
 	}
-
-	return nil
 }
