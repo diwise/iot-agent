@@ -39,7 +39,7 @@ func SensefarmBasicDecoder(ctx context.Context, ue application.SensorEvent, fn f
 		payload.BatteryVoltage(int(psf.BatteryVoltage)),
 		payload.Resistance(psf.Resistances),
 		payload.SoilMoisture(psf.SoilMoistures),
-		payload.Temperature(psf.Temperature))
+		payload.Temperature(float64(psf.Temperature)))
 	if err != nil {
 		return err
 	}

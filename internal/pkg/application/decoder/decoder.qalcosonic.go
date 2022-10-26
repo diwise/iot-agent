@@ -189,7 +189,7 @@ func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &temperature)
 	if err == nil {
-		decorators = append(decorators, payload.Temperature(float32(temperature)*0.01))
+		decorators = append(decorators, payload.Temperature(float64(temperature)*0.01))
 	} else {
 		return nil, err
 	}

@@ -149,9 +149,9 @@ func BatteryLevel(b int) PayloadDecoratorFunc {
 		b,
 	})
 }
-func Temperature(t float32) PayloadDecoratorFunc {
+func Temperature(t float64) PayloadDecoratorFunc {
 	return S("temperature", struct {
-		Temperature float32
+		Temperature float64
 	}{
 		t,
 	})

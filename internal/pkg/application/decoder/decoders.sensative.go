@@ -47,7 +47,7 @@ func decodeSensativeMeasurements(b []byte, callback func(m payload.PayloadDecora
 		case 2: // temp report
 			size = 2
 			// TODO: Handle sub zero readings
-			callback(payload.Temperature(float32(binary.BigEndian.Uint16(b[pos:pos+2]) / 10)))
+			callback(payload.Temperature(float64(binary.BigEndian.Uint16(b[pos:pos+2]) / 10)))
 		case 4: // average temp report
 			size = 2
 		case 6: // humidity report

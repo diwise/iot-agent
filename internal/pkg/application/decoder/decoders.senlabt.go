@@ -13,7 +13,7 @@ import (
 type sensorData struct {
 	ID           int
 	BatteryLevel int
-	Temperature  float32
+	Temperature  float64
 }
 
 func SenlabTBasicDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
@@ -71,7 +71,7 @@ func singleProbe(b []byte, p *sensorData) error {
 
 	p.ID = int(b[0])
 	p.BatteryLevel = (int(b[1]) * 100) / 254
-	p.Temperature = float32(temp) / 16.0
+	p.Temperature = float64(temp) / 16.0
 
 	return nil
 }

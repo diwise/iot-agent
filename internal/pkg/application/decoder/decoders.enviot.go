@@ -28,7 +28,7 @@ func EnviotDecoder(ctx context.Context, ue application.SensorEvent, fn func(cont
 	var decorators []payload.PayloadDecoratorFunc
 
 	if obj.Payload.Temperature != nil {
-		decorators = append(decorators, payload.Temperature(*obj.Payload.Temperature))
+		decorators = append(decorators, payload.Temperature(float64(*obj.Payload.Temperature)))
 	}
 
 	if obj.Payload.Battery != nil {

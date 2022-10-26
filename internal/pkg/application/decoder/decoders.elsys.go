@@ -28,11 +28,11 @@ func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(conte
 	var decorators []payload.PayloadDecoratorFunc
 
 	if d.Temperature != nil {
-		decorators = append(decorators, payload.Temperature(*d.Temperature))
+		decorators = append(decorators, payload.Temperature(float64(*d.Temperature)))
 	}
 
 	if d.ExternalTemperature != nil {
-		decorators = append(decorators, payload.Temperature(*d.ExternalTemperature))
+		decorators = append(decorators, payload.Temperature(float64(*d.ExternalTemperature)))
 	}
 
 	if d.CO2 != nil {

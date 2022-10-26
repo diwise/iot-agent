@@ -17,7 +17,7 @@ func TestThatTemperatureDecodesValueCorrectly(t *testing.T) {
 	msg, err := Temperature(ctx, "internalID", p)
 
 	is.NoErr(err)
-	is.Equal(float64(22.200000762939453), *msg[1].Value)
+	is.Equal(22.2, *msg[1].Value)
 }
 
 func TestThatCO2DecodesValueCorrectly(t *testing.T) {

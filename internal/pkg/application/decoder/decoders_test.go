@@ -142,9 +142,9 @@ func TestQalcosonic_w1t(t *testing.T) {
 	is.True(r != nil)
 	is.Equal("116c52b4274f", r.DevEui())
 	is.Equal(302.57800000000003, r.ValueOf("CurrentVolume"))
-	is.Equal(float32(25.779999), r.ValueOf("temperature"))
-	v, _ := Get[float32](r, "temperature")
-	is.Equal(v, float32(25.779999))
+	is.Equal(float64(25.78), r.ValueOf("temperature"))
+	v, _ := Get[float64](r, "temperature")
+	is.Equal(v, float64(25.78))
 }
 
 func TestQalcosonic_w1t_(t *testing.T) {

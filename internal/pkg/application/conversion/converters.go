@@ -21,11 +21,10 @@ func Temperature(ctx context.Context, deviceID string, p payload.Payload) (senml
 		StringValue: deviceID,
 	})
 
-	if temp, ok := payload.Get[float32](p, measurements.Temperature); ok {
-		t := float64(temp)
+	if temp, ok := payload.Get[float64](p, measurements.Temperature); ok {
 		pack = append(pack, senml.Record{
 			Name:  measurements.Temperature,
-			Value: &t,
+			Value: &temp,
 		})
 	}
 
