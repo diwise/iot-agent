@@ -177,9 +177,9 @@ func TestQalcosonic_w1h(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
-	is.Equal(r.ValueOf("CurrentTime"), toT("2022-08-25T07:41:28Z"))
-	is.Equal(r.ValueOf("CurrentVolume"), 100.042)
-	is.Equal(r.Status().Code, 0)
+	is.Equal(r.ValueOf("CurrentTime"), toT("2019-07-22T11:37:50Z"))
+	is.Equal(r.ValueOf("CurrentVolume"), 13.609)
+	is.Equal(r.Status().Code, 48)
 }
 
 func TestQalcosonic_w1e(t *testing.T) {
@@ -213,6 +213,21 @@ func TestQalcosonic_w1e_(t *testing.T) {
 	is.NoErr(err)
 	is.Equal("116c52b4274f", r.DevEui())
 	is.Equal(toT("2020-05-29T07:51:59Z"), r.ValueOf("CurrentTime"))
+}
+
+func TestQalcosonic_w1e__(t *testing.T) {
+	is, _ := testSetup(t)
+	var r Payload
+
+	ue, _ := application.Netmore([]byte(qalcosonic_w1e__))
+	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal("eroiu340958320409", r.DevEui())
+	is.Equal(toT("2022-10-31T08:09:57Z"), r.ValueOf("CurrentTime"))
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
@@ -521,8 +536,8 @@ const qalcosonic_w1h string = `
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1h",
   "messageType": "payload",
-  "timestamp": "2022-08-25T07:35:21.834484Z",
-  "payload": "a827076300ca86010000a80363878401002300240023002a002400230023002400230051001e001d001b001d001c00",
+  "timestamp": "2019-07-27T11:37:50.834484Z",
+  "payload": "0ea0355d302935000030b6345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900",
   "fCntUp": 1490,
   "toa": null,
   "freq": 867900000,
@@ -583,3 +598,38 @@ const qalcosonic_w1t string = `
   ]
 }]
 `
+
+const qalcosonic_w1e__ string = `
+[{
+        "devEui": "eroiu340958320409",
+        "sensorType": "qalcosonic_w1e",
+        "messageType": "payload",
+        "timestamp": "2022-10-31T08:17:08.124203Z",
+        "payload": "d5825f63003090060090ad5e63518f060015001c001200110018000000000000000000000004000a00320027000c00",
+        "fCntUp": 6732,
+        "toa": null,
+        "freq": 867900000,
+        "batteryLevel": "255",
+        "ack": false,
+        "spreadingFactor": "8",
+        "rssi": "-108",
+        "snr": "-2",
+        "gatewayIdentifier": "126",
+        "fPort": "100",
+        "tags": {
+            "application": ["1_xyz_w1e_1"],
+            "customer": ["xyz"],
+            "deviceType": ["w1e"],
+            "facilityID": [],
+            "municipality": [],
+            "serial": ["00000000"]
+        },
+        "gateways": [{
+                "rssi": "-108",
+                "snr": "-2",
+                "gatewayIdentifier": "126",
+                "antenna": 0
+            }
+        ]
+    }
+]`
