@@ -622,7 +622,7 @@ const qalcosonic_w1e__ string = `
             "deviceType": ["w1e"],
             "facilityID": [],
             "municipality": [],
-            "serial": ["05014191"]
+            "serial": ["00000000"]
         },
         "gateways": [{
                 "rssi": "-108",
