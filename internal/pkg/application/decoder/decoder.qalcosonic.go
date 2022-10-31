@@ -21,7 +21,7 @@ func Qalcosonic_Auto(ctx context.Context, ue application.SensorEvent, fn func(co
 
 	buf := bytes.NewReader(ue.Data)
 	if buf.Len() < 42 {
-		return fmt.Errorf("w1b decoder not implemented or payload to short")
+		return fmt.Errorf("w1b decoder not implemented or payload to short (%d)", buf.Len())
 	}
 
 	var m measurementDecoder
@@ -86,13 +86,8 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
 		sensorTime := time.Unix(int64(epoch), 0).UTC()
-		now := time.Now().UTC()
 
-		// Handle clock skew by setting sensor time to current time if it is from
-		// within a 48 hour window around current time
-		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
-			sensorTime = now
-		} else if sensorTime.After(now.Add(24 * time.Hour)) {
+		if tooFarOff(sensorTime) {
 			return nil, ErrTimeTooFarOff
 		}
 
@@ -118,11 +113,8 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	err = binary.Read(buf, binary.LittleEndian, &logDateTime)
 	if err == nil {
 		dateTime := time.Unix(int64(logDateTime), 0).UTC()
-		now := time.Now().UTC()
 
-		if dateTime.After(now.Add(-24*time.Hour)) && dateTime.Before(now.Add(24*time.Hour)) {
-			dateTime = now
-		} else if dateTime.After(now.Add(24 * time.Hour)) {
+		if tooFarOff(dateTime) {
 			return nil, ErrTimeTooFarOff
 		}
 
@@ -143,6 +135,8 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	return decorators, nil
 }
 
+
+
 func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
@@ -158,13 +152,8 @@ func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
 		sensorTime := time.Unix(int64(epoch), 0).UTC()
-		now := time.Now().UTC()
 
-		// Handle clock skew by setting sensor time to current time if it is from
-		// within a 48 hour window around current time
-		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
-			sensorTime = now
-		} else if sensorTime.After(now.Add(24 * time.Hour)) {
+		if tooFarOff(sensorTime) {
 			return nil, ErrTimeTooFarOff
 		}
 
@@ -259,17 +248,10 @@ func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
 		sensorTime := time.Unix(int64(epoch), 0).UTC()
-		now := time.Now().UTC()
-
-		// Handle clock skew by setting sensor time to current time if it is from
-		// within a 48 hour window around current time
-		if sensorTime.After(now.Add(-24*time.Hour)) && sensorTime.Before(now.Add(24*time.Hour)) {
-			sensorTime = now
-		} else if sensorTime.After(now.Add(24 * time.Hour)) {
+		if tooFarOff(sensorTime) {
 			return nil, ErrTimeTooFarOff
 		}
 		decorators = append(decorators, payload.CurrentTime(sensorTime))
-
 	} else {
 		return nil, err
 	}
@@ -328,4 +310,8 @@ func getStatusMessage(code uint8) []string {
 	}
 
 	return statusMessages
+}
+
+func tooFarOff(t time.Time) bool {
+	return t.After(time.Now().UTC().Add(72 * time.Hour))
 }
