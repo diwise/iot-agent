@@ -29,8 +29,8 @@ func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Cl
 	connectionString := fmt.Sprintf("ssl://%s:8883", cfg.host)
 	options.AddBroker(connectionString)
 
-	options.Username = cfg.user
-	options.Password = cfg.password
+	options.SetUsername(cfg.user)
+	options.SetPassword(cfg.password)
 
 	options.SetClientID("diwise/iot-agent/" + uuid.NewString())
 	options.SetDefaultPublishHandler(NewMessageHandler(logger, forwardingEndpoint))
