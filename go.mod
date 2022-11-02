@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/diwise/iot-device-mgmt v0.0.0-20221101222213-4920eac457a7
 	github.com/diwise/messaging-golang v0.0.0-20220923095330-874218800e05
-	github.com/diwise/service-chassis v0.0.0-20221025192458-3038fdabe7c7
+	github.com/diwise/service-chassis v0.0.0-20221102141400-67da00b28e7a
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/farshidtz/senml/v2 v2.0.0
 	github.com/go-chi/chi/v5 v5.0.7
@@ -28,9 +28,12 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.33.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.33.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.11.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.11.1 // indirect
 	go.opentelemetry.io/otel/sdk v1.11.1 // indirect
+	go.opentelemetry.io/otel/sdk/metric v0.33.0 // indirect
 	golang.org/x/oauth2 v0.1.0 // indirect
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -48,7 +51,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.5.0 // indirect
 	go.opentelemetry.io/contrib v1.9.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.11.1 // indirect
-	go.opentelemetry.io/otel/metric v0.33.0 // indirect
+	go.opentelemetry.io/otel/metric v0.33.0
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/net v0.1.0 // indirect
