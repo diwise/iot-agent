@@ -12,11 +12,24 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
 
+var meter = global.MeterProvider().Meter("iot-agent/mqtt")
 var tracer = otel.Tracer("iot-agent/mqtt/message-handler")
 
 func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
+
+	messageCounter, err := meter.SyncInt64().Counter(
+		"mqtt.messages",
+		instrument.WithUnit("1"),
+		instrument.WithDescription("Total number of received mqtt messages"),
+	)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to create otel message counter")
+	}
 
 	return func(client mqtt.Client, msg mqtt.Message) {
 		payload := msg.Payload()
@@ -31,6 +44,8 @@ func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mq
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+		messageCounter.Add(ctx, 1)
 
 		log.Info().Str("topic", msg.Topic()).Msgf("received payload %s", string(payload))
 
