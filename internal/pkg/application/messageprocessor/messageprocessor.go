@@ -68,6 +68,10 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload) e
 			continue
 		}
 
+		if err := pack.Validate(); err != nil {
+			return fmt.Errorf("could not validate senML package, %w", err)
+		}
+
 		m := iotcore.MessageReceived{
 			Device:    device.ID(),
 			Timestamp: time.Now().UTC().Format(time.RFC3339),

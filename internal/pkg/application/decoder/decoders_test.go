@@ -133,7 +133,7 @@ func TestQalcosonic_w1t(t *testing.T) {
 
 	var r Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+	err := QalcosonicAuto(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		r = p
 		return nil
 	})
@@ -147,38 +147,20 @@ func TestQalcosonic_w1t(t *testing.T) {
 	is.Equal(v, float64(25.78))
 }
 
-func TestQalcosonic_w1t_(t *testing.T) {
-	is, _ := testSetup(t)
-
-	var r Payload
-	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	err := Qalcosonic_w1t(context.Background(), ue, func(ctx context.Context, p Payload) error {
-		r = p
-		return nil
-	})
-
-	is.NoErr(err)
-	is.Equal(r.DevEui(), "116c52b4274f")
-	ct, _ := time.Parse(time.RFC3339Nano, "2020-09-09T12:32:21Z")
-	is.Equal(ct, r.ValueOf("CurrentTime"))
-	is.Equal(r.ValueOf("CurrentVolume"), 302.57800000000003)
-	is.Equal(r.Status().Code, 0x7c)
-}
-
 func TestQalcosonic_w1h(t *testing.T) {
 	is, _ := testSetup(t)
 
 	var r Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+	err := QalcosonicAuto(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		r = p
 		return nil
 	})
 
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
-	is.Equal(r.ValueOf("CurrentTime"), toT("2019-07-22T11:37:50Z"))
-	is.Equal(r.ValueOf("CurrentVolume"), 13.609)
+	is.Equal(r.ValueOf("CurrentTime"), toT("2020-05-29T07:51:59Z"))
+	is.Equal(r.ValueOf("CurrentVolume"), 528.333)
 	is.Equal(r.Status().Code, 48)
 }
 
@@ -187,47 +169,17 @@ func TestQalcosonic_w1e(t *testing.T) {
 
 	var r Payload
 
-	ue, _ := application.ChirpStack([]byte(qalcosonic_w1e))
-	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
+	err := QalcosonicAuto(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		r = p
 		return nil
 	})
 
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
-	is.Equal(r.ValueOf("CurrentTime"), toT("2022-09-02T13:40:16Z"))
-	is.Equal(r.ValueOf("CurrentVolume"), 64.456)
-	is.Equal(r.Status().Code, 0)
-}
-
-func TestQalcosonic_w1e_(t *testing.T) {
-	is, _ := testSetup(t)
-	var r Payload
-
-	ue, _ := application.Netmore([]byte(qalcosonic_w1e_))
-	err := Qalcosonic_w1e(context.Background(), ue, func(ctx context.Context, p Payload) error {
-		r = p
-		return nil
-	})
-
-	is.NoErr(err)
-	is.Equal("116c52b4274f", r.DevEui())
-	is.Equal(toT("2020-05-29T07:51:59Z"), r.ValueOf("CurrentTime"))
-}
-
-func TestQalcosonic_w1e__(t *testing.T) {
-	is, _ := testSetup(t)
-	var r Payload
-
-	ue, _ := application.Netmore([]byte(qalcosonic_w1e__))
-	err := Qalcosonic_Auto(context.Background(), ue, func(ctx context.Context, p Payload) error {
-		r = p
-		return nil
-	})
-
-	is.NoErr(err)
-	is.Equal("eroiu340958320409", r.DevEui())
-	is.Equal(toT("2022-10-31T08:09:57Z"), r.ValueOf("CurrentTime"))
+	is.Equal(r.ValueOf("CurrentTime"), toT("2019-07-22T11:37:50Z"))
+	is.Equal(r.ValueOf("CurrentVolume"), 13.609)
+	is.Equal(r.Status().Code, 0x30)
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
@@ -435,13 +387,13 @@ const livboj string = `
     }
 }`
 
-const qalcosonic_w1e_ string = `
+const qalcosonic_w1e string = `
 [{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1e",
   "messageType": "payload",
   "timestamp": "2022-08-25T07:35:21.834484Z",
-  "payload": "011fbfd05e30cd0f0800d4879e41865c1b42470d7283b8201608fec181981dd007f3919460218247b631784c1c9e87b8e17600",
+  "payload": "0ea0355d302935000054c0345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900",
   "fCntUp": 1490,
   "toa": null,
   "freq": 867900000,
@@ -469,75 +421,13 @@ const qalcosonic_w1e_ string = `
 }]
 `
 
-const qalcosonic_w1e string = `
-{
-  "applicationID": "2",
-  "applicationName": "Watermetering",
-  "deviceName": "e6c58aad",
-  "deviceProfileName": "Axioma_Universal_Codec",
-  "deviceProfileID": "72205a4d-a38a-4a0c-8bc8-116c52b4274f",
-  "devEUI": "116c52b4274f",
-  "rxInfo": [
-    {
-      "gatewayID": "f1861610fe6782f0",
-      "uplinkID": "e6c58aad-7a14-42cb-82f0-f1861610fe67",
-      "name": "SN-LGW-034",
-      "time": "2022-09-02T13:45:28.605718289Z",
-      "rssi": -113,
-      "loRaSNR": -4.8,
-      "location": {
-        "latitude": 63.4,
-        "longitude": 17.5,
-        "altitude": 0
-      }
-    }
-  ],
-  "txInfo": { "frequency": 867100000, "dr": 3 },
-  "adr": true,
-  "fCnt": 1675,
-  "fPort": 100,
-  "data": "AcAHEmMAyPsAAAAAAHAAAAAAgAJwAIgAB8ACIAC0ABOABpABIAARwAUAADQAAAAAQAAA",
-  "object": {
-    "curDateTime": "2022-09-02 15:40:16",
-    "curVol": 64456,
-    "deltaVol": {
-      "id1": 0,
-      "id10": 11,
-      "id11": 2,
-      "id12": 45,
-      "id13": 19,
-      "id14": 26,
-      "id15": 25,
-      "id16": 8,
-      "id17": 17,
-      "id18": 23,
-      "id19": 0,
-      "id2": 0,
-      "id20": 13,
-      "id21": 0,
-      "id22": 0,
-      "id23": 4,
-      "id3": 7,
-      "id4": 0,
-      "id5": 0,
-      "id6": 10,
-      "id7": 7,
-      "id8": 34,
-      "id9": 7
-    },
-    "frameVersion": 1,
-    "statusCode": 0
-  },
-  "tags": { "Location": "UnSet", "SerialNo": "116c52b4274f" }
-}
-`
 const qalcosonic_w1h string = `
 [{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1h",
   "messageType": "payload",
   "timestamp": "2019-07-27T11:37:50.834484Z",
-  "payload": "0ea0355d302935000030b6345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900",
+  "payload": "011fbfd05e30cd0f0800d4879e41865c1b42470d7283b8201608fec181981dd007f3919460218247b631784c1c9e87b8e17600",
   "fCntUp": 1490,
   "toa": null,
   "freq": 867900000,
@@ -568,7 +458,7 @@ const qalcosonic_w1h string = `
 const qalcosonic_w1t string = `
 [{
   "devEui": "116c52b4274f",
-  "sensorType": "qalcosonic_w1h_temp",
+  "sensorType": "qalcosonic_w1t",
   "messageType": "payload",
   "timestamp": "2022-08-25T07:35:21.834484Z",
   "payload": "55cb585f7cf29d0400120ae0fe575f8a570400cd04cb04cc04cd04ca04c404c504c404f004e604dc04d604b9057905",
@@ -598,38 +488,3 @@ const qalcosonic_w1t string = `
   ]
 }]
 `
-
-const qalcosonic_w1e__ string = `
-[{
-        "devEui": "eroiu340958320409",
-        "sensorType": "qalcosonic_w1e",
-        "messageType": "payload",
-        "timestamp": "2022-10-31T08:17:08.124203Z",
-        "payload": "d5825f63003090060090ad5e63518f060015001c001200110018000000000000000000000004000a00320027000c00",
-        "fCntUp": 6732,
-        "toa": null,
-        "freq": 867900000,
-        "batteryLevel": "255",
-        "ack": false,
-        "spreadingFactor": "8",
-        "rssi": "-108",
-        "snr": "-2",
-        "gatewayIdentifier": "126",
-        "fPort": "100",
-        "tags": {
-            "application": ["1_xyz_w1e_1"],
-            "customer": ["xyz"],
-            "deviceType": ["w1e"],
-            "facilityID": [],
-            "municipality": [],
-            "serial": ["00000000"]
-        },
-        "gateways": [{
-                "rssi": "-108",
-                "snr": "-2",
-                "gatewayIdentifier": "126",
-                "antenna": 0
-            }
-        ]
-    }
-]`
