@@ -16,7 +16,7 @@ import (
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 
-func Qalcosonic_Auto(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func QalcosonicAuto(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	var err error
 
 	buf := bytes.NewReader(ue.Data)
@@ -26,9 +26,9 @@ func Qalcosonic_Auto(ctx context.Context, ue application.SensorEvent, fn func(co
 
 	var m measurementDecoder
 	if buf.Len() == 51 || buf.Len() == 52 {
-		m = w1e
-	} else if buf.Len() <= 47 {
 		m = w1h
+	} else if buf.Len() <= 47 {
+		m = w1e
 	}
 
 	err = qalcosonicW1(ctx, ue, m, fn)
@@ -39,16 +39,16 @@ func Qalcosonic_Auto(ctx context.Context, ue application.SensorEvent, fn func(co
 	return err
 }
 
-func Qalcosonic_w1h(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	return qalcosonicW1(ctx, ue, w1h, fn)
+func QalcosonicW1e(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+	return qalcosonicW1(ctx, ue, w1e, fn)
 }
 
-func Qalcosonic_w1t(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func QalcosonicW1t(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	return qalcosonicW1(ctx, ue, w1t, fn)
 }
 
-func Qalcosonic_w1e(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	return qalcosonicW1(ctx, ue, w1e, fn)
+func QalcosonicW1h(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+	return qalcosonicW1(ctx, ue, w1h, fn)
 }
 
 func qalcosonicW1(ctx context.Context, ue application.SensorEvent, measurementDecoder measurementDecoder, fn func(context.Context, payload.Payload) error) error {
@@ -72,7 +72,7 @@ func qalcosonicW1(ctx context.Context, ue application.SensorEvent, measurementDe
 
 type measurementDecoder = func(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error)
 
-func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
+func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
 	var epoch uint32
@@ -134,8 +134,6 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 
 	return decorators, nil
 }
-
-
 
 func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
@@ -228,7 +226,7 @@ func deltaVolumes(buf *bytes.Reader, lastLogValue, lastLogValueDate uint32) ([]p
 	return decorators, true
 }
 
-func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
+func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
 	var frameVersion uint8

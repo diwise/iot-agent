@@ -16,10 +16,10 @@ type decoderRegistry struct {
 func NewDecoderRegistry() DecoderRegistry {
 
 	Decoders := map[string]MessageDecoderFunc{
-		"qalcosonic":       Qalcosonic_Auto,
-		"qalcosonic_w1h":   Qalcosonic_w1h,
-		"qalcosonic_w1t":   Qalcosonic_w1t,
-		"qalcosonic_w1e":   Qalcosonic_w1e,
+		"qalcosonic":       QalcosonicAuto,
+		"qalcosonic_w1h":   QalcosonicW1h,
+		"qalcosonic_w1t":   QalcosonicW1t,
+		"qalcosonic_w1e":   QalcosonicW1e,
 		"presence":         PresenceDecoder,
 		"elsys_codec":      ElsysDecoder,
 		"enviot":           EnviotDecoder,

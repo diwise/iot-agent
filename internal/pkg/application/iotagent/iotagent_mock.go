@@ -19,7 +19,7 @@ var _ IoTAgent = &IoTAgentMock{}
 //
 //		// make and configure a mocked IoTAgent
 //		mockedIoTAgent := &IoTAgentMock{
-//			MessageReceivedFunc: func(ctx context.Context, ue app.UplinkEvent) error {
+//			MessageReceivedFunc: func(ctx context.Context, ue app.SensorEvent) error {
 //				panic("mock out the MessageReceived method")
 //			},
 //			MessageReceivedFnFunc: func(ctx context.Context, msg []byte, ue app.UplinkASFunc) error {
