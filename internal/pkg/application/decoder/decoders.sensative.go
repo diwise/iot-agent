@@ -60,6 +60,10 @@ func decodeSensativeMeasurements(b []byte, callback func(m payload.PayloadDecora
 			callback(payload.DoorReport(b[pos] != 0))
 		case 10: // door alarm
 			callback(payload.DoorAlarm(b[pos] != 0))
+		case 21: // close proximity alarm
+			callback(payload.Presence(b[pos] != 0))
+		case 110: // check in confirmed
+			size = 8
 		default:
 			fmt.Printf("unknown channel %d\n", channel)
 			size = 20

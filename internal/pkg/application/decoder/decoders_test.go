@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"testing"
@@ -98,10 +99,27 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := application.ChirpStack([]byte(livboj))
+
+	var resultPayload Payload
 	err := PresenceDecoder(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		resultPayload = p
 		return nil
 	})
+	is.NoErr(err)
 
+	_, ok := resultPayload.Get("Presence")
+	is.True(ok)
+}
+
+func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
+	is, _ := testSetup(t)
+	ue := application.SensorEvent{}
+	err := json.Unmarshal([]byte(livboj_checkin), &ue)
+	is.NoErr(err)
+
+	err = PresenceDecoder(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		return nil
+	})
 	is.NoErr(err)
 }
 
@@ -386,6 +404,8 @@ const livboj string = `
         "prevHistSeqNr": 65535
     }
 }`
+
+const livboj_checkin string = `{"devEui":"3489573498573459","deviceName":"Livboj","sensorType":"Sensative_Codec","fPort":1,"data":"//9uAxL8UAAAAAA=","object":{"buildId":{"id":51575888,"modified":false},"historySeqNr":65535,"prevHistSeqNr":65535},"timestamp":"2022-11-04T06:42:44.274490703Z","rxInfo":{"gatewayId":"fcc23dfffe2ee936","uplinkId":"23bab2ad-f4d0-4175-b09e-d1177dea44e0","rssi":-111,"snr":-8},"txInfo":{}}`
 
 const qalcosonic_w1e string = `
 [{
