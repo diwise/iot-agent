@@ -243,9 +243,10 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		return nil, err
 	}
 
+	var sensorTime time.Time
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
-		sensorTime := time.Unix(int64(epoch), 0).UTC()
+		sensorTime = time.Unix(int64(epoch), 0).UTC()
 		if tooFarOff(sensorTime) {
 			return nil, ErrTimeTooFarOff
 		}
@@ -261,14 +262,55 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		return nil, err
 	}
 
+	var currVol float64 = 0.0
 	err = binary.Read(buf, binary.LittleEndian, &currentVolume)
 	if err == nil {
-		decorators = append(decorators, payload.CurrentVolume(float64(currentVolume)*0.001))
+		currVol = float64(currentVolume) * 0.001
+		decorators = append(decorators, payload.CurrentVolume(currVol))
 	} else {
 		return nil, err
 	}
 
+	if d, ok := deltaVolumesH(buf, currVol, sensorTime); ok {
+		decorators = append(decorators, d...)
+	}
+
 	return decorators, nil
+}
+
+func deltaVolumesH(buf *bytes.Reader, currentVolume float64, sensorTime time.Time) ([]payload.PayloadDecoratorFunc, bool) {
+	var decorators []payload.PayloadDecoratorFunc
+	data, _ := io.ReadAll(buf)
+	data = append(data, 0)
+
+	decode := func(input []byte) []uint64 {
+		result := make([]uint64, 0, 24)
+		for len(input) >= 7 {
+			quad := input[0:7]
+			input = input[7:]
+			result = append(
+				result,
+				((uint64(quad[1])<<8)%16384)|uint64(quad[0]),
+				((uint64(quad[3])<<10)%16384)|uint64(quad[2])<<2|uint64(quad[1])>>6,
+				((uint64(quad[5])<<12)%16384)|uint64(quad[4])<<4|uint64(quad[3])>>4,
+				(uint64(quad[6])<<6)|uint64(quad[5])>>2,
+			)
+		}
+		return result
+	}
+
+	deltas := decode(data)
+	totalVol := currentVolume
+	deltaTime := sensorTime
+
+	for i := 0; i < 23; i++ {
+		totalVol += float64(deltas[i])*0.001
+		deltaTime = deltaTime.Add(1 * time.Hour)
+		dec := payload.DeltaVolume(float64(deltas[i])*0.001, totalVol, deltaTime)
+		decorators = append(decorators, dec)
+	}
+
+	return decorators, len(decorators) > 0
 }
 
 func getStatusMessage(code uint8) []string {

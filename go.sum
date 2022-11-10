@@ -66,8 +66,6 @@ github.com/coreos/go-systemd/v22 v22.3.3-0.20220203105225-a9a7ef127534/go.mod h1
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/diwise/iot-core v0.0.0-20221025152418-09fe9d02163c h1:vv3sWPQdxSUy43qnmdAZETYXAFRaeZtozs6nnI2tTcw=
-github.com/diwise/iot-core v0.0.0-20221025152418-09fe9d02163c/go.mod h1:UMyjvchgYIYMnko75W9BMwB9aJSFpazV3H6tHG8ztjU=
 github.com/diwise/iot-core v0.0.0-20221103091812-9ff47b545c40 h1:s9Ue7FeiRuVajr3WwVRuW9pnmEzRzzb6KRtaE/lRUqg=
 github.com/diwise/iot-core v0.0.0-20221103091812-9ff47b545c40/go.mod h1:yTQfQyfBlSxoOJ/k56ITE74lNh2U08ir5QHgiIgK0YY=
 github.com/diwise/iot-device-mgmt v0.0.0-20221101222213-4920eac457a7 h1:UGM+NxeMde3txI4LqlLLQKSLyr0AKNstKdMzOuQ2m2c=
