@@ -3,6 +3,7 @@ package conversion
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
@@ -41,12 +42,31 @@ func Presence(ctx context.Context, deviceID string, p payload.Payload) (senml.Pa
 func Watermeter(ctx context.Context, deviceID string, p payload.Payload) (senml.Pack, error) {
 	var decorators []SenMLDecoratorFunc
 
+	roundFloat := func(val float64, precision uint) float64 {
+		ratio := math.Pow(10, float64(precision))
+		return math.Round(val*ratio) / ratio
+	}
+
 	if cv, ok := payload.Get[float64](p, "currentVolume"); ok {
-		decorators = append(decorators, Value(measurements.CumulatedWaterVolume, cv))
+		volm3 := roundFloat(cv*0.001, 3)
+		decorators = append(decorators, Value("CurrentVolume", volm3))
+	}
+
+	if lv, ok := payload.Get[float64](p, "logVolume"); ok {
+		volm3 := roundFloat(lv*0.001, 3)
+		decorators = append(decorators, Value("LogVolume", volm3))
 	}
 
 	if ct, ok := payload.Get[time.Time](p, "currentTime"); ok {
 		decorators = append(decorators, Time("CurrentDateTime", ct))
+	}
+
+	if lt, ok := payload.Get[time.Time](p, "logDateTime"); ok {
+		decorators = append(decorators, Time("LogDateTime", lt))
+	}
+
+	if t, ok := payload.Get[float64](p, "temperature"); ok {
+		decorators = append(decorators, Value(measurements.Temperature, t*0.01))
 	}
 
 	if dv, ok := p.Get("deltaVolume"); ok {
@@ -57,7 +77,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload) (senml.
 					Cumulated    float64
 					LogValueDate time.Time
 				}); ok {
-					decorators = append(decorators, DeltaVolume(d.Delta, d.Cumulated, d.LogValueDate))
+					decorators = append(decorators, DeltaVolume(d.Delta*0.001, d.Cumulated*0.001, d.LogValueDate))
 				}
 			}
 		}

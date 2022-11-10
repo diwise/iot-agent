@@ -159,10 +159,12 @@ func TestQalcosonic_w1t(t *testing.T) {
 	is.NoErr(err)
 	is.True(r != nil)
 	is.Equal("116c52b4274f", r.DevEui())
-	is.Equal(302.57800000000003, r.ValueOf("CurrentVolume"))
-	is.Equal(float64(25.78), r.ValueOf("temperature"))
+	is.Equal(float64(302578), r.ValueOf("CurrentVolume"))
+	is.Equal(r.ValueOf("CurrentTime"), toT("2020-09-09T12:32:21Z"))
+	is.Equal(r.ValueOf("LogDateTime"), toT("2020-09-08T22:00:00Z"))
+	is.Equal(float64(2578), r.ValueOf("temperature"))
 	v, _ := Get[float64](r, "temperature")
-	is.Equal(v, float64(25.78))
+	is.Equal(v, float64(2578))
 }
 
 func TestQalcosonic_w1h(t *testing.T) {
@@ -178,7 +180,8 @@ func TestQalcosonic_w1h(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
 	is.Equal(r.ValueOf("CurrentTime"), toT("2020-05-29T07:51:59Z"))
-	is.Equal(r.ValueOf("CurrentVolume"), 528.333)
+	is.Equal(r.ValueOf("LogDateTime"), toT("2020-05-29T01:00:00Z"))
+	is.Equal(r.ValueOf("LogVolume"), float64(528333))
 	is.Equal(r.Status().Code, 48)
 }
 
@@ -196,7 +199,7 @@ func TestQalcosonic_w1e(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
 	is.Equal(r.ValueOf("CurrentTime"), toT("2019-07-22T11:37:50Z"))
-	is.Equal(r.ValueOf("CurrentVolume"), 13.609)
+	is.Equal(r.ValueOf("CurrentVolume"), float64(13609))
 	is.Equal(r.Status().Code, 0x30)
 }
 

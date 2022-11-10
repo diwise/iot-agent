@@ -211,9 +211,9 @@ func LogDateTime(d time.Time) PayloadDecoratorFunc {
 		d,
 	})
 }
-func LastLogValue(v float64) PayloadDecoratorFunc {
-	return S("lastLogValue", struct {
-		LastLogValue float64
+func LogVolume(v float64) PayloadDecoratorFunc {
+	return S("logVolume", struct {
+		LogVolume float64
 	}{
 		v,
 	})
