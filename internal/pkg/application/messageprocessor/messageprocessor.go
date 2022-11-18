@@ -11,6 +11,7 @@ import (
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/farshidtz/senml/v2"
 )
 
 type MessageProcessor interface {
@@ -62,27 +63,32 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload) e
 	}
 
 	for _, convert := range messageConverters {
-		pack, err := convert(ctx, device.ID(), p)
+		err := convert(ctx, device.ID(), p, func(sp senml.Pack) error {
+			if err := sp.Validate(); err != nil {
+				return fmt.Errorf("could not validate senML package, %w", err)
+			}
+
+			m := iotcore.MessageReceived{
+				Device:    device.ID(),
+				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+				Pack:      sp,
+			}
+
+			if device.IsActive() {
+				err = mp.event.Send(ctx, &m)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to send event")
+				} else {
+					log.Debug().Msgf("event published for %s", m.DeviceID())
+				}
+			}
+
+			return nil
+		})
+
 		if err != nil {
 			log.Error().Err(err).Msg("conversion failed")
 			continue
-		}
-
-		if err := pack.Validate(); err != nil {
-			return fmt.Errorf("could not validate senML package, %w", err)
-		}
-
-		m := iotcore.MessageReceived{
-			Device:    device.ID(),
-			Timestamp: time.Now().UTC().Format(time.RFC3339),
-			Pack:      pack,
-		}
-
-		if device.IsActive() {
-			err = mp.event.Send(ctx, &m)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to send event")
-			}
 		}
 	}
 

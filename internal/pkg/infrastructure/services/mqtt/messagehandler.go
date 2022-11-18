@@ -55,9 +55,9 @@ func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mq
 			return
 		}
 
-		req.Header.Add("Content-Type", "application/json")
+		log.Debug().Msgf("forwarding received payload to %s", forwardingEndpoint)
 
-		log.Info().Msgf("forwarding received payload to %s", forwardingEndpoint)
+		req.Header.Add("Content-Type", "application/json")		
 		resp, err := httpClient.Do(req)
 		if err != nil {
 			log.Error().Err(err).Msg("forwarding request failed")

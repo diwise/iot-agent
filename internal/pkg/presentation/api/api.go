@@ -90,10 +90,11 @@ func (a *api) incomingMessageHandler(defaultFacade string) http.HandlerFunc {
 			facade = application.GetFacade(r.URL.Query().Get("facade"))
 		}
 
+		log.Debug().Msgf("body: %s", msg)
+
 		err = a.app.MessageReceivedFn(ctx, msg, facade)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to handle message")
-			log.Debug().Msgf("body: \n%s", msg)
 
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))

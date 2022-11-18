@@ -9,6 +9,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/farshidtz/senml/v2"
 	"github.com/matryer/is"
 )
 
@@ -16,7 +17,11 @@ func TestThatTemperatureDecodesValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Temperature(22.2))
 
-	msg, err := Temperature(ctx, "internalID", p)
+	var msg senml.Pack
+	err := Temperature(ctx, "internalID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
 
 	is.NoErr(err)
 	is.Equal(22.2, *msg[1].Value)
@@ -26,7 +31,11 @@ func TestThatCO2DecodesValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.CO2(22))
 
-	msg, err := AirQuality(ctx, "internalID", p)
+	var msg senml.Pack
+	err := AirQuality(ctx, "internalID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
 
 	is.NoErr(err)
 	is.Equal(float64(22), *msg[1].Value)
@@ -36,7 +45,11 @@ func TestThatPresenceDecodesValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Presence(true))
 
-	msg, err := Presence(ctx, "internalID", p)
+	var msg senml.Pack
+	err := Presence(ctx, "internalID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
 
 	is.NoErr(err)
 	is.True(*msg[1].BoolValue)
@@ -52,7 +65,11 @@ func TestThatWatermeterDecodesW1hValuesCorrectly(t *testing.T) {
 		return nil
 	})
 
-	msg, err := Watermeter(ctx, "deviceID", p)
+	var msg senml.Pack
+	err := Watermeter(ctx, "deviceID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
 
 	is.NoErr(err)
 	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
@@ -80,7 +97,11 @@ func TestThatWatermeterDecodesW1eValuesCorrectly(t *testing.T) {
 		return nil
 	})
 
-	msg, err := Watermeter(ctx, "deviceID", p)
+	var msg senml.Pack
+	err := Watermeter(ctx, "deviceID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
 
 	is.NoErr(err)
 	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
@@ -109,7 +130,11 @@ func TestThatWatermeterDecodesW1tValuesCorrectly(t *testing.T) {
 		return nil
 	})
 
-	msg, err := Watermeter(ctx, "deviceID", p)
+	var msg senml.Pack
+	err := Watermeter(ctx, "deviceID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
 
 	is.NoErr(err)
 	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)

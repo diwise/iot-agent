@@ -12,34 +12,37 @@ import (
 	"github.com/farshidtz/senml/v2"
 )
 
-type MessageConverterFunc func(ctx context.Context, internalID string, p payload.Payload) (senml.Pack, error)
+type MessageConverterFunc func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error
 
-func Temperature(ctx context.Context, deviceID string, p payload.Payload) (senml.Pack, error) {
+func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	if temp, ok := payload.Get[float64](p, measurements.Temperature); ok {
-		return NewSenMLPack(deviceID, lwm2m.Temperature, p.Timestamp(), Value(measurements.Temperature, temp)), nil
+		pack := NewSenMLPack(deviceID, lwm2m.Temperature, p.Timestamp(), Value(measurements.Temperature, temp))
+		return fn(pack)
 	} else {
-		return nil, fmt.Errorf("could not get temperature for device %s", deviceID)
+		return fmt.Errorf("could not get temperature for device %s", deviceID)
 	}
 }
 
-func AirQuality(ctx context.Context, deviceID string, p payload.Payload) (senml.Pack, error) {
+func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	if c, ok := payload.Get[int](p, "co2"); ok {
 		co2 := float64(c)
-		return NewSenMLPack(deviceID, lwm2m.AirQuality, p.Timestamp(), Value(measurements.CO2, co2)), nil
+		pack := NewSenMLPack(deviceID, lwm2m.AirQuality, p.Timestamp(), Value(measurements.CO2, co2))
+		return fn(pack)
 	} else {
-		return nil, fmt.Errorf("could not get co2 for device %s", deviceID)
+		return fmt.Errorf("could not get co2 for device %s", deviceID)
 	}
 }
 
-func Presence(ctx context.Context, deviceID string, p payload.Payload) (senml.Pack, error) {
+func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	if b, ok := payload.Get[bool](p, measurements.Presence); ok {
-		return NewSenMLPack(deviceID, lwm2m.Presence, p.Timestamp(), BoolValue(measurements.Presence, b)), nil
+		pack := NewSenMLPack(deviceID, lwm2m.Presence, p.Timestamp(), BoolValue(measurements.Presence, b))
+		return fn(pack)
 	} else {
-		return nil, fmt.Errorf("could not get presence for device %s", deviceID)
+		return fmt.Errorf("could not get presence for device %s", deviceID)
 	}
 }
 
-func Watermeter(ctx context.Context, deviceID string, p payload.Payload) (senml.Pack, error) {
+func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	var decorators []SenMLDecoratorFunc
 
 	roundFloat := func(val float64, precision uint) float64 {
@@ -84,8 +87,9 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload) (senml.
 	}
 
 	if len(decorators) == 0 {
-		return nil, fmt.Errorf("could not get any watermeter values for device %s", deviceID)
+		return fmt.Errorf("could not get any watermeter values for device %s", deviceID)
 	}
 
-	return NewSenMLPack(deviceID, lwm2m.Watermeter, p.Timestamp(), decorators...), nil
+	pack := NewSenMLPack(deviceID, lwm2m.Watermeter, p.Timestamp(), decorators...)
+	return fn(pack)
 }
