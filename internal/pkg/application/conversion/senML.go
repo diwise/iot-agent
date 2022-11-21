@@ -30,54 +30,31 @@ func NewSenMLPack(deviceID, baseName string, baseTime time.Time, decorators ...S
 }
 
 func Value(n string, v float64) SenMLDecoratorFunc {
-	return func(p *senML) {
-		r := senml.Record{
-			Name:  n,
-			Value: &v,
-		}
-		p.Pack = append(p.Pack, r)
-	}
-}
-
-func StringValue(n string, vs string) SenMLDecoratorFunc {
-	return func(p *senML) {
-		r := senml.Record{
-			Name:        n,
-			StringValue: vs,
-		}
-		p.Pack = append(p.Pack, r)
-	}
+	return Rec(n, &v, nil, "", nil, "", nil)
 }
 
 func BoolValue(n string, vb bool) SenMLDecoratorFunc {
-	return func(p *senML) {
-		r := senml.Record{
-			Name:      n,
-			BoolValue: &vb,
-		}
-		p.Pack = append(p.Pack, r)
-	}
+	return Rec(n, nil, nil, "", nil, "", &vb)
 }
 
-func Time(n string, t time.Time) SenMLDecoratorFunc {
-	return func(p *senML) {
-		r := senml.Record{
-			Name:        n,
-			StringValue: t.Format(time.RFC3339Nano),
-			Time:        float64(t.Unix()),
-		}
-		p.Pack = append(p.Pack, r)
+func Rec(n string, v, sum *float64, vs string, t *time.Time, u string, vb *bool) SenMLDecoratorFunc {
+	var tm float64
+	if t == nil {
+		tm = 0
+	} else {
+		tm = float64(t.Unix())
 	}
-}
-
-func DeltaVolume(v, s float64, t time.Time) SenMLDecoratorFunc {
+	
 	return func(p *senML) {
 		r := senml.Record{
-			Name:  "DeltaVolume",
-			Value: &v,
-			Time:  float64(t.Unix()),
-			Sum:   &s,
-		}
+			Name: n,
+			Unit: u,
+			Time: tm,
+			Value: v,
+			StringValue: vs,
+			BoolValue: vb,
+			Sum: sum,
+		}		
 		p.Pack = append(p.Pack, r)
 	}
 }

@@ -137,6 +137,8 @@ func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		decorators = append(decorators, d...)
 	}
 
+	decorators = append(decorators, payload.Type("w1e"))
+
 	return decorators, nil
 }
 
@@ -211,6 +213,8 @@ func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	if d, ok := deltaVolumes(buf, volumeAtLogDateTime, ldt); ok {
 		decorators = append(decorators, d...)
 	}
+
+	decorators = append(decorators, payload.Type("w1t"))
 
 	return decorators, nil
 }
@@ -294,6 +298,8 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	if d, ok := deltaVolumesH(buf, vol, logDateTime); ok {
 		decorators = append(decorators, d...)
 	}
+
+	decorators = append(decorators, payload.Type("w1h"))
 
 	return decorators, nil
 }

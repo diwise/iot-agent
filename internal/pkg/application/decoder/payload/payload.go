@@ -242,7 +242,7 @@ func Presence(p bool) PayloadDecoratorFunc {
 	})
 }
 func SnowHeight(sh int) PayloadDecoratorFunc {
-	return S("presence", struct {
+	return S("snowHeight", struct {
 		SnowHeight int
 	}{
 		sh,
@@ -288,5 +288,12 @@ func SoilMoisture(sm []int16) PayloadDecoratorFunc {
 		SoilMoisture []int16
 	}{
 		sm,
+	})
+}
+func Type(t string) PayloadDecoratorFunc {
+	return S("type", struct {
+		Type string
+	}{
+		t,
 	})
 }
