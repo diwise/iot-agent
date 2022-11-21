@@ -17,8 +17,8 @@ func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn fun
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3303
 
-		ID		Name			Type	Unit
-		5700	Sensor Value	Float
+		ID      Name            Type     Unit
+		5700    Sensor Value    Float
 	*/
 
 	if temp, ok := payload.Get[float64](p, "temperature"); ok {
@@ -33,8 +33,8 @@ func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3428
 
-		ID	Name	Type	Unit
-		17	CO2		Float	ppm
+		ID  Name    Type    Unit
+		17  CO2     Float   ppm
 	*/
 
 	if c, ok := payload.Get[int](p, "co2"); ok {
@@ -50,8 +50,8 @@ func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3302
 
-		ID		Name					Type		Unit
-		5500	Digital Input State		Boolean
+		ID      Name                    Type       Unit
+		5500    Digital Input State     Boolean
 	*/
 
 	if b, ok := payload.Get[bool](p, "presence"); ok {
@@ -66,11 +66,11 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3424
 
-		ID	Name						Type		Unit
-		1	Cumulated water volume		Float		m3
-		3	Type of meter				String
-		10	Leak detected				Boolean
-		11	Back flow detected			Boolean
+		ID   Name                       Type        Unit
+		1    Cumulated water volume     Float       m3
+		3    Type of meter              String
+		10   Leak detected              Boolean
+		11   Back flow detected         Boolean
 	*/
 
 	var decorators []SenMLDecoratorFunc
