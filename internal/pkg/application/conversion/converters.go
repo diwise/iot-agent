@@ -16,7 +16,6 @@ type MessageConverterFunc func(ctx context.Context, internalID string, p payload
 func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3303
-
 		ID      Name            Type     Unit
 		5700    Sensor Value    Float
 	*/
@@ -32,7 +31,6 @@ func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn fun
 func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3428
-
 		ID  Name    Type    Unit
 		17  CO2     Float   ppm
 	*/
@@ -49,7 +47,6 @@ func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func
 func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3302
-
 		ID      Name                    Type       Unit
 		5500    Digital Input State     Boolean
 	*/
@@ -65,7 +62,6 @@ func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	/*
 		ObjectURN: urn:oma:lwm2m:ext:3424
-
 		ID   Name                       Type        Unit
 		1    Cumulated water volume     Float       m3
 		3    Type of meter              String
@@ -89,33 +85,19 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		return false
 	}
 
-	if lv, ok := payload.Get[float64](p, "logVolume"); ok {
-		volm3 := roundFloat(lv * 0.001)
-		if lt, ok := payload.Get[time.Time](p, "logDateTime"); ok {
-			decorators = append(decorators, Rec("1", &volm3, &volm3, "", &lt, senml.UnitCubicMeter, nil))
-		}
-	}
-
-	if dv, ok := p.Get("deltaVolume"); ok {
-		if deltas, ok := dv.([]interface{}); ok {
-			for _, delta := range deltas {
-				if d, ok := delta.(struct {
-					Delta        float64
-					Cumulated    float64
-					LogValueDate time.Time
+	if volumeMeasurements, ok := p.Get("volume"); ok {
+		if volumes, ok := volumeMeasurements.([]interface{}); ok {
+			for _, vol := range volumes {
+				if v, ok := vol.(struct {
+					Volume    float64
+					Cumulated float64
+					Time      time.Time
 				}); ok {
-					volm3 := roundFloat(d.Delta * 0.001)
-					summ3 := roundFloat(d.Cumulated * 0.001)
-					decorators = append(decorators, Rec("1", &volm3, &summ3, "", &d.LogValueDate, senml.UnitCubicMeter, nil))
+					volm3 := roundFloat(v.Volume * 0.001)
+					summ3 := roundFloat(v.Cumulated * 0.001)
+					decorators = append(decorators, Rec("1", &volm3, &summ3, "", &v.Time, senml.UnitCubicMeter, nil))
 				}
 			}
-		}
-	}
-
-	if cv, ok := payload.Get[float64](p, "currentVolume"); ok {
-		volm3 := roundFloat(cv * 0.001)
-		if ct, ok := payload.Get[time.Time](p, "currentTime"); ok {
-			decorators = append(decorators, Rec("1", &volm3, &volm3, "", &ct, senml.UnitCubicMeter, nil))
 		}
 	}
 
@@ -136,5 +118,6 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 	}
 
 	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3424", p.Timestamp(), decorators...)
+	
 	return fn(pack)
 }
