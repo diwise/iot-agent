@@ -117,7 +117,15 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		return fmt.Errorf("could not get any watermeter values for device %s", deviceID)
 	}
 
-	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3424", p.Timestamp(), decorators...)
+	// use timestamp from sensor as default, fallback to timestamp from sensorEvent (gateway)
+	var timestamp time.Time
+	if ts, ok := payload.Get[time.Time](p, "timestamp"); ok {
+		timestamp = ts
+	} else {
+		timestamp = p.Timestamp()
+	}
+
+	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3424", timestamp, decorators...)
 	
 	return fn(pack)
 }
