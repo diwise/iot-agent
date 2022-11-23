@@ -87,10 +87,10 @@ func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
 		sensorTime = time.Unix(int64(epoch), 0).UTC()
-
 		if tooFarOff(sensorTime) {
 			return nil, ErrTimeTooFarOff
 		}
+		decorators = append(decorators, payload.Timestamp(sensorTime))
 	} else {
 		return nil, err
 	}
@@ -126,13 +126,13 @@ func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		return nil, err
 	}
 
-	decorators = append(decorators, payload.Volume(float64(volumeAtLogDateTime), float64(volumeAtLogDateTime), ldt))
+	decorators = append(decorators, payload.Volume(0, float64(volumeAtLogDateTime), ldt))
 
 	if d, ok := deltaVolumes(buf, volumeAtLogDateTime, ldt); ok {
 		decorators = append(decorators, d...)
 	}
 
-	decorators = append(decorators, payload.Volume(float64(currentVolume), float64(currentVolume), sensorTime))
+	decorators = append(decorators, payload.Volume(0, float64(currentVolume), sensorTime))
 
 	decorators = append(decorators, payload.Type("w1e"))
 
@@ -158,6 +158,7 @@ func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		if tooFarOff(sensorTime) {
 			return nil, ErrTimeTooFarOff
 		}
+		decorators = append(decorators, payload.Timestamp(sensorTime))
 	} else {
 		return nil, err
 	}
@@ -196,13 +197,13 @@ func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		return nil, err
 	}
 
-	decorators = append(decorators, payload.Volume(float64(volumeAtLogDateTime), float64(volumeAtLogDateTime), ldt))
+	decorators = append(decorators, payload.Volume(0, float64(volumeAtLogDateTime), ldt))
 
 	if d, ok := deltaVolumes(buf, volumeAtLogDateTime, ldt); ok {
 		decorators = append(decorators, d...)
 	}
 
-	decorators = append(decorators, payload.Volume(float64(currentVolume), float64(currentVolume), sensorTime))
+	decorators = append(decorators, payload.Volume(0, float64(currentVolume), sensorTime))
 
 	decorators = append(decorators, payload.Temperature(float64(temperature)))
 	decorators = append(decorators, payload.Type("w1t"))
@@ -262,7 +263,8 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		// First full value is logged at 01:00 time. Other 23 values are differences (increments).
 		// All values are logged and always equal to beginning of an hour or a day
 		y, m, d := sensorTime.Date()
-		logDateTime = time.Date(y, m, d, 1, 0, 0, 0, time.UTC)
+		logDateTime = time.Date(y, m, d-1, 1, 0, 0, 0, time.UTC)
+		decorators = append(decorators, payload.Timestamp(sensorTime))
 	} else {
 		return nil, err
 	}
@@ -278,12 +280,12 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	err = binary.Read(buf, binary.LittleEndian, &logVolumeAtOne)
 	if err == nil {
 		vol = float64(logVolumeAtOne)
-		
+
 	} else {
 		return nil, err
 	}
 
-	decorators = append(decorators, payload.Volume(float64(vol), float64(vol), logDateTime))
+	decorators = append(decorators, payload.Volume(0, float64(vol), logDateTime))
 
 	if d, ok := deltaVolumesH(buf, vol, logDateTime); ok {
 		decorators = append(decorators, d...)

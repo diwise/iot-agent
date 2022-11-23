@@ -73,18 +73,8 @@ func TestThatWatermeterDecodesW1hValuesCorrectly(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
-
-	is.Equal("LogVolume", msg[1].Name)
-	is.Equal("CurrentDateTime", msg[2].Name)
-	is.Equal("LogDateTime", msg[3].Name)
-	is.Equal("DeltaVolume", msg[4].Name)
-
-	is.Equal(528.333, *msg[1].Value)
-	is.Equal("2020-05-29T07:51:59Z", msg[2].StringValue)
-	is.Equal("2020-05-29T01:00:00Z", msg[3].StringValue)
-	is.Equal(2.004, *msg[4].Value)
-	is.Equal(528.333+2.004, *msg[4].Sum)
-	is.Equal(int64(msg[4].Time), time.Unix(int64(msg[3].Time), 0).Add(1*time.Hour).Unix())
+	is.Equal(float64(528.333), *msg[1].Sum)
+	is.Equal(toT("2020-05-28T01:00:00Z").Unix(), int64(msg[1].Time))
 }
 
 func TestThatWatermeterDecodesW1eValuesCorrectly(t *testing.T) {
@@ -105,19 +95,8 @@ func TestThatWatermeterDecodesW1eValuesCorrectly(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
-
-	is.Equal("CurrentVolume", msg[1].Name)
-	is.Equal("LogVolume", msg[2].Name)
-	is.Equal("CurrentDateTime", msg[3].Name)
-	is.Equal("LogDateTime", msg[4].Name)
-	is.Equal("DeltaVolume", msg[5].Name)
-
-	is.Equal(13.609, *msg[1].Value)
-	is.Equal(10.727, *msg[2].Value)
-	is.Equal("2019-07-22T11:37:50Z", msg[3].StringValue)
-	is.Equal("2019-07-21T19:00:00Z", msg[4].StringValue)
-	is.Equal(0.184, *msg[5].Value)
-	is.Equal(int64(msg[5].Time), time.Unix(int64(msg[4].Time), 0).Add(1*time.Hour).Unix())
+	is.Equal(float64(10.727), *msg[1].Sum)
+	is.Equal(toT("2019-07-21T19:00:00Z").Unix(), int64(msg[1].Time))
 }
 
 func TestThatWatermeterDecodesW1tValuesCorrectly(t *testing.T) {
@@ -138,20 +117,8 @@ func TestThatWatermeterDecodesW1tValuesCorrectly(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
-
-	is.Equal("CurrentVolume", msg[1].Name)
-	is.Equal("LogVolume", msg[2].Name)
-	is.Equal("CurrentDateTime", msg[3].Name)
-	is.Equal("LogDateTime", msg[4].Name)
-	is.Equal("Temperature", msg[5].Name)
-	is.Equal("DeltaVolume", msg[6].Name)
-
-	is.Equal(302.578, *msg[1].Value)
-	is.Equal(284.554, *msg[2].Value)
-	is.Equal("2020-09-09T12:32:21Z", msg[3].StringValue)
-	is.Equal("2020-09-08T22:00:00Z", msg[4].StringValue)
-	is.Equal(1.229, *msg[6].Value)
-	is.Equal(int64(msg[6].Time), time.Unix(int64(msg[4].Time), 0).Add(1*time.Hour).Unix())
+	is.Equal(float64(284.554), *msg[1].Sum)
+	is.Equal(toT("2020-09-08T22:00:00Z").Unix(), int64(msg[1].Time))
 }
 
 func mcmTestSetup(t *testing.T) (*is.I, context.Context) {

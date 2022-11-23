@@ -14,8 +14,8 @@ type Payload interface {
 	DevEui() string
 	Timestamp() time.Time
 	Status() StatusImpl
-	Measurements() []any
-	ValueOf(name string) any
+	//Measurements() []any
+	//ValueOf(name string) any
 	Get(name string) (any, bool)
 }
 
@@ -73,6 +73,7 @@ func (p *PayloadImpl) Status() StatusImpl {
 	}
 	return StatusImpl{}
 }
+/*
 func (p *PayloadImpl) Measurements() []any {
 	var m []any
 	for _, v := range p.measurements {
@@ -113,6 +114,7 @@ func (p *PayloadImpl) ValueOf(name string) any {
 
 	return nil
 }
+*/
 func (p *PayloadImpl) Get(name string) (any, bool) {
 	name = strings.ToLower(name)
 	if m, ok := p.measurements[name]; ok {
@@ -184,7 +186,6 @@ func Motion(m int) PayloadDecoratorFunc {
 		m,
 	})
 }
-
 func Status(c uint8, msg []string) PayloadDecoratorFunc {
 	return S("status", StatusImpl{
 		Code:     int(c),
@@ -266,6 +267,13 @@ func SoilMoisture(sm []int16) PayloadDecoratorFunc {
 func Type(t string) PayloadDecoratorFunc {
 	return S("type", struct {
 		Type string
+	}{
+		t,
+	})
+}
+func Timestamp(t time.Time) PayloadDecoratorFunc {
+	return S("timestamp", struct {
+		Timestamp time.Time
 	}{
 		t,
 	})
