@@ -14,8 +14,8 @@ type Payload interface {
 	DevEui() string
 	Timestamp() time.Time
 	Status() StatusImpl
-	Measurements() []any
-	ValueOf(name string) any
+	//Measurements() []any
+	//ValueOf(name string) any
 	Get(name string) (any, bool)
 }
 
@@ -73,6 +73,7 @@ func (p *PayloadImpl) Status() StatusImpl {
 	}
 	return StatusImpl{}
 }
+/*
 func (p *PayloadImpl) Measurements() []any {
 	var m []any
 	for _, v := range p.measurements {
@@ -113,6 +114,7 @@ func (p *PayloadImpl) ValueOf(name string) any {
 
 	return nil
 }
+*/
 func (p *PayloadImpl) Get(name string) (any, bool) {
 	name = strings.ToLower(name)
 	if m, ok := p.measurements[name]; ok {
@@ -184,45 +186,17 @@ func Motion(m int) PayloadDecoratorFunc {
 		m,
 	})
 }
-func CurrentTime(t time.Time) PayloadDecoratorFunc {
-	return S("currentTime", struct {
-		CurrentTime time.Time
-	}{
-		t,
-	})
-}
 func Status(c uint8, msg []string) PayloadDecoratorFunc {
 	return S("status", StatusImpl{
 		Code:     int(c),
 		Messages: msg,
 	})
 }
-func CurrentVolume(v float64) PayloadDecoratorFunc {
-	return S("currentVolume", struct {
-		CurrentVolume float64
-	}{
-		v,
-	})
-}
-func LogDateTime(d time.Time) PayloadDecoratorFunc {
-	return S("logDateTime", struct {
-		LogDateTime time.Time
-	}{
-		d,
-	})
-}
-func LogVolume(v float64) PayloadDecoratorFunc {
-	return S("logVolume", struct {
-		LogVolume float64
-	}{
-		v,
-	})
-}
-func DeltaVolume(v, c float64, t time.Time) PayloadDecoratorFunc {
-	return M("deltaVolume", struct {
-		Delta        float64
-		Cumulated    float64
-		LogValueDate time.Time
+func Volume(v, c float64, t time.Time) PayloadDecoratorFunc {
+	return M("volume", struct {
+		Volume    float64
+		Cumulated float64
+		Time      time.Time
 	}{
 		v, c, t,
 	})
@@ -242,7 +216,7 @@ func Presence(p bool) PayloadDecoratorFunc {
 	})
 }
 func SnowHeight(sh int) PayloadDecoratorFunc {
-	return S("presence", struct {
+	return S("snowHeight", struct {
 		SnowHeight int
 	}{
 		sh,
@@ -288,5 +262,19 @@ func SoilMoisture(sm []int16) PayloadDecoratorFunc {
 		SoilMoisture []int16
 	}{
 		sm,
+	})
+}
+func Type(t string) PayloadDecoratorFunc {
+	return S("type", struct {
+		Type string
+	}{
+		t,
+	})
+}
+func Timestamp(t time.Time) PayloadDecoratorFunc {
+	return S("timestamp", struct {
+		Timestamp time.Time
+	}{
+		t,
 	})
 }
