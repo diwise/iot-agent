@@ -126,7 +126,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 	}
 
 	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3424", timestamp, decorators...)
-	
+
 	return fn(pack)
 }
 
@@ -147,7 +147,7 @@ func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 		return fmt.Errorf("could not get any pressure values for device %s", deviceID)
 	}
 
-	pack := NewSenMLPack(deviceID, lwm2m.Pressure, p.Timestamp(), decorators...)
+	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3323", p.Timestamp(), decorators...)
 	return fn(pack)
 }
 
@@ -167,6 +167,6 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 		return fmt.Errorf("could not get any conductivity values for device %s", deviceID)
 	}
 
-	pack := NewSenMLPack(deviceID, lwm2m.Conductivity, p.Timestamp(), decorators...)
+	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3327", p.Timestamp(), decorators...)
 	return fn(pack)
 }
