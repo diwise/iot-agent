@@ -54,9 +54,7 @@ func Illuminance(ctx context.Context, deviceID string, p payload.Payload, fn fun
 }
 
 func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	CumulatedWaterVolume := func(v, sum float64, t time.Time) SenMLDecoratorFunc {
-		return Rec("1", &v, &sum, "", &t, senml.UnitCubicMeter, nil)
-	}
+	CumulatedWaterVolume := func(v, sum float64, t time.Time) SenMLDecoratorFunc { return Rec("1", &v, &sum, "", &t, senml.UnitCubicMeter, nil)	}
 	TypeOfMeter := func(vs string) SenMLDecoratorFunc { return Rec("3", nil, nil, vs, nil, "", nil) }
 	LeakDetected := func(vb bool) SenMLDecoratorFunc { return BoolValue("10", vb) }
 	BackFlowDetected := func(vb bool) SenMLDecoratorFunc { return BoolValue("11", vb) }
@@ -77,19 +75,15 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		return false
 	}
 
-	if volumeMeasurements, ok := p.Get("volume"); ok {
-		if volumes, ok := volumeMeasurements.([]interface{}); ok {
-			for _, vol := range volumes {
-				if v, ok := vol.(struct {
-					Volume    float64
-					Cumulated float64
-					Time      time.Time
-				}); ok {
-					volm3 := roundFloat(v.Volume * 0.001)
-					summ3 := roundFloat(v.Cumulated * 0.001)
-					decorators = append(decorators, CumulatedWaterVolume(volm3, summ3, v.Time))
-				}
-			}
+	if volumes, ok := payload.GetSlice[struct {
+		Volume    float64
+		Cumulated float64
+		Time      time.Time
+	}](p, "volume"); ok {
+		for _, v := range volumes {
+			volm3 := roundFloat(v.Volume * 0.001)
+			summ3 := roundFloat(v.Cumulated * 0.001)
+			decorators = append(decorators, CumulatedWaterVolume(volm3, summ3, v.Time))
 		}
 	}
 
@@ -100,6 +94,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 	if contains(p.Status().Messages, "Leak") {
 		decorators = append(decorators, LeakDetected(true))
 	}
+
 	if contains(p.Status().Messages, "Backflow") {
 		decorators = append(decorators, BackFlowDetected(true))
 	}
@@ -121,14 +116,13 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 
 func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	var decorators []SenMLDecoratorFunc
+	SensorValue := func(v float64) SenMLDecoratorFunc { return Rec("5700", &v, nil, "", nil, "kPa", nil) } // TODO: kPa not in senml units
 
-	if sm, ok := p.Get("soilMoisture"); ok {
-		if pressures, ok := sm.(struct {
-			SoilMoisture []int16
-		}); ok {
-			for _, pressure := range pressures.SoilMoisture {
-				decorators = append(decorators, Value("Pressure", float64(pressure)))
-			}
+	if pressures, ok := payload.GetSlice[struct {
+		Pressure int16
+	}](p, "pressure"); ok {
+		for _, pressure := range pressures {
+			decorators = append(decorators, SensorValue(float64(pressure.Pressure)))
 		}
 	}
 
@@ -136,26 +130,26 @@ func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 		return fmt.Errorf("could not get any pressure values for device %s", deviceID)
 	}
 
-	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3323", p.Timestamp(), decorators...)
-	return fn(pack)
+	return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3323", p.Timestamp(), decorators...))
 }
 
 func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	var decorators []SenMLDecoratorFunc
+	SensorValue := func(v float64) SenMLDecoratorFunc { return Rec("5700", &v, nil, "", nil, senml.UnitSiemensPerMeter, nil) }
 
-	if r, ok := p.Get("resistance"); ok {
-		if resistances, ok := r.(struct {
-			Resistance []int32
-		}); ok {
-			for _, resistance := range resistances.Resistance {
-				decorators = append(decorators, Value("Conductivity", 1/float64(resistance)))
+	if resistances, ok := payload.GetSlice[struct {
+		Resistance int32
+	}](p, "resistance"); ok {
+		for _, r := range resistances {
+			if r.Resistance != 0 {
+				decorators = append(decorators, SensorValue(1/float64(r.Resistance)))
 			}
 		}
 	}
+
 	if len(decorators) == 0 {
 		return fmt.Errorf("could not get any conductivity values for device %s", deviceID)
 	}
 
-	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3327", p.Timestamp(), decorators...)
-	return fn(pack)
+	return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3327", p.Timestamp(), decorators...))
 }

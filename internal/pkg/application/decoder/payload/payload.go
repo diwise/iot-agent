@@ -103,6 +103,35 @@ func Get[T any](p Payload, name string) (T, bool) {
 	return result, false
 }
 
+func GetSlice[T any](p Payload, key string) ([]T, bool) {
+	data := make([]T, 0)
+	if values, ok := p.Get(key); ok {
+		if _values, ok := values.([]interface{}); ok {
+			for _, v := range _values {
+				if d, ok := v.(T); ok {
+					data = append(data, d)
+				} else {
+					return nil, false
+				}
+			}
+		} else {
+			if _values, ok := values.(T); ok {
+				data = append(data, _values)
+			} else {
+				return nil, false
+			}
+		}
+	} else {
+		return nil, false
+	}
+
+	if len(data) > 0 {
+		return data, true
+	}
+
+	return nil, false
+}
+
 func BatteryVoltage(b int) PayloadDecoratorFunc {
 	return BatteryLevel(b)
 }
@@ -228,19 +257,19 @@ func ProtocolVersion(v int8) PayloadDecoratorFunc {
 	})
 }
 
-func Resistance(r []int32) PayloadDecoratorFunc {
-	return S("resistance", struct {
-		Resistance []int32
+func Resistance(r int32) PayloadDecoratorFunc {
+	return M("resistance", struct {
+		Resistance int32
 	}{
 		r,
 	})
 }
 
-func SoilMoisture(sm []int16) PayloadDecoratorFunc {
-	return S("soilMoisture", struct {
-		SoilMoisture []int16
+func Pressure(p int16) PayloadDecoratorFunc {
+	return M("pressure", struct {
+		Pressure int16
 	}{
-		sm,
+		p,
 	})
 }
 

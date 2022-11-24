@@ -33,18 +33,32 @@ func SensefarmBasicDecoder(ctx context.Context, ue application.SensorEvent, fn f
 		return err
 	}
 
-	p, err := payload.New(ue.DevEui, ue.Timestamp,
+	decorators := []payload.PayloadDecoratorFunc{
 		payload.TransmissionReason(psf.TransmissionReason),
 		payload.ProtocolVersion(int8(psf.ProtocolVersion)),
 		payload.BatteryVoltage(int(psf.BatteryVoltage)),
-		payload.Resistance(psf.Resistances),
-		payload.SoilMoisture(psf.SoilMoistures),
-		payload.Temperature(float64(psf.Temperature)))
+		payload.Temperature(float64(psf.Temperature))}
+
+	forEach(psf.Resistances, func(v int32) {
+		decorators = append(decorators, payload.Resistance(v))
+	})
+
+	forEach(psf.SoilMoistures, func(v int16) {
+		decorators = append(decorators, payload.Pressure(v))
+	})
+
+	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
 	if err != nil {
 		return err
 	}
 
 	return fn(ctx, p)
+}
+
+func forEach[T int32 | int16](a []T, fn func(v T)) {
+	for _, v := range a {
+		fn(v)
+	}
 }
 
 func decodeSensefarmPayload(b []byte, p *payloadSensefarm) error {
