@@ -18,7 +18,7 @@ func DefaultDecoder(ctx context.Context, ue application.SensorEvent, fn func(con
 		return err
 	}
 
-	log.Info().Msgf("default decoder used for devEUI %s", ue.DevEui)
+	log.Info().Msgf("default decoder used for devEUI %s of type %s", ue.DevEui, ue.SensorType)
 
 	return fn(ctx, p)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/messageprocessor"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 //go:generate moq -rm -out iotagent_mock.go . IoTAgent
@@ -51,6 +52,9 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 	if err != nil {
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
+
+	log := logging.GetFromContext(ctx)
+	log.Debug().Msgf("MessageReceived with device %s of type %s", device.ID(), device.SensorType())
 
 	decoderFn := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 

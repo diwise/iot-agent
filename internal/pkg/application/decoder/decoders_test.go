@@ -78,7 +78,12 @@ func TestEnviotDecoder(t *testing.T) {
 	})
 
 	is.NoErr(err)
-	is.Equal(len(r.Measurements()), 4) // expected four measurements
+	temp, _ := Get[float64](r, "temperature")
+	is.Equal(temp, 11.5)
+	humidity, _ := Get[int](r, "humidity")
+	is.Equal(humidity, 85)
+	batterylevel, _ := Get[int](r, "batterylevel")
+	is.Equal(batterylevel, 86)
 }
 
 func TestSensefarmBasicDecoder(t *testing.T) {
@@ -94,6 +99,8 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 	is.NoErr(err)
 	ts, _ := time.Parse(time.RFC3339Nano, "2022-08-25T06:40:56.785171Z")
 	is.Equal(r.Timestamp(), ts)
+	s, _ := Get[[]int16](r, "soilmoisture")
+	is.Equal(s[0], int16(6))
 }
 
 func TestPresenceSensorReading(t *testing.T) {
@@ -117,21 +124,13 @@ func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	err := json.Unmarshal([]byte(livboj_checkin), &ue)
 	is.NoErr(err)
 
+	var r Payload
 	err = PresenceDecoder(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
 		return nil
 	})
 	is.NoErr(err)
-}
-
-func TestTimeStringConvert(t *testing.T) {
-	is, _ := testSetup(t)
-
-	tm, err := time.Parse(time.RFC3339, "1978-07-04T21:24:16.000000Z")
-
-	min := tm.Unix()
-
-	is.True(min == 268435456)
-	is.NoErr(err)
+	is.True(r != nil)
 }
 
 func TestDefaultDecoder(t *testing.T) {
@@ -159,12 +158,17 @@ func TestQalcosonic_w1t(t *testing.T) {
 	is.NoErr(err)
 	is.True(r != nil)
 	is.Equal("116c52b4274f", r.DevEui())
-	is.Equal(float64(302578), r.ValueOf("CurrentVolume"))
-	is.Equal(r.ValueOf("CurrentTime"), toT("2020-09-09T12:32:21Z"))
-	is.Equal(r.ValueOf("LogDateTime"), toT("2020-09-08T22:00:00Z"))
-	is.Equal(float64(2578), r.ValueOf("temperature"))
-	v, _ := Get[float64](r, "temperature")
-	is.Equal(v, float64(2578))
+	temp, _ := Get[float64](r, "temperature")
+	is.Equal(float64(2578), temp)
+	timestamp, _ := Get[time.Time](r, "timestamp")
+	is.Equal(timestamp, toT("2020-09-09T12:32:21Z"))            // time for reading
+	is.Equal(r.Timestamp(), toT("2022-08-25T07:35:21.834484Z")) // time from gateway
+	volume := volumes(r)
+	is.Equal(16, len(volume))
+	is.Equal(float64(0), volume[0].Volume)
+	is.Equal(float64(284554), volume[0].Cumulated)
+	is.Equal(float64(volume[0].Cumulated+volume[1].Volume), volume[1].Cumulated)
+	is.Equal(volume[0].Time, toT("2020-09-08T22:00:00Z"))
 }
 
 func TestQalcosonic_w1h(t *testing.T) {
@@ -179,10 +183,15 @@ func TestQalcosonic_w1h(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
-	is.Equal(r.ValueOf("CurrentTime"), toT("2020-05-29T07:51:59Z"))
-	is.Equal(r.ValueOf("LogDateTime"), toT("2020-05-29T01:00:00Z"))
-	is.Equal(r.ValueOf("LogVolume"), float64(528333))
 	is.Equal(r.Status().Code, 48)
+	timestamp, _ := Get[time.Time](r, "timestamp")
+	is.Equal(timestamp, toT("2020-05-29T07:51:59Z")) // time for reading
+	volume := volumes(r)
+	is.Equal(24, len(volume))
+	is.Equal(float64(0), volume[0].Volume)
+	is.Equal(float64(528333), volume[0].Cumulated)
+	is.Equal(float64(volume[0].Cumulated+volume[1].Volume), volume[1].Cumulated)
+	is.Equal(volume[0].Time, toT("2020-05-28T01:00:00Z"))
 }
 
 func TestQalcosonic_w1e(t *testing.T) {
@@ -198,9 +207,15 @@ func TestQalcosonic_w1e(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
-	is.Equal(r.ValueOf("CurrentTime"), toT("2019-07-22T11:37:50Z"))
-	is.Equal(r.ValueOf("CurrentVolume"), float64(13609))
 	is.Equal(r.Status().Code, 0x30)
+	timestamp, _ := Get[time.Time](r, "timestamp")
+	is.Equal(timestamp, toT("2019-07-22T11:37:50Z")) // time for reading
+	volume := volumes(r)
+	is.Equal(17, len(volume))
+	is.Equal(float64(0), volume[0].Volume)
+	is.Equal(float64(10727), volume[0].Cumulated)
+	is.Equal(float64(volume[0].Cumulated+volume[1].Volume), volume[1].Cumulated)
+	is.Equal(volume[0].Time, toT("2019-07-21T19:00:00Z"))
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
@@ -264,6 +279,29 @@ func toT(s any) time.Time {
 	} else {
 		panic(fmt.Errorf("could not cast to string"))
 	}
+}
+
+func volumes(p Payload) []struct {
+	Volume    float64
+	Cumulated float64
+	Time      time.Time
+} {
+	var data []struct {
+		Volume    float64
+		Cumulated float64
+		Time      time.Time
+	}
+	volume, _ := p.Get("volume")
+	vol, _ := volume.([]interface{})
+	for _, v := range vol {
+		d, _ := v.(struct {
+			Volume    float64
+			Cumulated float64
+			Time      time.Time
+		})
+		data = append(data, d)
+	}
+	return data
 }
 
 const senlabT string = `[{

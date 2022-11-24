@@ -40,7 +40,7 @@ func EnviotDecoder(ctx context.Context, ue application.SensorEvent, fn func(cont
 	}
 
 	if obj.Payload.SensorStatus == 0 && obj.Payload.SnowHeight != nil {
-		decorators = append(decorators, payload.Humidity(*obj.Payload.SnowHeight))
+		decorators = append(decorators, payload.SnowHeight(*obj.Payload.SnowHeight))
 	}
 
 	decorators = append(decorators, payload.Status(uint8(obj.Payload.SensorStatus), nil))

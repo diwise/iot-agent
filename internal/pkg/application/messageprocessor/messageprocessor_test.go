@@ -57,8 +57,12 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conver
 	cr := &conversion.ConverterRegistryMock{
 		DesignateConvertersFunc: func(ctx context.Context, types []string) []conversion.MessageConverterFunc {
 			return []conversion.MessageConverterFunc{
-				func(ctx context.Context, internalID string, p payload.Payload) (senml.Pack, error) {
-					return senml.Pack{}, nil
+				func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error {
+					fn(senml.Pack{senml.Record{
+						Name:        "0",
+						StringValue: "internalID",
+					}})
+					return nil
 				},
 			}
 		},

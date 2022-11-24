@@ -3,7 +3,7 @@ module github.com/diwise/iot-agent
 go 1.19
 
 require (
-	github.com/diwise/iot-device-mgmt v0.0.0-20221101222213-4920eac457a7
+	github.com/diwise/iot-device-mgmt v0.0.0-20221123140801-b89d66f53276
 	github.com/diwise/messaging-golang v0.0.0-20220923095330-874218800e05
 	github.com/diwise/service-chassis v0.0.0-20221102141400-67da00b28e7a
 	github.com/eclipse/paho.mqtt.golang v1.4.2
@@ -41,7 +41,7 @@ require (
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
-	github.com/diwise/iot-core v0.0.0-20221110213314-85653e8b214c
+	github.com/diwise/iot-core v0.0.0-20221123125029-21919f70c7e8
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
