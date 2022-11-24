@@ -103,7 +103,7 @@ func Get[T any](p Payload, name string) (T, bool) {
 	return result, false
 }
 
-func GetSlice[T any](p Payload, key string) []T {
+func GetSlice[T any](p Payload, key string) ([]T, bool) {
 	data := make([]T, 0)
 	if values, ok := p.Get(key); ok {
 		if _values, ok := values.([]interface{}); ok {
@@ -111,25 +111,25 @@ func GetSlice[T any](p Payload, key string) []T {
 				if d, ok := v.(T); ok {
 					data = append(data, d)
 				} else {
-					return nil
+					return nil, false
 				}
 			}
 		} else {
 			if _values, ok := values.(T); ok {
 				data = append(data, _values)
 			} else {
-				return nil
+				return nil, false
 			}
 		}
 	} else {
-		return nil
+		return nil, false
 	}
 
 	if len(data) > 0 {
-		return data
+		return data, true
 	}
 
-	return nil
+	return nil, false
 }
 
 func BatteryVoltage(b int) PayloadDecoratorFunc {

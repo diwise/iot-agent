@@ -100,12 +100,12 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 	ts, _ := time.Parse(time.RFC3339Nano, "2022-08-25T06:40:56.785171Z")
 	is.Equal(r.Timestamp(), ts)
 
-	s := GetSlice[struct {
+	s, _ := GetSlice[struct {
 		Pressure int16
 	}](r, "pressure")
 	is.Equal(s[0].Pressure, int16(6))
 
-	ohm := GetSlice[struct {
+	ohm, _ := GetSlice[struct {
 		Resistance int32
 	}](r, "resistance")
 	is.Equal(ohm[0].Resistance, int32(815))
@@ -171,16 +171,16 @@ func TestQalcosonic_w1t(t *testing.T) {
 	timestamp, _ := Get[time.Time](r, "timestamp")
 	is.Equal(timestamp, toT("2020-09-09T12:32:21Z"))            // time for reading
 	is.Equal(r.Timestamp(), toT("2022-08-25T07:35:21.834484Z")) // time from gateway
-	volume := GetSlice[struct {
+	volumes, _ := GetSlice[struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
 	}](r, "volume")
-	is.Equal(16, len(volume))
-	is.Equal(float64(0), volume[0].Volume)
-	is.Equal(float64(284554), volume[0].Cumulated)
-	is.Equal(float64(volume[0].Cumulated+volume[1].Volume), volume[1].Cumulated)
-	is.Equal(volume[0].Time, toT("2020-09-08T22:00:00Z"))
+	is.Equal(16, len(volumes))
+	is.Equal(float64(0), volumes[0].Volume)
+	is.Equal(float64(284554), volumes[0].Cumulated)
+	is.Equal(float64(volumes[0].Cumulated+volumes[1].Volume), volumes[1].Cumulated)
+	is.Equal(volumes[0].Time, toT("2020-09-08T22:00:00Z"))
 }
 
 func TestQalcosonic_w1h(t *testing.T) {
@@ -198,16 +198,16 @@ func TestQalcosonic_w1h(t *testing.T) {
 	is.Equal(r.Status().Code, 48)
 	timestamp, _ := Get[time.Time](r, "timestamp")
 	is.Equal(timestamp, toT("2020-05-29T07:51:59Z")) // time for reading
-	volume := GetSlice[struct {
+	volumes, _ := GetSlice[struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
 	}](r, "volume")
-	is.Equal(24, len(volume))
-	is.Equal(float64(0), volume[0].Volume)
-	is.Equal(float64(528333), volume[0].Cumulated)
-	is.Equal(float64(volume[0].Cumulated+volume[1].Volume), volume[1].Cumulated)
-	is.Equal(volume[0].Time, toT("2020-05-28T01:00:00Z"))
+	is.Equal(24, len(volumes))
+	is.Equal(float64(0), volumes[0].Volume)
+	is.Equal(float64(528333), volumes[0].Cumulated)
+	is.Equal(float64(volumes[0].Cumulated+volumes[1].Volume), volumes[1].Cumulated)
+	is.Equal(volumes[0].Time, toT("2020-05-28T01:00:00Z"))
 }
 
 func TestQalcosonic_w1e(t *testing.T) {
@@ -226,16 +226,16 @@ func TestQalcosonic_w1e(t *testing.T) {
 	is.Equal(r.Status().Code, 0x30)
 	timestamp, _ := Get[time.Time](r, "timestamp")
 	is.Equal(timestamp, toT("2019-07-22T11:37:50Z")) // time for reading
-	volume := GetSlice[struct {
+	volumes, _ := GetSlice[struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
 	}](r, "volume")
-	is.Equal(17, len(volume))
-	is.Equal(float64(0), volume[0].Volume)
-	is.Equal(float64(10727), volume[0].Cumulated)
-	is.Equal(float64(volume[0].Cumulated+volume[1].Volume), volume[1].Cumulated)
-	is.Equal(volume[0].Time, toT("2019-07-21T19:00:00Z"))
+	is.Equal(17, len(volumes))
+	is.Equal(float64(0), volumes[0].Volume)
+	is.Equal(float64(10727), volumes[0].Cumulated)
+	is.Equal(float64(volumes[0].Cumulated+volumes[1].Volume), volumes[1].Cumulated)
+	is.Equal(volumes[0].Time, toT("2019-07-21T19:00:00Z"))
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
@@ -291,10 +291,10 @@ func TestGetSlice(t *testing.T) {
 	s, _ := Get[int](p, "s")
 	is.Equal(1, s)
 
-	m := GetSlice[struct{ M int }](p, "m")
+	m, _ := GetSlice[struct{ M int }](p, "m")
 	is.Equal(1, m[0].M)
 
-	m2 := GetSlice[struct{ S int }](p, "s")
+	m2, _ := GetSlice[struct{ S int }](p, "s")
 	is.Equal(1, m2[0].S)
 }
 

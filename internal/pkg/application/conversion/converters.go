@@ -75,11 +75,11 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		return false
 	}
 
-	if volumes := payload.GetSlice[struct {
+	if volumes, ok := payload.GetSlice[struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
-	}](p, "volume"); volumes != nil {
+	}](p, "volume"); ok {
 		for _, v := range volumes {
 			volm3 := roundFloat(v.Volume * 0.001)
 			summ3 := roundFloat(v.Cumulated * 0.001)
@@ -94,7 +94,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 	if contains(p.Status().Messages, "Leak") {
 		decorators = append(decorators, LeakDetected(true))
 	}
-	
+
 	if contains(p.Status().Messages, "Backflow") {
 		decorators = append(decorators, BackFlowDetected(true))
 	}
@@ -118,9 +118,9 @@ func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	var decorators []SenMLDecoratorFunc
 	SensorValue := func(v float64) SenMLDecoratorFunc { return Rec("5700", &v, nil, "", nil, "kPa", nil) } // TODO: kPa not in senml units
 
-	if pressures := payload.GetSlice[struct {
+	if pressures, ok := payload.GetSlice[struct {
 		Pressure int16
-	}](p, "pressure"); pressures != nil {
+	}](p, "pressure"); ok {
 		for _, pressure := range pressures {
 			decorators = append(decorators, SensorValue(float64(pressure.Pressure)))
 		}
@@ -137,9 +137,9 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 	var decorators []SenMLDecoratorFunc
 	SensorValue := func(v float64) SenMLDecoratorFunc { return Rec("5700", &v, nil, "", nil, senml.UnitSiemensPerMeter, nil) }
 
-	if resistances := payload.GetSlice[struct {
+	if resistances, ok := payload.GetSlice[struct {
 		Resistance int32
-	}](p, "resistance"); resistances != nil {
+	}](p, "resistance"); ok {
 		for _, r := range resistances {
 			if r.Resistance != 0 {
 				decorators = append(decorators, SensorValue(1/float64(r.Resistance)))
