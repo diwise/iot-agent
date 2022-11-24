@@ -44,10 +44,10 @@ func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 }
 
 func Illuminance(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	Illuminance := func(l int) SenMLDecoratorFunc { return Value("5700", float64(l)) }
+	SensorValue := func(l int) SenMLDecoratorFunc { return Value("5700", float64(l)) }
 
 	if i, ok := payload.Get[int](p, "light"); ok {
-		return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3301", p.Timestamp(), Illuminance(i)))
+		return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3301", p.Timestamp(), SensorValue(i)))
 	} else {
 		return fmt.Errorf("could not get light level for device %s", deviceID)
 	}
