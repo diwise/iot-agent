@@ -43,10 +43,18 @@ func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	}
 }
 
-func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	CumulatedWaterVolume := func(v, sum float64, t time.Time) SenMLDecoratorFunc {
-		return Rec("1", &v, &sum, "", &t, senml.UnitCubicMeter, nil)
+func Illuminance(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	SensorValue := func(l int) SenMLDecoratorFunc { return Value("5700", float64(l)) }
+
+	if i, ok := payload.Get[int](p, "light"); ok {
+		return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3301", p.Timestamp(), SensorValue(i)))
+	} else {
+		return fmt.Errorf("could not get light level for device %s", deviceID)
 	}
+}
+
+func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	CumulatedWaterVolume := func(v, sum float64, t time.Time) SenMLDecoratorFunc { return Rec("1", &v, &sum, "", &t, senml.UnitCubicMeter, nil)	}
 	TypeOfMeter := func(vs string) SenMLDecoratorFunc { return Rec("3", nil, nil, vs, nil, "", nil) }
 	LeakDetected := func(vb bool) SenMLDecoratorFunc { return BoolValue("10", vb) }
 	BackFlowDetected := func(vb bool) SenMLDecoratorFunc { return BoolValue("11", vb) }
@@ -86,6 +94,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 	if contains(p.Status().Messages, "Leak") {
 		decorators = append(decorators, LeakDetected(true))
 	}
+	
 	if contains(p.Status().Messages, "Backflow") {
 		decorators = append(decorators, BackFlowDetected(true))
 	}

@@ -16,7 +16,7 @@ func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(conte
 		Vdd                 *int     `json:"vdd,omitempty"`
 		CO2                 *int     `json:"co2,omitempty"`
 		Humidity            *int     `json:"humidity,omitempty"`
-		Light               *int     `json:"lights,omitempty"`
+		Light               *int     `json:"light,omitempty"`
 		Motion              *int     `json:"motion,omitempty"`
 	}{}
 

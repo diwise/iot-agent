@@ -17,12 +17,13 @@ type converterRegistry struct {
 func NewConverterRegistry() ConverterRegistry {
 
 	converters := map[string]MessageConverterFunc{
-		lwm2m.Temperature:  Temperature,
-		lwm2m.AirQuality:   AirQuality,
-		lwm2m.Presence:     Presence,
-		lwm2m.Watermeter:   Watermeter,
-		lwm2m.Pressure:     Pressure,
-		lwm2m.Conductivity: Conductivity,
+		lwm2m.Temperature:        Temperature,
+		lwm2m.AirQuality:         AirQuality,
+		lwm2m.Presence:           Presence,
+		lwm2m.Watermeter:         Watermeter,
+		lwm2m.Pressure:           Pressure,
+		lwm2m.Conductivity:       Conductivity,
+		"urn:oma:lwm2m:ext:3301": Illuminance,
 	}
 
 	return &converterRegistry{
