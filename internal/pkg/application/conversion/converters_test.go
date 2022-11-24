@@ -13,7 +13,7 @@ import (
 	"github.com/matryer/is"
 )
 
-func TestThatTemperatureDecodesValueCorrectly(t *testing.T) {
+func TestThatTemperatureConvertsValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Temperature(22.2))
 
@@ -27,7 +27,7 @@ func TestThatTemperatureDecodesValueCorrectly(t *testing.T) {
 	is.Equal(22.2, *msg[1].Value)
 }
 
-func TestThatCO2DecodesValueCorrectly(t *testing.T) {
+func TestThatCO2DConvertsValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.CO2(22))
 
@@ -41,7 +41,7 @@ func TestThatCO2DecodesValueCorrectly(t *testing.T) {
 	is.Equal(float64(22), *msg[1].Value)
 }
 
-func TestThatPresenceDecodesValueCorrectly(t *testing.T) {
+func TestThatPresenceConvertsValueCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Presence(true))
 
@@ -55,7 +55,7 @@ func TestThatPresenceDecodesValueCorrectly(t *testing.T) {
 	is.True(*msg[1].BoolValue)
 }
 
-func TestThatWatermeterDecodesW1hValuesCorrectly(t *testing.T) {
+func TestThatWatermeterConvertsW1hValuesCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 
 	var p payload.Payload
@@ -77,7 +77,7 @@ func TestThatWatermeterDecodesW1hValuesCorrectly(t *testing.T) {
 	is.Equal(toT("2020-05-28T01:00:00Z").Unix(), int64(msg[1].Time))
 }
 
-func TestThatWatermeterDecodesW1eValuesCorrectly(t *testing.T) {
+func TestThatWatermeterConvertsW1eValuesCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 
 	var p payload.Payload
@@ -99,7 +99,7 @@ func TestThatWatermeterDecodesW1eValuesCorrectly(t *testing.T) {
 	is.Equal(toT("2019-07-21T19:00:00Z").Unix(), int64(msg[1].Time))
 }
 
-func TestThatWatermeterDecodesW1tValuesCorrectly(t *testing.T) {
+func TestThatWatermeterConvertsW1tValuesCorrectly(t *testing.T) {
 	is, ctx := mcmTestSetup(t)
 
 	var p payload.Payload

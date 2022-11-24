@@ -38,7 +38,7 @@ func TestProcessMessageWorksWithValidTemperatureInput(t *testing.T) {
 
 	err := mp.ProcessMessage(context.Background(), newPayload())
 	is.NoErr(err)
-	//is.Equal(len(ep.SendCalls()), 1) // should have been called once
+	is.Equal(len(ep.SendCalls()), 1) // should have been called once
 }
 
 func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conversion.ConverterRegistry, *events.EventSenderMock) {
@@ -58,6 +58,10 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conver
 		DesignateConvertersFunc: func(ctx context.Context, types []string) []conversion.MessageConverterFunc {
 			return []conversion.MessageConverterFunc{
 				func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error {
+					fn(senml.Pack{senml.Record{
+						Name:        "0",
+						StringValue: "internalID",
+					}})
 					return nil
 				},
 			}

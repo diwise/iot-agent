@@ -13,61 +13,41 @@ import (
 
 type MessageConverterFunc func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error
 
-func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	/*
-		ObjectURN: urn:oma:lwm2m:ext:3303
-		ID      Name            Type     Unit
-		5700    Sensor Value    Float
-	*/
+func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {	
+	SensorValue := func(v float64) SenMLDecoratorFunc { return Value("5700", v) }
 
 	if temp, ok := payload.Get[float64](p, "temperature"); ok {
-		pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3303", p.Timestamp(), Value("5700", temp))
-		return fn(pack)
+		return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3303", p.Timestamp(), SensorValue(temp)))
 	} else {
 		return fmt.Errorf("could not get temperature for device %s", deviceID)
 	}
 }
 
 func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	/*
-		ObjectURN: urn:oma:lwm2m:ext:3428
-		ID  Name    Type    Unit
-		17  CO2     Float   ppm
-	*/
+	CO2 := func(v int) SenMLDecoratorFunc { return Value("17", float64(v)) }
 
 	if c, ok := payload.Get[int](p, "co2"); ok {
-		co2 := float64(c)
-		pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3428", p.Timestamp(), Value("17", co2))
-		return fn(pack)
+		return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3428", p.Timestamp(), CO2(c)))
 	} else {
 		return fmt.Errorf("could not get co2 for device %s", deviceID)
 	}
 }
 
-func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	/*
-		ObjectURN: urn:oma:lwm2m:ext:3302
-		ID      Name                    Type       Unit
-		5500    Digital Input State     Boolean
-	*/
+func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {	
+	DigitalInputState := func(vb bool) SenMLDecoratorFunc { return BoolValue("5500", vb) }
 
 	if b, ok := payload.Get[bool](p, "presence"); ok {
-		pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3302", p.Timestamp(), BoolValue("5500", b))
-		return fn(pack)
+		return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3302", p.Timestamp(), DigitalInputState(b)))
 	} else {
 		return fmt.Errorf("could not get presence for device %s", deviceID)
 	}
 }
 
-func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	/*
-		ObjectURN: urn:oma:lwm2m:ext:3424
-		ID   Name                       Type        Unit
-		1    Cumulated water volume     Float       m3
-		3    Type of meter              String
-		10   Leak detected              Boolean
-		11   Back flow detected         Boolean
-	*/
+func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {	
+	CumulatedWaterVolume := func(v, sum float64, t time.Time) SenMLDecoratorFunc { return Rec("1", &v, &sum, "", &t, senml.UnitCubicMeter, nil)}
+	TypeOfMeter := func(vs string) SenMLDecoratorFunc { return Rec("3", nil, nil, vs, nil, "", nil) }
+	LeakDetected := func(vb bool) SenMLDecoratorFunc { return BoolValue("10", vb) }
+	BackFlowDetected := func(vb bool) SenMLDecoratorFunc { return BoolValue("11", vb) }
 
 	var decorators []SenMLDecoratorFunc
 
@@ -95,22 +75,21 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 				}); ok {
 					volm3 := roundFloat(v.Volume * 0.001)
 					summ3 := roundFloat(v.Cumulated * 0.001)
-					decorators = append(decorators, Rec("1", &volm3, &summ3, "", &v.Time, senml.UnitCubicMeter, nil))
+					decorators = append(decorators, CumulatedWaterVolume(volm3, summ3, v.Time))
 				}
 			}
 		}
 	}
 
 	if t, ok := payload.Get[string](p, "type"); ok {
-		decorators = append(decorators, Rec("3", nil, nil, t, nil, "", nil))
+		decorators = append(decorators, TypeOfMeter(t))
 	}
-
-	t := true
+	
 	if contains(p.Status().Messages, "Leak") {
-		decorators = append(decorators, Rec("10", nil, nil, "", nil, "", &t))
+		decorators = append(decorators, LeakDetected(true))
 	}
 	if contains(p.Status().Messages, "Backflow") {
-		decorators = append(decorators, Rec("11", nil, nil, "", nil, "", &t))
+		decorators = append(decorators, BackFlowDetected(true))
 	}
 
 	if len(decorators) == 0 {
@@ -125,9 +104,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		timestamp = p.Timestamp()
 	}
 
-	pack := NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3424", timestamp, decorators...)
-
-	return fn(pack)
+	return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3424", timestamp, decorators...))
 }
 
 func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {

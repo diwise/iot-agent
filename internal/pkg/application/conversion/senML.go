@@ -39,9 +39,7 @@ func BoolValue(n string, vb bool) SenMLDecoratorFunc {
 
 func Rec(n string, v, sum *float64, vs string, t *time.Time, u string, vb *bool) SenMLDecoratorFunc {
 	var tm float64
-	if t == nil {
-		tm = 0
-	} else {
+	if t != nil {
 		tm = float64(t.Unix())
 	}
 	
