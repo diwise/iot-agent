@@ -12,7 +12,7 @@ const (
 	PresenceURN     string = "urn:oma:lwm2m:ext:3302"
 	PressureURN     string = "urn:oma:lwm2m:ext:3323"
 	TemperatureURN  string = "urn:oma:lwm2m:ext:3303"
-	WaterMeterURN   string = "urn:oma:lwm2m:ext:3424"
+	WatermeterURN   string = "urn:oma:lwm2m:ext:3424"
 )
 
 type ConverterRegistry interface {
@@ -29,7 +29,7 @@ func NewConverterRegistry() ConverterRegistry {
 		TemperatureURN:  Temperature,
 		AirQualityURN:   AirQuality,
 		PresenceURN:     Presence,
-		WaterMeterURN:   WaterMeter,
+		WatermeterURN:   Watermeter,
 		PressureURN:     Pressure,
 		ConductivityURN: Conductivity,
 		IlluminanceURN:  Illuminance,

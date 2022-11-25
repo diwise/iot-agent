@@ -53,7 +53,7 @@ func Illuminance(ctx context.Context, deviceID string, p payload.Payload, fn fun
 	}
 }
 
-func WaterMeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	CumulatedWaterVolume := func(v, sum float64, t time.Time) SenMLDecoratorFunc {
 		return Rec("1", &v, &sum, "", &t, senml.UnitCubicMeter, nil)
 	}
@@ -113,7 +113,7 @@ func WaterMeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		timestamp = p.Timestamp()
 	}
 
-	return fn(NewSenMLPack(deviceID, WaterMeterURN, timestamp, decorators...))
+	return fn(NewSenMLPack(deviceID, WatermeterURN, timestamp, decorators...))
 }
 
 func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
@@ -160,7 +160,7 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 
 func Humidity(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	SensorValue := func(v float64) SenMLDecoratorFunc {
-		return Rec("5700", &v, nil, "", nil, senml.UnitSiemensPerMeter, nil)
+		return Rec("5700", &v, nil, "", nil, senml.UnitRelativeHumidity, nil)
 	}
 
 	if h, ok := payload.Get[int](p, "humidity"); ok {
