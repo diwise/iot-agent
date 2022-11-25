@@ -117,14 +117,17 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 }
 
 func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	var decorators []SenMLDecoratorFunc
-	SensorValue := func(v float64) SenMLDecoratorFunc { return Rec("5700", &v, nil, "", nil, "kPa", nil) } // TODO: kPa not in senml units
+	var decorators []SenMLDecoratorFunc	
+	SensorValue := func(v int16) SenMLDecoratorFunc { 
+		f := float64(v)
+		return Rec("5700", &f, nil, "", nil, "kPa", nil) 
+	} // TODO: kPa not in senml units
 
 	if pressures, ok := payload.GetSlice[struct {
 		Pressure int16
 	}](p, "pressure"); ok {
 		for _, pressure := range pressures {
-			decorators = append(decorators, SensorValue(float64(pressure.Pressure)))
+			decorators = append(decorators, SensorValue(pressure.Pressure))
 		}
 	}
 
@@ -159,12 +162,13 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 }
 
 func Humidity(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	SensorValue := func(v float64) SenMLDecoratorFunc {
-		return Rec("5700", &v, nil, "", nil, senml.UnitRelativeHumidity, nil)
+	SensorValue := func(v int) SenMLDecoratorFunc {
+		f := float64(v)
+		return Rec("5700", &f, nil, "", nil, senml.UnitRelativeHumidity, nil)
 	}
 
 	if h, ok := payload.Get[int](p, "humidity"); ok {
-		return fn(NewSenMLPack(deviceID, HumidityURN, p.Timestamp(), SensorValue(float64(h))))
+		return fn(NewSenMLPack(deviceID, HumidityURN, p.Timestamp(), SensorValue(h)))
 	} else {
 		return fmt.Errorf("could not get humidity for device %s", deviceID)
 	}
