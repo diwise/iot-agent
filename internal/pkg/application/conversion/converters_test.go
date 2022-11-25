@@ -80,13 +80,13 @@ func TestThatWatermeterConvertsW1hValuesCorrectly(t *testing.T) {
 	})
 
 	var msg senml.Pack
-	err := Watermeter(ctx, "deviceID", p, func(p senml.Pack) error {
+	err := WaterMeter(ctx, "deviceID", p, func(p senml.Pack) error {
 		msg = p
 		return nil
 	})
 
 	is.NoErr(err)
-	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
+	is.Equal(WaterMeterURN, msg[0].BaseName)
 	is.Equal(float64(528.333), *msg[1].Sum)
 	is.Equal(toT("2020-05-28T01:00:00Z").Unix(), int64(msg[1].Time))
 }
@@ -102,13 +102,13 @@ func TestThatWatermeterConvertsW1eValuesCorrectly(t *testing.T) {
 	})
 
 	var msg senml.Pack
-	err := Watermeter(ctx, "deviceID", p, func(p senml.Pack) error {
+	err := WaterMeter(ctx, "deviceID", p, func(p senml.Pack) error {
 		msg = p
 		return nil
 	})
 
 	is.NoErr(err)
-	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
+	is.Equal(WaterMeterURN, msg[0].BaseName)
 	is.Equal(float64(10.727), *msg[1].Sum)
 	is.Equal(toT("2019-07-21T19:00:00Z").Unix(), int64(msg[1].Time))
 }
@@ -124,13 +124,13 @@ func TestThatWatermeterConvertsW1tValuesCorrectly(t *testing.T) {
 	})
 
 	var msg senml.Pack
-	err := Watermeter(ctx, "deviceID", p, func(p senml.Pack) error {
+	err := WaterMeter(ctx, "deviceID", p, func(p senml.Pack) error {
 		msg = p
 		return nil
 	})
 
 	is.NoErr(err)
-	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
+	is.Equal(WaterMeterURN, msg[0].BaseName)
 	is.Equal(float64(284.554), *msg[1].Sum)
 	is.Equal(toT("2020-09-08T22:00:00Z").Unix(), int64(msg[1].Time))
 }
@@ -163,13 +163,13 @@ func TestThatSensefarmConvertsPressureAndConductivity(t *testing.T) {
 
 	is.NoErr(err)
 
-	is.Equal(pressure[0].BaseName, "urn:oma:lwm2m:ext:3323")
+	is.Equal(pressure[0].BaseName, PressureURN)
 	is.Equal(pressure[0].Time, float64(0))
 	is.Equal(pressure[0].StringValue, "deviceID")
 	is.Equal(pressure[1].Name, "5700")
 	is.Equal(*pressure[1].Value, float64(6))
 
-	is.Equal(conductivity[0].BaseName, "urn:oma:lwm2m:ext:3327")
+	is.Equal(conductivity[0].BaseName, ConductivityURN)
 	is.Equal(conductivity[0].Time, float64(0))
 	is.Equal(conductivity[0].StringValue, "deviceID")
 
