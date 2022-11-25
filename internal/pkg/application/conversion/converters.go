@@ -153,3 +153,13 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 
 	return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3327", p.Timestamp(), decorators...))
 }
+
+func Humidity(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {	
+	SensorValue := func(v float64) SenMLDecoratorFunc { return Rec("5700", &v, nil, "", nil, senml.UnitSiemensPerMeter, nil) }
+
+	if h, ok := payload.Get[int](p, "humidity"); ok {
+		return fn(NewSenMLPack(deviceID, "urn:oma:lwm2m:ext:3304", p.Timestamp(), SensorValue(float64(h))))
+	} else {
+		return fmt.Errorf("could not get humidity for device %s", deviceID)
+	}	
+}

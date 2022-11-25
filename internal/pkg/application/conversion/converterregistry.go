@@ -24,6 +24,7 @@ func NewConverterRegistry() ConverterRegistry {
 		lwm2m.Pressure:           Pressure,
 		lwm2m.Conductivity:       Conductivity,
 		"urn:oma:lwm2m:ext:3301": Illuminance,
+		"urn:oma:lwm2m:ext:3304": Humidity,
 	}
 
 	return &converterRegistry{

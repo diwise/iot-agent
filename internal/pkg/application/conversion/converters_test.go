@@ -177,6 +177,20 @@ func TestThatSensefarmConvertsPressureAndConductivity(t *testing.T) {
 	is.Equal(*conductivity[1].Value, float64(0.001226993865030675))
 }
 
+func TestThatHumidityConvertsValueCorrectly(t *testing.T) {
+	is, ctx := mcmTestSetup(t)
+	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Humidity(22))
+
+	var msg senml.Pack
+	err := Humidity(ctx, "internalID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(float64(22), *msg[1].Value)
+}
+
 func mcmTestSetup(t *testing.T) (*is.I, context.Context) {
 	ctx, _ := logging.NewLogger(context.Background(), "test", "")
 	return is.New(t), ctx
