@@ -135,6 +135,48 @@ func TestThatWatermeterConvertsW1tValuesCorrectly(t *testing.T) {
 	is.Equal(toT("2020-09-08T22:00:00Z").Unix(), int64(msg[1].Time))
 }
 
+func TestThatSensefarmConvertsPressureAndConductivity(t *testing.T) {
+	is := is.New(t)
+
+	ctx := context.Background()
+
+	var r payload.Payload
+	ue, _ := application.Netmore([]byte(sensefarm))
+	decoder.SensefarmBasicDecoder(ctx, ue, func(ctx context.Context, p payload.Payload) error {
+		r = p
+		return nil
+	})
+
+	var pressure senml.Pack
+	err := Pressure(ctx, "deviceID", r, func(p senml.Pack) error {
+		pressure = p
+		return nil
+	})
+
+	is.NoErr(err)
+
+	var conductivity senml.Pack
+	err = Conductivity(ctx, "deviceID", r, func(p senml.Pack) error {
+		conductivity = p
+		return nil
+	})
+
+	is.NoErr(err)
+
+	is.Equal(pressure[0].BaseName, "urn:oma:lwm2m:ext:3323")
+	is.Equal(pressure[0].Time, float64(0))
+	is.Equal(pressure[0].StringValue, "deviceID")
+	is.Equal(pressure[1].Name, "5700")
+	is.Equal(*pressure[1].Value, float64(6))
+
+	is.Equal(conductivity[0].BaseName, "urn:oma:lwm2m:ext:3327")
+	is.Equal(conductivity[0].Time, float64(0))
+	is.Equal(conductivity[0].StringValue, "deviceID")
+
+	is.Equal(conductivity[1].Name, "5700")
+	is.Equal(*conductivity[1].Value, float64(0.001226993865030675))
+}
+
 func mcmTestSetup(t *testing.T) (*is.I, context.Context) {
 	ctx, _ := logging.NewLogger(context.Background(), "test", "")
 	return is.New(t), ctx
@@ -248,3 +290,16 @@ const qalcosonic_w1t string = `
   ]
 }]
 `
+const sensefarm string = `[
+	{
+	  "devEui":"71b4d554600002b0",
+	  "sensorType":"cube02",
+	  "timestamp":"2022-08-25T06:40:56.785171Z",
+	  "payload":"b006b800013008e4980000032fa80006990000043aa9000a08418a8bcc",
+	  "spreadingFactor":"12",
+	  "rssi":"-109",
+	  "snr":"-2.5",
+	  "gatewayIdentifier":"126",
+	  "fPort":"2"
+	}
+  ]`
