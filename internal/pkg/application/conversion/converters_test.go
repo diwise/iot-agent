@@ -86,7 +86,7 @@ func TestThatWatermeterConvertsW1hValuesCorrectly(t *testing.T) {
 	})
 
 	is.NoErr(err)
-	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
+	is.Equal(WatermeterURN, msg[0].BaseName)
 	is.Equal(float64(528.333), *msg[1].Sum)
 	is.Equal(toT("2020-05-28T01:00:00Z").Unix(), int64(msg[1].Time))
 }
@@ -108,7 +108,7 @@ func TestThatWatermeterConvertsW1eValuesCorrectly(t *testing.T) {
 	})
 
 	is.NoErr(err)
-	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
+	is.Equal(WatermeterURN, msg[0].BaseName)
 	is.Equal(float64(10.727), *msg[1].Sum)
 	is.Equal(toT("2019-07-21T19:00:00Z").Unix(), int64(msg[1].Time))
 }
@@ -130,9 +130,65 @@ func TestThatWatermeterConvertsW1tValuesCorrectly(t *testing.T) {
 	})
 
 	is.NoErr(err)
-	is.Equal("urn:oma:lwm2m:ext:3424", msg[0].BaseName)
+	is.Equal(WatermeterURN, msg[0].BaseName)
 	is.Equal(float64(284.554), *msg[1].Sum)
 	is.Equal(toT("2020-09-08T22:00:00Z").Unix(), int64(msg[1].Time))
+}
+
+func TestThatSensefarmConvertsPressureAndConductivity(t *testing.T) {
+	is := is.New(t)
+
+	ctx := context.Background()
+
+	var r payload.Payload
+	ue, _ := application.Netmore([]byte(sensefarm))
+	decoder.SensefarmBasicDecoder(ctx, ue, func(ctx context.Context, p payload.Payload) error {
+		r = p
+		return nil
+	})
+
+	var pressure senml.Pack
+	err := Pressure(ctx, "deviceID", r, func(p senml.Pack) error {
+		pressure = p
+		return nil
+	})
+
+	is.NoErr(err)
+
+	var conductivity senml.Pack
+	err = Conductivity(ctx, "deviceID", r, func(p senml.Pack) error {
+		conductivity = p
+		return nil
+	})
+
+	is.NoErr(err)
+
+	is.Equal(pressure[0].BaseName, PressureURN)
+	is.Equal(pressure[0].Time, float64(0))
+	is.Equal(pressure[0].StringValue, "deviceID")
+	is.Equal(pressure[1].Name, "5700")
+	is.Equal(*pressure[1].Value, float64(6))
+
+	is.Equal(conductivity[0].BaseName, ConductivityURN)
+	is.Equal(conductivity[0].Time, float64(0))
+	is.Equal(conductivity[0].StringValue, "deviceID")
+
+	is.Equal(conductivity[1].Name, "5700")
+	is.Equal(*conductivity[1].Value, float64(0.001226993865030675))
+}
+
+func TestThatHumidityConvertsValueCorrectly(t *testing.T) {
+	is, ctx := mcmTestSetup(t)
+	p, _ := payload.New("ncaknlclkdanklcd", toT("2006-01-02T15:04:05Z"), payload.Humidity(22))
+
+	var msg senml.Pack
+	err := Humidity(ctx, "internalID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(float64(22), *msg[1].Value)
 }
 
 func mcmTestSetup(t *testing.T) (*is.I, context.Context) {
@@ -248,3 +304,16 @@ const qalcosonic_w1t string = `
   ]
 }]
 `
+const sensefarm string = `[
+	{
+	  "devEui":"71b4d554600002b0",
+	  "sensorType":"cube02",
+	  "timestamp":"2022-08-25T06:40:56.785171Z",
+	  "payload":"b006b800013008e4980000032fa80006990000043aa9000a08418a8bcc",
+	  "spreadingFactor":"12",
+	  "rssi":"-109",
+	  "snr":"-2.5",
+	  "gatewayIdentifier":"126",
+	  "fPort":"2"
+	}
+  ]`

@@ -2,8 +2,17 @@ package conversion
 
 import (
 	"context"
+)
 
-	lwm2m "github.com/diwise/iot-core/pkg/lwm2m"
+const (
+	AirQualityURN   string = "urn:oma:lwm2m:ext:3428"
+	ConductivityURN string = "urn:oma:lwm2m:ext:3327"
+	HumidityURN     string = "urn:oma:lwm2m:ext:3304"
+	IlluminanceURN  string = "urn:oma:lwm2m:ext:3301"
+	PresenceURN     string = "urn:oma:lwm2m:ext:3302"
+	PressureURN     string = "urn:oma:lwm2m:ext:3323"
+	TemperatureURN  string = "urn:oma:lwm2m:ext:3303"
+	WatermeterURN   string = "urn:oma:lwm2m:ext:3424"
 )
 
 type ConverterRegistry interface {
@@ -17,13 +26,14 @@ type converterRegistry struct {
 func NewConverterRegistry() ConverterRegistry {
 
 	converters := map[string]MessageConverterFunc{
-		lwm2m.Temperature:        Temperature,
-		lwm2m.AirQuality:         AirQuality,
-		lwm2m.Presence:           Presence,
-		lwm2m.Watermeter:         Watermeter,
-		lwm2m.Pressure:           Pressure,
-		lwm2m.Conductivity:       Conductivity,
-		"urn:oma:lwm2m:ext:3301": Illuminance,
+		TemperatureURN:  Temperature,
+		AirQualityURN:   AirQuality,
+		PresenceURN:     Presence,
+		WatermeterURN:   Watermeter,
+		PressureURN:     Pressure,
+		ConductivityURN: Conductivity,
+		IlluminanceURN:  Illuminance,
+		HumidityURN:     Humidity,
 	}
 
 	return &converterRegistry{
