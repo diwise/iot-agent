@@ -53,8 +53,10 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
 
-	log := logging.GetFromContext(ctx)
-	log.Debug().Msgf("MessageReceived with device %s of type %s", device.ID(), device.SensorType())
+	log := logging.GetFromContext(ctx).With().Str("device", device.ID()).Logger()
+	ctx = logging.NewContextWithLogger(ctx, log)
+
+	log.Debug().Str("type", device.SensorType()).Msg("message received")
 
 	decoderFn := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 
@@ -65,6 +67,10 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 		}
 		return err
 	})
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed to handle received message")
+	}
 
 	return err
 }

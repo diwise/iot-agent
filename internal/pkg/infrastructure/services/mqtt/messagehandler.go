@@ -47,7 +47,7 @@ func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mq
 
 		messageCounter.Add(ctx, 1)
 
-		log.Info().Str("topic", msg.Topic()).Msgf("received payload %s", string(payload))
+		log.Debug().Str("topic", msg.Topic()).Msgf("received payload %s", string(payload))
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(payload))
 		if err != nil {

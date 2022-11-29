@@ -2,7 +2,7 @@ package conversion
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"math"
 	"strings"
 	"time"
@@ -19,7 +19,7 @@ func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn fun
 	if temp, ok := payload.Get[float64](p, "temperature"); ok {
 		return fn(NewSenMLPack(deviceID, TemperatureURN, p.Timestamp(), SensorValue(temp)))
 	} else {
-		return fmt.Errorf("could not get temperature for device %s", deviceID)
+		return errors.New("no temperature value in payload")
 	}
 }
 
@@ -29,7 +29,7 @@ func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func
 	if c, ok := payload.Get[int](p, "co2"); ok {
 		return fn(NewSenMLPack(deviceID, AirQualityURN, p.Timestamp(), CO2(c)))
 	} else {
-		return fmt.Errorf("could not get co2 for device %s", deviceID)
+		return errors.New("no co2 value in payload")
 	}
 }
 
@@ -39,7 +39,7 @@ func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	if b, ok := payload.Get[bool](p, "presence"); ok {
 		return fn(NewSenMLPack(deviceID, PresenceURN, p.Timestamp(), DigitalInputState(b)))
 	} else {
-		return fmt.Errorf("could not get presence for device %s", deviceID)
+		return errors.New("no presence value in payload")
 	}
 }
 
@@ -49,7 +49,7 @@ func Illuminance(ctx context.Context, deviceID string, p payload.Payload, fn fun
 	if i, ok := payload.Get[int](p, "light"); ok {
 		return fn(NewSenMLPack(deviceID, IlluminanceURN, p.Timestamp(), SensorValue(i)))
 	} else {
-		return fmt.Errorf("could not get light level for device %s", deviceID)
+		return errors.New("no illuminance value in payload")
 	}
 }
 
@@ -102,7 +102,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 	}
 
 	if len(decorators) == 0 {
-		return fmt.Errorf("could not get any watermeter values for device %s", deviceID)
+		return errors.New("no water meter values in payload")
 	}
 
 	// use timestamp from sensor as default, fallback to timestamp from sensorEvent (gateway)
@@ -117,10 +117,10 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 }
 
 func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	var decorators []SenMLDecoratorFunc	
-	SensorValue := func(v int16) SenMLDecoratorFunc { 
+	var decorators []SenMLDecoratorFunc
+	SensorValue := func(v int16) SenMLDecoratorFunc {
 		f := float64(v)
-		return Rec("5700", &f, nil, "", nil, "kPa", nil) 
+		return Rec("5700", &f, nil, "", nil, "kPa", nil)
 	} // TODO: kPa not in senml units
 
 	if pressures, ok := payload.GetSlice[struct {
@@ -132,7 +132,7 @@ func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	}
 
 	if len(decorators) == 0 {
-		return fmt.Errorf("could not get any pressure values for device %s", deviceID)
+		return errors.New("no pressure value in payload")
 	}
 
 	return fn(NewSenMLPack(deviceID, PressureURN, p.Timestamp(), decorators...))
@@ -155,7 +155,7 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 	}
 
 	if len(decorators) == 0 {
-		return fmt.Errorf("could not get any conductivity values for device %s", deviceID)
+		return errors.New("no conductivity value in payload")
 	}
 
 	return fn(NewSenMLPack(deviceID, ConductivityURN, p.Timestamp(), decorators...))
@@ -170,6 +170,6 @@ func Humidity(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	if h, ok := payload.Get[int](p, "humidity"); ok {
 		return fn(NewSenMLPack(deviceID, HumidityURN, p.Timestamp(), SensorValue(h)))
 	} else {
-		return fmt.Errorf("could not get humidity for device %s", deviceID)
+		return errors.New("no humidity value in payload")
 	}
 }
