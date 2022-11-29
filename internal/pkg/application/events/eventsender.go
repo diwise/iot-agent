@@ -2,7 +2,7 @@ package events
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/rs/zerolog"
@@ -37,7 +37,7 @@ func (e *eventSender) Send(ctx context.Context, m messaging.CommandMessage) erro
 	log := logging.GetFromContext(ctx)
 
 	if !e.started {
-		err := fmt.Errorf("attempt to send before start")
+		err := errors.New("attempt to send before start")
 		log.Error().Err(err).Msg("send failed")
 		return err
 	}
@@ -50,12 +50,12 @@ func (e *eventSender) Publish(ctx context.Context, m messaging.TopicMessage) err
 	log := logging.GetFromContext(ctx)
 
 	if !e.started {
-		err := fmt.Errorf("attempt to publish before start")
+		err := errors.New("attempt to publish before start")
 		log.Error().Err(err).Msg("publish failed")
 		return err
 	}
 
-	log.Info().Msgf("publish event to topic %s", m.TopicName())
+	log.Info().Str("topic", m.TopicName()).Msg("publishing event")
 
 	return e.rmqMessenger.PublishOnTopic(ctx, m)
 }

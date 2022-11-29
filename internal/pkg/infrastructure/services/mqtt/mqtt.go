@@ -2,6 +2,7 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"os"
 
@@ -78,11 +79,11 @@ func NewConfigFromEnvironment() (Config, error) {
 	}
 
 	if cfg.host == "" {
-		return cfg, fmt.Errorf("the mqtt host must be specified using the MQTT_HOST environment variable")
+		return cfg, errors.New("the mqtt host must be specified using the MQTT_HOST environment variable")
 	}
 
 	if cfg.topics[0] == "" {
-		return cfg, fmt.Errorf("at least one topic (MQTT_TOPIC_0) must be added to the configuration")
+		return cfg, errors.New("at least one topic (MQTT_TOPIC_0) must be added to the configuration")
 	}
 
 	const maxTopicCount int = 10

@@ -2,6 +2,7 @@ package messageprocessor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -51,7 +52,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload, d
 
 	messageConverters := mp.conReg.DesignateConverters(ctx, device.Types())
 	if len(messageConverters) == 0 {
-		return fmt.Errorf("no matching converters for device")
+		return errors.New("no matching converters for device")
 	}
 
 	for _, convert := range messageConverters {
@@ -71,7 +72,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload, d
 				if err != nil {
 					log.Error().Err(err).Msg("failed to send event")
 				} else {
-					log.Debug().Msgf("event published for %s", m.DeviceID())
+					log.Debug().Msg("event published")
 				}
 			}
 
