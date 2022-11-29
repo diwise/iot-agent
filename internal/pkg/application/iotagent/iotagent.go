@@ -30,7 +30,7 @@ type iotAgent struct {
 func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
 	conreg := conversion.NewConverterRegistry()
 	decreg := decoder.NewDecoderRegistry()
-	msgprcs := messageprocessor.NewMessageReceivedProcessor(dmc, conreg, eventPub)
+	msgprcs := messageprocessor.NewMessageReceivedProcessor(conreg, eventPub)
 
 	return &iotAgent{
 		messageProcessor:       msgprcs,
@@ -59,7 +59,7 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 	decoderFn := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 
 	err = decoderFn(ctx, ue, func(ctx context.Context, p payload.Payload) error {
-		err := a.messageProcessor.ProcessMessage(ctx, p)
+		err := a.messageProcessor.ProcessMessage(ctx, p, device)
 		if err != nil {
 			err = fmt.Errorf("failed to process message (%w)", err)
 		}
