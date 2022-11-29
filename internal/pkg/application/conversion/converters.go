@@ -117,10 +117,10 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 }
 
 func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	var decorators []SenMLDecoratorFunc	
-	SensorValue := func(v int16) SenMLDecoratorFunc { 
+	var decorators []SenMLDecoratorFunc
+	SensorValue := func(v int16) SenMLDecoratorFunc {
 		f := float64(v)
-		return Rec("5700", &f, nil, "", nil, "kPa", nil) 
+		return Rec("5700", &f, nil, "", nil, "kPa", nil)
 	} // TODO: kPa not in senml units
 
 	if pressures, ok := payload.GetSlice[struct {
