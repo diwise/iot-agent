@@ -2,58 +2,29 @@ package messageprocessor
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
-	"github.com/diwise/iot-device-mgmt/pkg/client"
-	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/farshidtz/senml/v2"
 	"github.com/matryer/is"
 )
 
-func TestFailsOnInvalidType(t *testing.T) {
-	is, _, cr, ep := testSetup(t)
-
-	dmc := &dmctest.DeviceManagementClientMock{
-		FindDeviceFromDevEUIFunc: func(ctx context.Context, devEUI string) (client.Device, error) {
-			return nil, errors.New("devEUI does not belong to a sensor of any valid types")
-		},
-	}
-
-	mp := NewMessageReceivedProcessor(dmc, cr, ep)
-
-	err := mp.ProcessMessage(context.Background(), newPayload())
-	is.True(err != nil)
-	is.Equal(err.Error(), "devEUI does not belong to a sensor of any valid types")
-}
-
 func TestProcessMessageWorksWithValidTemperatureInput(t *testing.T) {
-	is, dmc, cr, ep := testSetup(t)
-	mp := NewMessageReceivedProcessor(dmc, cr, ep)
+	is, cr, ep := testSetup(t)
+	mp := NewMessageReceivedProcessor(cr, ep)
 
-	err := mp.ProcessMessage(context.Background(), newPayload())
+	err := mp.ProcessMessage(context.Background(), newPayload(), newDevice())
 	is.NoErr(err)
 	is.Equal(len(ep.SendCalls()), 1) // should have been called once
 }
 
-func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conversion.ConverterRegistry, *events.EventSenderMock) {
+func testSetup(t *testing.T) (*is.I, conversion.ConverterRegistry, *events.EventSenderMock) {
 	is := is.New(t)
-	dmc := &dmctest.DeviceManagementClientMock{
-		FindDeviceFromDevEUIFunc: func(ctx context.Context, devEUI string) (client.Device, error) {
-			res := &dmctest.DeviceMock{
-				IDFunc:       func() string { return "internalID" },
-				TypesFunc:    func() []string { return []string{"urn:oma:lwm2m:ext:3303"} },
-				IsActiveFunc: func() bool { return true },
-			}
 
-			return res, nil
-		},
-	}
 	cr := &conversion.ConverterRegistryMock{
 		DesignateConvertersFunc: func(ctx context.Context, types []string) []conversion.MessageConverterFunc {
 			return []conversion.MessageConverterFunc{
@@ -67,6 +38,7 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conver
 			}
 		},
 	}
+
 	ep := &events.EventSenderMock{
 		SendFunc: func(ctx context.Context, m messaging.CommandMessage) error {
 			return nil
@@ -76,7 +48,7 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, conver
 		},
 	}
 
-	return is, dmc, cr, ep
+	return is, cr, ep
 }
 
 func newPayload() payload.Payload {
@@ -84,3 +56,19 @@ func newPayload() payload.Payload {
 	p, _ := payload.New("ncaknlclkdanklcd", ts, payload.Temperature(23.5), payload.Status(0, nil))
 	return p
 }
+
+func newDevice() device {
+	return device{}
+}
+
+type device struct {
+}
+
+func (d device) ID() string          { return "internalID" }
+func (d device) Latitude() float64   { return 0 }
+func (d device) Longitude() float64  { return 0 }
+func (d device) Environment() string { return "" }
+func (d device) Types() []string     { return []string{""} }
+func (d device) SensorType() string  { return "" }
+func (d device) IsActive() bool      { return true }
+func (d device) Tenant() string      { return "" }
