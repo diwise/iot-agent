@@ -25,6 +25,7 @@ type iotAgent struct {
 	messageProcessor       messageprocessor.MessageProcessor
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
+	notFoundDevices        map[string]int
 }
 
 func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
@@ -36,6 +37,7 @@ func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) Io
 		messageProcessor:       msgprcs,
 		decoderRegistry:        decreg,
 		deviceManagementClient: dmc,
+		notFoundDevices: make(map[string]int),
 	}
 }
 
@@ -48,8 +50,14 @@ func (a *iotAgent) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc app
 }
 
 func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) error {
+	if _, ok := a.notFoundDevices[ue.DevEui]; ok {
+		a.notFoundDevices[ue.DevEui]++		
+		return nil
+	}
+
 	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, ue.DevEui)
 	if err != nil {
+		a.notFoundDevices[ue.DevEui] = 1
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
 
@@ -58,8 +66,13 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 
 	log.Debug().Str("type", device.SensorType()).Msg("message received")
 
-	decoderFn := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
-
+	var decoderFn decoder.MessageDecoderFunc
+	if ue.HasError() {
+		decoderFn = decoder.PayloadErrorDecoder
+	} else {
+		decoderFn = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
+	}
+	
 	err = decoderFn(ctx, ue, func(ctx context.Context, p payload.Payload) error {
 		err := a.messageProcessor.ProcessMessage(ctx, p, device)
 		if err != nil {
