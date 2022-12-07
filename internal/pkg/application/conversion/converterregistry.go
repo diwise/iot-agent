@@ -26,14 +26,14 @@ type converterRegistry struct {
 func NewConverterRegistry() ConverterRegistry {
 
 	converters := map[string]MessageConverterFunc{
-		TemperatureURN:  Temperature,
 		AirQualityURN:   AirQuality,
-		PresenceURN:     Presence,
-		WatermeterURN:   Watermeter,
-		PressureURN:     Pressure,
 		ConductivityURN: Conductivity,
-		IlluminanceURN:  Illuminance,
 		HumidityURN:     Humidity,
+		IlluminanceURN:  Illuminance,
+		PresenceURN:     Presence,
+		PressureURN:     Pressure,
+		TemperatureURN:  Temperature,
+		WatermeterURN:   Watermeter,
 	}
 
 	return &converterRegistry{
@@ -45,8 +45,7 @@ func (c *converterRegistry) DesignateConverters(ctx context.Context, types []str
 	converters := []MessageConverterFunc{}
 
 	for _, t := range types {
-		mc, exist := c.registeredConverters[t]
-		if exist {
+		if mc, exist := c.registeredConverters[t]; exist {
 			converters = append(converters, mc)
 		}
 	}

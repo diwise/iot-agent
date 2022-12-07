@@ -42,17 +42,17 @@ func Rec(n string, v, sum *float64, vs string, t *time.Time, u string, vb *bool)
 	if t != nil {
 		tm = float64(t.Unix())
 	}
-	
+
 	return func(p *senML) {
 		r := senml.Record{
-			Name: n,
-			Unit: u,
-			Time: tm,
-			Value: v,
+			Name:        n,
+			Unit:        u,
+			Time:        tm,
+			Value:       v,
 			StringValue: vs,
-			BoolValue: vb,
-			Sum: sum,
-		}		
+			BoolValue:   vb,
+			Sum:         sum,
+		}
 		p.Pack = append(p.Pack, r)
 	}
 }

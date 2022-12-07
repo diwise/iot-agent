@@ -63,7 +63,7 @@ func forEach[T int32 | int16](a []T, fn func(v T)) {
 
 func decodeSensefarmPayload(b []byte, p *payloadSensefarm) error {
 	if len(b) == 0 {
-		return fmt.Errorf("input payload array is empty")
+		return errors.New("input payload array is empty")
 	}
 
 	for i := 0; i < len(b); i++ { //The multisensor message are read byte by byte and parsed for information on each individual sensor and it's values.

@@ -74,7 +74,7 @@ func TestThatWatermeterConvertsW1hValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-	decoder.QalcosonicW1h(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	decoder.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -96,7 +96,7 @@ func TestThatWatermeterConvertsW1eValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
-	decoder.QalcosonicW1e(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	decoder.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -118,7 +118,7 @@ func TestThatWatermeterConvertsW1tValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	decoder.QalcosonicW1t(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	decoder.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})

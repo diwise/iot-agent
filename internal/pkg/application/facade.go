@@ -31,7 +31,8 @@ func ChirpStack(uplinkPayload []byte) (SensorEvent, error) {
 		DeviceName        string          `json:"deviceName"`
 		DevEui            string          `json:"devEui"`
 		Data              string          `json:"data"`
-		Object            json.RawMessage `json:"object"`
+		Object            json.RawMessage `json:"object,omitempty"`
+		ObjectJSON        json.RawMessage `json:"objectJSON,omitempty"`
 		FPort             uint8           `json:"fPort"`
 		RXInfo            []struct {
 			GatewayID string  `json:"gatewayID"`
@@ -44,6 +45,9 @@ func ChirpStack(uplinkPayload []byte) (SensorEvent, error) {
 			Frequency uint32 `json:"frequency"`
 		}
 		Tags map[string]string `json:"tags"`
+		// only found in error messages
+		Type  *string `json:"type,omitempty"`
+		Error *string `json:"error,omitempty"`
 	}{}
 
 	err := json.Unmarshal(uplinkPayload, &m)
@@ -60,13 +64,29 @@ func ChirpStack(uplinkPayload []byte) (SensorEvent, error) {
 		}
 	}
 
+	if m.Data == "" && m.Object == nil {
+		if m.Type == nil && m.Error == nil {
+			t := "payload error"
+			e := "uplink message contains no payload"
+			m.Type = &t
+			m.Error = &e
+		}
+	}
+
+	var objectJSON json.RawMessage
+	if m.Object != nil {
+		objectJSON = m.Object
+	} else {
+		objectJSON = m.ObjectJSON
+	}
+
 	ue := SensorEvent{
 		SensorType: m.DeviceProfileName,
 		DeviceName: m.DeviceName,
 		DevEui:     m.DevEui,
 		FPort:      m.FPort,
 		Data:       bytes,
-		Object:     m.Object,
+		Object:     objectJSON,
 		Tags:       mapToMapArr(m.Tags),
 	}
 
@@ -80,6 +100,13 @@ func ChirpStack(uplinkPayload []byte) (SensorEvent, error) {
 		}
 	} else {
 		ue.Timestamp = time.Now().UTC()
+	}
+
+	if m.Type != nil || m.Error != nil {
+		ue.Error = Error{
+			Type:    *m.Type,
+			Message: *m.Error,
+		}
 	}
 
 	return ue, nil

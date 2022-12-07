@@ -25,17 +25,19 @@ type iotAgent struct {
 	messageProcessor       messageprocessor.MessageProcessor
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
+	notFoundDevices        map[string]int
 }
 
 func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
 	conreg := conversion.NewConverterRegistry()
 	decreg := decoder.NewDecoderRegistry()
-	msgprcs := messageprocessor.NewMessageReceivedProcessor(dmc, conreg, eventPub)
+	msgprcs := messageprocessor.NewMessageReceivedProcessor(conreg, eventPub)
 
 	return &iotAgent{
 		messageProcessor:       msgprcs,
 		decoderRegistry:        decreg,
 		deviceManagementClient: dmc,
+		notFoundDevices: make(map[string]int),
 	}
 }
 
@@ -48,23 +50,40 @@ func (a *iotAgent) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc app
 }
 
 func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) error {
+	if _, ok := a.notFoundDevices[ue.DevEui]; ok {
+		a.notFoundDevices[ue.DevEui]++		
+		return nil
+	}
+
 	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, ue.DevEui)
 	if err != nil {
+		a.notFoundDevices[ue.DevEui] = 1
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
 
-	log := logging.GetFromContext(ctx)
-	log.Debug().Msgf("MessageReceived with device %s of type %s", device.ID(), device.SensorType())
+	log := logging.GetFromContext(ctx).With().Str("device", device.ID()).Logger()
+	ctx = logging.NewContextWithLogger(ctx, log)
 
-	decoderFn := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
+	log.Debug().Str("type", device.SensorType()).Msg("message received")
 
+	var decoderFn decoder.MessageDecoderFunc
+	if ue.HasError() {
+		decoderFn = decoder.PayloadErrorDecoder
+	} else {
+		decoderFn = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
+	}
+	
 	err = decoderFn(ctx, ue, func(ctx context.Context, p payload.Payload) error {
-		err := a.messageProcessor.ProcessMessage(ctx, p)
+		err := a.messageProcessor.ProcessMessage(ctx, p, device)
 		if err != nil {
 			err = fmt.Errorf("failed to process message (%w)", err)
 		}
 		return err
 	})
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed to handle received message")
+	}
 
 	return err
 }
