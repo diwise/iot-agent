@@ -26,6 +26,7 @@ func NewDecoderRegistry() DecoderRegistry {
 		"tem_lab_14ns":     SenlabTBasicDecoder,
 		"strips_lora_ms_h": SensativeDecoder,
 		"cube02":           SensefarmBasicDecoder,
+		"milesight am100":  MilesightDecoder,
 	}
 
 	return &decoderRegistry{
