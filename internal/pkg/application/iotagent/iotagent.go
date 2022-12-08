@@ -52,7 +52,7 @@ func (a *iotAgent) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc app
 
 func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) error {
 	if timeForFirstError, ok := a.notFoundDevices[ue.DevEui]; ok {
-		if timeForFirstError.After(time.Now().UTC().Add(1 * time.Hour)) {
+		if time.Now().UTC().After(timeForFirstError.Add(1 * time.Hour)) {
 			delete(a.notFoundDevices, ue.DevEui)
 		} else {
 			return nil
