@@ -51,10 +51,14 @@ func (a *iotAgent) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc app
 }
 
 func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) error {
+	log := logging.GetFromContext(ctx).With().Str("devEui", ue.DevEui).Logger()
+	ctx = logging.NewContextWithLogger(ctx, log)
+
 	if timeForFirstError, ok := a.notFoundDevices[ue.DevEui]; ok {
 		if time.Now().UTC().After(timeForFirstError.Add(1 * time.Hour)) {
 			delete(a.notFoundDevices, ue.DevEui)
 		} else {
+			log.Info().Msg("blacklisted")
 			return nil
 		}
 	}
@@ -64,9 +68,6 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 		a.notFoundDevices[ue.DevEui] = time.Now().UTC()
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
-
-	log := logging.GetFromContext(ctx).With().Str("device", device.ID()).Logger()
-	ctx = logging.NewContextWithLogger(ctx, log)
 
 	log.Debug().Str("type", device.SensorType()).Msg("message received")
 
