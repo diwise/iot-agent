@@ -3,7 +3,7 @@ package decoder
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 
 	"testing"
 	"time"
@@ -14,6 +14,20 @@ import (
 
 	. "github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
+
+func TestMilesightDecoder(t *testing.T) {
+	is, _ := testSetup(t)
+
+	var r Payload
+	ue, _ := application.ChirpStack([]byte(milesight))
+	err := MilesightDecoder(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(r.DevEui(), "24e124725c140542")
+}
 
 func TestSenlabTBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
@@ -158,7 +172,7 @@ func TestQalcosonic_w1t(t *testing.T) {
 
 	var r Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	err := QalcosonicAuto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		r = p
 		return nil
 	})
@@ -188,7 +202,7 @@ func TestQalcosonic_w1h(t *testing.T) {
 
 	var r Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-	err := QalcosonicAuto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		r = p
 		return nil
 	})
@@ -216,7 +230,7 @@ func TestQalcosonic_w1e(t *testing.T) {
 	var r Payload
 
 	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
-	err := QalcosonicAuto(context.Background(), ue, func(ctx context.Context, p Payload) error {
+	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p Payload) error {
 		r = p
 		return nil
 	})
@@ -236,6 +250,25 @@ func TestQalcosonic_w1e(t *testing.T) {
 	is.Equal(float64(10727), volumes[0].Cumulated)
 	is.Equal(float64(volumes[0].Cumulated+volumes[1].Volume), volumes[1].Cumulated)
 	is.Equal(volumes[0].Time, toT("2019-07-21T19:00:00Z"))
+}
+
+func TestQalcosonicAlarmMessage(t *testing.T) {
+	is, _ := testSetup(t)
+
+	var r Payload
+
+	ue, _ := application.Netmore([]byte(qalcosonicAlarmPacket))
+	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p Payload) error {
+		r = p
+		return nil
+	})
+
+	is.NoErr(err)
+	timestamp, _ := Get[time.Time](r, "timestamp")
+	is.Equal(timestamp, toT("2019-07-19T12:02:11Z")) // time for reading
+	is.Equal(r.Status().Code, 48)
+	is.Equal(r.Status().Messages[0], "Temporary error")
+	is.Equal(r.Status().Messages[1], "Leak")
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
@@ -311,9 +344,39 @@ func toT(s any) time.Time {
 			panic(err)
 		}
 	} else {
-		panic(fmt.Errorf("could not cast to string"))
+		panic(errors.New("could not cast to string"))
 	}
 }
+
+const milesight string = `{
+	"applicationID":"71",
+	"applicationName":"ncksalnckls",
+	"deviceName":"AM103_1",
+	"deviceProfileName":"Milesight AM100",
+	"deviceProfileID":"c6a3467d-519d-4861-8e90-ba13a7b7c9ee",
+	"devEUI":"24e124725c140542",
+	"txInfo":
+	{
+		"frequency":868100000,
+		"dr":5
+	},
+	"adr":true,
+	"fCnt":10901,
+	"fPort":5,
+	"data":"AXVZA2ffAARoOgd9dgM=",
+	"object":
+	{
+		"battery":89,
+		"co2":886,
+		"humidity":29,
+		"temperature":22.3
+	},
+	"tags":
+	{
+		"location":"599A",
+		"mount":"wall"
+	}
+}`
 
 const senlabT string = `[{
 	"devEui": "70b3d580a010f260",
@@ -559,4 +622,38 @@ const qalcosonic_w1t string = `
     }
   ]
 }]
+`
+const qalcosonicAlarmPacket string = `
+[{
+  "devEui": "116c52b4274f",
+  "sensorType": "qalcosonic_w1t",
+  "messageType": "payload",
+  "timestamp": "2022-08-25T07:35:21.834484Z",
+  "payload": "43b1315d30",
+  "fCntUp": 1490,
+  "toa": null,
+  "freq": 867900000,
+  "batteryLevel": "255",
+  "ack": false,
+  "spreadingFactor": "8",
+  "rssi": "-115",
+  "snr": "-1.8",
+  "gatewayIdentifier": "000",
+  "fPort": "103",
+  "tags": {
+    "application": ["ambiductor_test"],
+    "customer": ["customer"],
+    "deviceType": ["w1t"],
+    "serial": ["00000000"]
+  },
+  "gateways": [
+    {
+      "rssi": "-115",
+      "snr": "-1.8",
+      "gatewayIdentifier": "000",
+      "antenna": 0
+    }
+  ]
+}]
+
 `

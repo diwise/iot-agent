@@ -10,6 +10,14 @@ import (
 
 type MessageDecoderFunc func(context.Context, application.SensorEvent, func(context.Context, payload.Payload) error) error
 
+func PayloadErrorDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+	p, err := payload.New(ue.DevEui, ue.Timestamp, payload.Status(uint8(payload.PayloadError), []string{ue.Error.Type, ue.Error.Message}))
+	if err != nil {
+		return err
+	}
+	return fn(ctx, p)
+}
+
 func DefaultDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	log := logging.GetFromContext(ctx)
 

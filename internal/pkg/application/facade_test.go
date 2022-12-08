@@ -23,6 +23,16 @@ func TestNetmore(t *testing.T) {
 	}
 }
 
+func TestPayloadWithError(t *testing.T) {
+	is := is.New(t)
+
+	e, err := ChirpStack([]byte(payloadWithError))
+
+	is.NoErr(err)
+	is.Equal(e.Error.Type, "UPLINK_FCNT_RETRANSMISSION")
+	is.Equal(e.Error.Message, "frame-counter did not increment")
+}
+
 var uplinkChirpStack = []string{
 	`{"applicationID":"ttt","applicationName":"Soraker","deviceName":"05343464","deviceProfileName":"Axioma_Universal_Codec","deviceProfileID":"d45461aa-e877-4c09-8b52-0b41e670359f","devEUI":"lkfjslkdfu39w0woejf","rxInfo":[{"gatewayID":"dflgj34209rtues","uplinkID":"f4b3f1df-9ca2-4a7c-a84c-ac522bddebb2","name":"SN-LGW-017","time":"2022-10-18T15:39:39.088645922Z","rssi":-113,"loRaSNR":-5.5,"location":{"latitude":62.504757783826896,"longitude":17.51152038574219,"altitude":0}}],"txInfo":{"frequency":868100000,"dr":3},"adr":true,"fCnt":4107,"fPort":100,"data":"AebITmMAAKoCAAAAAKAAIAAGQADwBPgABsAAUAAAAABAFEAEAAAEQAJQACAAB4AAUAAA","object":{"curDateTime":"2022-10-18 17:40:22","curVol":174592,"deltaVol":{"id1":0,"id10":3,"id11":5,"id12":0,"id13":0,"id14":81,"id15":68,"id16":0,"id17":4,"id18":9,"id19":5,"id2":0,"id20":8,"id21":7,"id22":2,"id23":5,"id3":10,"id4":8,"id5":6,"id6":1,"id7":79,"id8":62,"id9":6},"frameVersion":1,"statusCode":0},"tags":{"SerialNo":"05343464"}}`,
 	`{"deviceName":"sn-elt-livboj-01","devEUI":"a81758fffe04d855","data":"Bw4ADQA=","object":{"present":false}}`,
@@ -39,3 +49,5 @@ var uplinkNetmore = []string{
 	`[{"devEui":"43gfrdg34tgb445h","sensorType":"tem_lab_14ns","timestamp":"2022-10-18T12:12:25.509216Z","payload":"01ef82359c1000c0","spreadingFactor":"11","rssi":"-112","snr":"-6.8","gatewayIdentifier":"187","fPort":"3","latitude":57.687844,"longitude":12.036078}]`,
 	`[{"devEui":"rg34g34gerg3454trg","sensorType":"qalcosonic_w1e","messageType":"payload","timestamp":"2022-10-18T12:17:03.166298Z","payload":"8e974e6300227a060050c24d63cb790600000000000000000000000000000016003300000000000000000000000e00","fCntUp":6647,"toa":null,"freq":867300000,"batteryLevel":"255","ack":false,"spreadingFactor":"8","rssi":"-108","snr":"3.5","gatewayIdentifier":"126","fPort":"100","tags":{"application":["1_kretsloppvatten_w1e_1"],"customer":["kretsloppvatten"],"deviceType":["w1e"],"facilityID":[],"municipality":[],"serial":["05014191"]},"gateways":[{"rssi":"-108","snr":"3.5","gatewayIdentifier":"126","antenna":0}]}]`,
 }
+
+var payloadWithError string = `{"applicationID":"1","applicationName":"Watermetering","deviceName":"yyyyyyyyyy","devEUI":"xxxxxxxxxxxxxx","type":"UPLINK_FCNT_RETRANSMISSION","error":"frame-counter did not increment","fCnt":456,"tags":{"Location":"UnSet","SerialNo":"zzzzzzzzzzz"}}`

@@ -16,43 +16,33 @@ import (
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 
-func QalcosonicAuto(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func QalcosonicW1(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	var err error
 
 	buf := bytes.NewReader(ue.Data)
-	if buf.Len() < 42 {
-		return fmt.Errorf("w1b decoder not implemented or payload to short (%d)", buf.Len())
-	}
 
 	var m measurementDecoder
-	if buf.Len() == 51 || buf.Len() == 52 {
+
+	if buf.Len() == 5 {
+		m = alarmPacketDecoder
+	} else if buf.Len() < 42 {
+		return errors.New("decoder not implemented or payload to short")
+	} else if buf.Len() == 51 || buf.Len() == 52 {
 		m = w1h
 	} else if buf.Len() <= 47 {
 		m = w1e
 	}
 
-	err = qalcosonicW1(ctx, ue, m, fn)
+	err = decodeQalcosonicPayload(ctx, ue, m, fn)
 	if err != nil && errors.Is(err, ErrTimeTooFarOff) {
-		err = qalcosonicW1(ctx, ue, w1t, fn)
+		err = decodeQalcosonicPayload(ctx, ue, w1t, fn)
 	}
 
 	return err
 }
 
-func QalcosonicW1e(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	return qalcosonicW1(ctx, ue, w1e, fn)
-}
-
-func QalcosonicW1t(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	return qalcosonicW1(ctx, ue, w1t, fn)
-}
-
-func QalcosonicW1h(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	return qalcosonicW1(ctx, ue, w1h, fn)
-}
-
-func qalcosonicW1(ctx context.Context, ue application.SensorEvent, measurementDecoder measurementDecoder, fn func(context.Context, payload.Payload) error) error {
-	if ue.FPort != 100 {
+func decodeQalcosonicPayload(ctx context.Context, ue application.SensorEvent, measurementDecoder measurementDecoder, fn func(context.Context, payload.Payload) error) error {
+	if !(ue.FPort == 100 || ue.FPort == 103) {
 		return fmt.Errorf("fPort %d not implemented", ue.FPort)
 	}
 
@@ -71,6 +61,31 @@ func qalcosonicW1(ctx context.Context, ue application.SensorEvent, measurementDe
 }
 
 type measurementDecoder = func(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error)
+
+func alarmPacketDecoder(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
+	var err error
+
+	var epoch uint32
+	var statusCode uint8
+
+	var decorators []payload.PayloadDecoratorFunc
+
+	var sensorTime time.Time
+	err = binary.Read(buf, binary.LittleEndian, &epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	sensorTime = time.Unix(int64(epoch), 0).UTC()
+	decorators = append(decorators, payload.Timestamp(sensorTime))
+
+	err = binary.Read(buf, binary.LittleEndian, &statusCode)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(decorators, payload.Status(statusCode, getStatusMessage(statusCode))), nil
+}
 
 func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error

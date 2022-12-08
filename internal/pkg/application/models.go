@@ -16,6 +16,11 @@ type TXInfo struct {
 	Frequency uint32 `json:"frequency,omitempty"`
 }
 
+type Error struct {
+	Type    string `json:"type,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 type SensorEvent struct {
 	DevEui     string              `json:"devEui"`
 	DeviceName string              `json:"deviceName"`
@@ -27,4 +32,9 @@ type SensorEvent struct {
 	Timestamp  time.Time           `json:"timestamp"`
 	RXInfo     RXInfo              `json:"rxInfo,omitempty"`
 	TXInfo     TXInfo              `json:"txInfo,omitempty"`
+	Error      Error               `json:"error,omitempty"`
+}
+
+func (s *SensorEvent) HasError() bool {
+	return s.Error.Type != "" && s.Error.Message != ""
 }
