@@ -3,6 +3,7 @@ package iotagent
 import (
 	"context"
 	"fmt"
+	"time"
 
 	app "github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
@@ -25,7 +26,7 @@ type iotAgent struct {
 	messageProcessor       messageprocessor.MessageProcessor
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
-	notFoundDevices        map[string]int
+	notFoundDevices        map[string]time.Time
 }
 
 func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
@@ -37,7 +38,7 @@ func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) Io
 		messageProcessor:       msgprcs,
 		decoderRegistry:        decreg,
 		deviceManagementClient: dmc,
-		notFoundDevices: make(map[string]int),
+		notFoundDevices: make(map[string]time.Time),
 	}
 }
 
@@ -50,14 +51,17 @@ func (a *iotAgent) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc app
 }
 
 func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) error {
-	if _, ok := a.notFoundDevices[ue.DevEui]; ok {
-		a.notFoundDevices[ue.DevEui]++		
-		return nil
+	if timeForFirstError, ok := a.notFoundDevices[ue.DevEui]; ok {
+		if timeForFirstError.After(time.Now().UTC().Add(1 * time.Hour)) {
+			delete(a.notFoundDevices, ue.DevEui)
+		} else {
+			return nil
+		}
 	}
 
 	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, ue.DevEui)
 	if err != nil {
-		a.notFoundDevices[ue.DevEui] = 1
+		a.notFoundDevices[ue.DevEui] = time.Now().UTC()
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
 

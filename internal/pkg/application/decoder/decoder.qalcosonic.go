@@ -72,21 +72,19 @@ func alarmPacketDecoder(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, erro
 
 	var sensorTime time.Time
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
-	if err == nil {
-		sensorTime = time.Unix(int64(epoch), 0).UTC()
-		decorators = append(decorators, payload.Timestamp(sensorTime))
-	} else {
+	if err != nil {
 		return nil, err
 	}
+
+	sensorTime = time.Unix(int64(epoch), 0).UTC()
+	decorators = append(decorators, payload.Timestamp(sensorTime))
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
-	if err == nil {
-		decorators = append(decorators, payload.Status(statusCode, getStatusMessage(statusCode)))
-	} else {
+	if err != nil {
 		return nil, err
 	}
 
-	return decorators, nil
+	return append(decorators, payload.Status(statusCode, getStatusMessage(statusCode))), nil
 }
 
 func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
