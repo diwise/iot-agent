@@ -69,6 +69,9 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 		return fmt.Errorf("device lookup failure (%w)", err)
 	}
 
+	log = log.With().Str("device", device.ID()).Logger()
+	ctx = logging.NewContextWithLogger(ctx, log)
+
 	log.Debug().Str("type", device.SensorType()).Msg("message received")
 
 	var decoderFn decoder.MessageDecoderFunc
