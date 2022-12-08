@@ -13,11 +13,10 @@ import (
 
 type MessageConverterFunc func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error
 
-const currentPeopleCount string = "1"
-
 func PeopleCount(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	PeopleCount := func(v int) SenMLDecoratorFunc {
-		return Value(currentPeopleCount, float64(v))
+		const CurrentPeopleCount string = "1"
+		return Value(CurrentPeopleCount, float64(v))
 	}
 
 	if count, ok := payload.Get[int](p, "occupancy"); ok {
