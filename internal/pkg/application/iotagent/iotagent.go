@@ -38,7 +38,7 @@ func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) Io
 		messageProcessor:       msgprcs,
 		decoderRegistry:        decreg,
 		deviceManagementClient: dmc,
-		notFoundDevices: make(map[string]time.Time),
+		notFoundDevices:        make(map[string]time.Time),
 	}
 }
 
@@ -76,7 +76,7 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 	} else {
 		decoderFn = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 	}
-	
+
 	err = decoderFn(ctx, ue, func(ctx context.Context, p payload.Payload) error {
 		err := a.messageProcessor.ProcessMessage(ctx, p, device)
 		if err != nil {
