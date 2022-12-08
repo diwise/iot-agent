@@ -9,6 +9,7 @@ const (
 	ConductivityURN string = "urn:oma:lwm2m:ext:3327"
 	HumidityURN     string = "urn:oma:lwm2m:ext:3304"
 	IlluminanceURN  string = "urn:oma:lwm2m:ext:3301"
+	PeopleCountURN  string = "urn:oma:lwm2m:ext:3434"
 	PresenceURN     string = "urn:oma:lwm2m:ext:3302"
 	PressureURN     string = "urn:oma:lwm2m:ext:3323"
 	TemperatureURN  string = "urn:oma:lwm2m:ext:3303"
@@ -30,6 +31,7 @@ func NewConverterRegistry() ConverterRegistry {
 		ConductivityURN: Conductivity,
 		HumidityURN:     Humidity,
 		IlluminanceURN:  Illuminance,
+		PeopleCountURN:  PeopleCount,
 		PresenceURN:     Presence,
 		PressureURN:     Pressure,
 		TemperatureURN:  Temperature,

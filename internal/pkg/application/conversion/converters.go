@@ -13,6 +13,19 @@ import (
 
 type MessageConverterFunc func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error
 
+func PeopleCount(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	PeopleCount := func(v int) SenMLDecoratorFunc {
+		const CurrentPeopleCount string = "1"
+		return Value(CurrentPeopleCount, float64(v))
+	}
+
+	if count, ok := payload.Get[int](p, "occupancy"); ok {
+		return fn(NewSenMLPack(deviceID, PeopleCountURN, p.Timestamp(), PeopleCount(count)))
+	} else {
+		return errors.New("no people count value in payload")
+	}
+}
+
 func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	SensorValue := func(v float64) SenMLDecoratorFunc { return Value("5700", v) }
 

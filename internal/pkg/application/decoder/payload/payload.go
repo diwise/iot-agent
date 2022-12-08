@@ -265,6 +265,14 @@ func Resistance(r int32) PayloadDecoratorFunc {
 	})
 }
 
+func Occupancy(p int) PayloadDecoratorFunc {
+	return S("occupancy", struct {
+		Occupancy int
+	}{
+		p,
+	})
+}
+
 func Pressure(p int16) PayloadDecoratorFunc {
 	return M("pressure", struct {
 		Pressure int16
