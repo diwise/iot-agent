@@ -30,13 +30,13 @@ type iotAgent struct {
 }
 
 func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
-	conreg := conversion.NewConverterRegistry()
-	decreg := decoder.NewDecoderRegistry()
-	msgprcs := messageprocessor.NewMessageReceivedProcessor(conreg, eventPub)
+	c := conversion.NewConverterRegistry()
+	d := decoder.NewDecoderRegistry()
+	m := messageprocessor.NewMessageReceivedProcessor(c, eventPub)
 
 	return &iotAgent{
-		messageProcessor:       msgprcs,
-		decoderRegistry:        decreg,
+		messageProcessor:       m,
+		decoderRegistry:        d,
 		deviceManagementClient: dmc,
 		notFoundDevices:        make(map[string]time.Time),
 	}
