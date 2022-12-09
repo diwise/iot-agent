@@ -12,7 +12,7 @@ import (
 func MilesightDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	d := struct {
 		Temperature *float32 `json:"temperature,omitempty"`
-		Humidity    *int     `json:"humidity,omitempty"`
+		Humidity    *float32 `json:"humidity,omitempty"`
 		CO2         *int     `json:"co2,omitempty"`
 		Battery     *int     `json:"battery,omitempty"`
 	}{}
@@ -29,7 +29,7 @@ func MilesightDecoder(ctx context.Context, ue application.SensorEvent, fn func(c
 	}
 
 	if d.Humidity != nil {
-		decorators = append(decorators, payload.Humidity(*d.Humidity))
+		decorators = append(decorators, payload.Humidity(int(*d.Humidity)))
 	}
 
 	if d.CO2 != nil {
