@@ -1,6 +1,7 @@
 package payload
 
 import (
+	"math"
 	"reflect"
 	"strings"
 	"time"
@@ -145,10 +146,15 @@ func BatteryLevel(b int) PayloadDecoratorFunc {
 }
 
 func Temperature(t float64) PayloadDecoratorFunc {
+	roundFloat := func(val float64) float64 {
+		ratio := math.Pow(10, float64(5))
+		return math.Round(val*ratio) / ratio
+	}
+
 	return S("temperature", struct {
 		Temperature float64
 	}{
-		t,
+		roundFloat(t),
 	})
 }
 

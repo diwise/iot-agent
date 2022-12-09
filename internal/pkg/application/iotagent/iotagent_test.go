@@ -14,65 +14,68 @@ import (
 	"github.com/matryer/is"
 )
 
-/*
-	func TestSenlabTPayload(t *testing.T) {
-		is, dmc, e := testSetup(t)
+func TestSenlabTPayload(t *testing.T) {
+	is, dmc, e := testSetup(t)
 
-		app := NewIoTAgent(dmc, e)
-		err := app.MessageReceived(context.Background(), []byte(senlabT))
+	app := NewIoTAgent(dmc, e)
+	ue, _ := application.Netmore([]byte(senlabT))
+	err := app.MessageReceived(context.Background(), ue)
 
-		is.NoErr(err)
-		is.True(len(e.SendCalls()) > 0)
+	is.NoErr(err)
+	is.True(len(e.SendCalls()) > 0)
 
-		pack := getPackFromSendCalls(e, 0)
-		is.True(*pack[1].Value == 6.625)
-	}
+	pack := getPackFromSendCalls(e, 0)
+	is.True(*pack[1].Value == 6.625)
+}
 
-	func TestStripsPayload(t *testing.T) {
-		is, dmc, e := testSetup(t)
+func TestStripsPayload(t *testing.T) {
+	is, dmc, e := testSetup(t)
 
-		app := NewIoTAgent(dmc, e)
-		err := app.MessageReceived(context.Background(), []byte(stripsPayload))
+	app := NewIoTAgent(dmc, e)
+	ue, _ := application.Netmore([]byte(stripsPayload))
+	err := app.MessageReceived(context.Background(), ue)
 
-		is.NoErr(err)
-		is.True(len(e.SendCalls()) > 0)
+	is.NoErr(err)
+	is.True(len(e.SendCalls()) > 0)
 
-		pack := getPackFromSendCalls(e, 0)
-		is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3303")
-	}
+	pack := getPackFromSendCalls(e, 0)
+	is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3303")
+}
 
-	func TestElsysPayload(t *testing.T) {
-		is, dmc, e := testSetup(t)
+func TestElsysPayload(t *testing.T) {
+	is, dmc, e := testSetup(t)
 
-		app := NewIoTAgent(dmc, e)
-		err := app.MessageReceived(context.Background(), []byte(elsys))
+	app := NewIoTAgent(dmc, e)
+	ue, _ := application.ChirpStack([]byte(elsys))
+	err := app.MessageReceived(context.Background(), ue)
 
-		is.NoErr(err)
-		is.True(len(e.SendCalls()) > 0)
+	is.NoErr(err)
+	is.True(len(e.SendCalls()) > 0)
 
-		pack := getPackFromSendCalls(e, 0)
-		is.True(*pack[1].Value == 19.3)
-	}
+	pack := getPackFromSendCalls(e, 0)
+	is.True(*pack[1].Value == 19.3)
+}
 
-	func TestErsPayload(t *testing.T) {
-		is, dmc, e := testSetup(t)
+func TestErsPayload(t *testing.T) {
+	is, dmc, e := testSetup(t)
 
-		app := NewIoTAgent(dmc, e)
-		err := app.MessageReceived(context.Background(), []byte(ers))
+	app := NewIoTAgent(dmc, e)
+	ue, _ := application.ChirpStack([]byte(ers))
+	err := app.MessageReceived(context.Background(), ue)
 
-		is.NoErr(err)
-		is.True(len(e.SendCalls()) == 2) // expecting two calls since payload should produce measurement for both temperature and co2.
+	is.NoErr(err)
+	is.True(len(e.SendCalls()) == 2) // expecting two calls since payload should produce measurement for both temperature and co2.
 
-		tempPack := getPackFromSendCalls(e, 0) // the first call to send is for the temperature pack.
-		is.True(tempPack[0].BaseName == "urn:oma:lwm2m:ext:3303")
-		is.True(tempPack[1].Name == "Temperature")
+	tempPack := getPackFromSendCalls(e, 0) // the first call to send is for the temperature pack.
+	is.True(tempPack[0].BaseName == "urn:oma:lwm2m:ext:3303")
+	is.True(tempPack[1].Name == "5700")
 
-		co2Pack := getPackFromSendCalls(e, 1) // the second call to send is for the co2 pack.
+	co2Pack := getPackFromSendCalls(e, 1) // the second call to send is for the co2 pack.
 
-		is.True(co2Pack[0].BaseName == "urn:oma:lwm2m:ext:3428")
-		is.True(co2Pack[1].Name == "CO2")
-	}
-*/
+	is.True(co2Pack[0].BaseName == "urn:oma:lwm2m:ext:3428")
+	is.True(co2Pack[1].Name == "17")
+}
+
 func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
@@ -140,10 +143,10 @@ const senlabT string = `[{
 	"sensorType": "tem_lab_14ns",
 	"timestamp": "2022-04-12T05:08:50.301732Z",
 	"payload": "01FE90619c10006A",
-	"spreadingFactor": 12,
+	"spreadingFactor": "12",
 	"rssi": "-113",
 	"snr": "-11.8",
-	"gatewayIdentifier": 184,
+	"gatewayIdentifier": "184",
 	"fPort": "3",
 	"latitude": 57.806266,
 	"longitude": 12.07727
