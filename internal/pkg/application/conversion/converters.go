@@ -13,6 +13,27 @@ import (
 
 type MessageConverterFunc func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error
 
+func DigitalInput(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	DigitalInputState := func(on bool) SenMLDecoratorFunc { return BoolValue("5500", on) }
+	DigitalInputCounter := func(v int64) SenMLDecoratorFunc { return Value("5501", float64(v)) }
+
+	var decorators []SenMLDecoratorFunc
+
+	if isOn, ok := payload.Get[bool](p, "digitalInputState"); ok {
+		decorators = append(decorators, DigitalInputState(isOn))
+	}
+
+	if counter, ok := payload.Get[int64](p, "digitalInputCounter"); ok {
+		decorators = append(decorators, DigitalInputCounter(counter))
+	}
+
+	if len(decorators) == 0 {
+		return errors.New("no digital input value in payload")
+	}
+
+	return fn(NewSenMLPack(deviceID, DigitalInputURN, p.Timestamp(), decorators...))
+}
+
 func PeopleCount(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	PeopleCount := func(v int) SenMLDecoratorFunc {
 		const CurrentPeopleCount string = "1"

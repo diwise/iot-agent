@@ -231,7 +231,24 @@ func SnowHeight(sh int) PayloadDecoratorFunc {
 	})
 }
 
+func DigitalInputCounter(count int64) PayloadDecoratorFunc {
+	return S("digitalInputCounter", struct {
+		DigitalInputCounter int64
+	}{
+		count,
+	})
+}
+
+func DigitalInputState(on bool) PayloadDecoratorFunc {
+	return S("digitalInputState", struct {
+		DigitalInputState bool
+	}{
+		on,
+	})
+}
+
 func DoorReport(p bool) PayloadDecoratorFunc {
+	// TODO: Return DigitalInputState ?
 	return S("doorReport", struct {
 		DoorReport bool
 	}{
