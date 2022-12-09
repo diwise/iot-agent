@@ -19,6 +19,8 @@ func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(conte
 		Light               *int     `json:"light,omitempty"`
 		Motion              *int     `json:"motion,omitempty"`
 		Occupancy           *int     `json:"occupancy,omitempty"`
+		DigitalInput        *int     `json:"digital"`
+		DigitalInputCounter *int64   `json:"pulseAbs"`
 	}{}
 
 	err := json.Unmarshal(ue.Object, &d)
@@ -58,6 +60,14 @@ func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(conte
 
 	if d.Occupancy != nil {
 		decorators = append(decorators, payload.Occupancy(*d.Occupancy))
+	}
+
+	if d.DigitalInput != nil {
+		decorators = append(decorators, payload.DigitalInputState(*d.DigitalInput == 1))
+	}
+
+	if d.DigitalInputCounter != nil {
+		decorators = append(decorators, payload.DigitalInputCounter(*d.DigitalInputCounter))
 	}
 
 	if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
