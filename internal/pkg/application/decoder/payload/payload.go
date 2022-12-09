@@ -223,9 +223,9 @@ func Presence(p bool) PayloadDecoratorFunc {
 	})
 }
 
-func SnowHeight(sh int) PayloadDecoratorFunc {
+func SnowHeight(sh float64) PayloadDecoratorFunc {
 	return S("snowHeight", struct {
-		SnowHeight int
+		SnowHeight float64
 	}{
 		sh,
 	})

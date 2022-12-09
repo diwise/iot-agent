@@ -19,7 +19,11 @@ func Depth(ctx context.Context, deviceID string, p payload.Payload, fn func(p se
 		const SensorUnits string = "5701"
 		const SensorValue string = "5700"
 
-		return []SenMLDecoratorFunc{Value(SensorValue, v), StringValue(SensorUnits, "cm"), StringValue(ApplicationType, "snow")}
+		return []SenMLDecoratorFunc{
+			Value(SensorValue, v),
+			StringValue(SensorUnits, senml.UnitMeter),
+			StringValue(ApplicationType, "snow"),
+		}
 	}
 
 	if depth, ok := payload.Get[float64](p, "snowHeight"); ok {
