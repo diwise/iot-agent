@@ -53,7 +53,7 @@ func TestElsysPayload(t *testing.T) {
 	is.True(len(e.SendCalls()) > 0)
 
 	pack := getPackFromSendCalls(e, 0)
-	is.True(*pack[1].Value == 19.299999237060547)
+	is.True(*pack[1].Value == 19.3)
 }
 
 func TestErsPayload(t *testing.T) {
