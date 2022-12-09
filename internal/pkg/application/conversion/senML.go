@@ -29,6 +29,10 @@ func NewSenMLPack(deviceID, baseName string, baseTime time.Time, decorators ...S
 	return s.Pack
 }
 
+func StringValue(n string, v string) SenMLDecoratorFunc {
+	return Rec(n, nil, nil, v, nil, "", nil)
+}
+
 func Value(n string, v float64) SenMLDecoratorFunc {
 	return Rec(n, &v, nil, "", nil, "", nil)
 }

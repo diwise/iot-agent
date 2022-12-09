@@ -7,6 +7,7 @@ import (
 const (
 	AirQualityURN   string = "urn:oma:lwm2m:ext:3428"
 	ConductivityURN string = "urn:oma:lwm2m:ext:3327"
+	DepthURN        string = "urn:oma:lwm2m:ext:3319"
 	DigitalInputURN string = "urn:oma:lwm2m:ext:3200"
 	HumidityURN     string = "urn:oma:lwm2m:ext:3304"
 	IlluminanceURN  string = "urn:oma:lwm2m:ext:3301"
@@ -30,6 +31,7 @@ func NewConverterRegistry() ConverterRegistry {
 	converters := map[string]MessageConverterFunc{
 		AirQualityURN:   AirQuality,
 		ConductivityURN: Conductivity,
+		DepthURN:        Depth,
 		DigitalInputURN: DigitalInput,
 		HumidityURN:     Humidity,
 		IlluminanceURN:  Illuminance,

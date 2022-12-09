@@ -13,6 +13,22 @@ import (
 
 type MessageConverterFunc func(ctx context.Context, internalID string, p payload.Payload, fn func(p senml.Pack) error) error
 
+func Depth(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	SnowDepth := func(v float64) []SenMLDecoratorFunc {
+		const ApplicationType string = "5750"
+		const SensorUnits string = "5701"
+		const SensorValue string = "5700"
+
+		return []SenMLDecoratorFunc{Value(SensorValue, v), StringValue(SensorUnits, "cm"), StringValue(ApplicationType, "snow")}
+	}
+
+	if depth, ok := payload.Get[float64](p, "snowHeight"); ok {
+		return fn(NewSenMLPack(deviceID, DepthURN, p.Timestamp(), SnowDepth(depth)...))
+	}
+
+	return errors.New("no depth/height value in payload")
+}
+
 func DigitalInput(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	DigitalInputState := func(on bool) SenMLDecoratorFunc { return BoolValue("5500", on) }
 	DigitalInputCounter := func(v int64) SenMLDecoratorFunc { return Value("5501", float64(v)) }
