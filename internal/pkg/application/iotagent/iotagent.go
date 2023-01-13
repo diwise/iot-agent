@@ -58,7 +58,7 @@ func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) erro
 		if time.Now().UTC().After(timeForFirstError.Add(1 * time.Hour)) {
 			delete(a.notFoundDevices, ue.DevEui)
 		} else {
-			log.Info().Msg("blacklisted")
+			log.Warn().Str("deviceName", ue.DeviceName).Msg("blacklisted")
 			return nil
 		}
 	}
