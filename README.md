@@ -83,18 +83,30 @@ Converters converts sensor data to lwm2m measurements.
 [urn:oma:lwm2m:ext:3303](https://github.com/OpenMobileAlliance/lwm2m-registry/blob/prod/3303.xml)
 ## Watermeter   
 [urn:oma:lwm2m:ext:3424](https://github.com/OpenMobileAlliance/lwm2m-registry/blob/prod/3424.xml)
-# Build, compose and test
+# Build and test
 ## Build
 ```bash
 docker build -f deployments/Dockerfile . -t diwise/iot-agent:latest
 ```
-## Compose
-```bash
-docker compose -f deployments/docker-compose.yaml up
-```
 ## Test
 ```bash
-curl -X 
+curl -X POST http://localhost:8080 
+     -H "Content-Type: application/json"
+     -d '{
+            "deviceName": "mcg-ers-co2-01",
+            "deviceProfileName": "ELSYS",
+            "deviceProfileID": "0b765672",
+            "devEUI": "a1b2c3d4e5f6",
+            "data": "AQDuAhYEALIFAgYBxAcONA==",
+            "object": {
+                "co2": 452,
+                "humidity": 22,
+                "light": 178,
+                "motion": 2,
+                "temperature": 23.8,
+                "vdd": 3636
+            }
+        }'
 ```
 
 # Configuration
