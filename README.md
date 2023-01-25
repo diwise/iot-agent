@@ -4,7 +4,7 @@ A service that handles (decodes and converts) incoming data from multiple source
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://github.com/diwise/iot-agent/blob/main/LICENSE)
 
 # Design
-
+![svg](https://github.com/diwise/diwise.github.io/blob/main/site/static/images/iot-agent.svg)
 ## Dependencies  
  - [iot-device-mgmt](https://github.com/diwise/iot-device-mgmt)
  - [RabbitMQ](https://www.rabbitmq.com/)
@@ -132,7 +132,7 @@ curl -X POST http://localhost:8080
 ```
 ## CLI flags
 none
-## Files
+## Configuration files
 none
 # Links
 [iot-agent](https://diwise.github.io/) on diwise.github.io
