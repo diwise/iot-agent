@@ -4,7 +4,26 @@ A service that handles (decodes and converts) incoming data from multiple source
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://github.com/diwise/iot-agent/blob/main/LICENSE)
 
 # Design
-![svg](https://github.com/diwise/diwise.github.io/blob/main/site/static/images/iot-agent.svg)
+
+```mermaid
+flowchart LR
+    mqtt-->handler
+    converter--rabbitMQ-->iot-core
+    facade--http-->iot-device-mgmt
+    iot-device-mgmt--http-->decoder
+    iot-device-mgmt--http-->converter
+    subgraph app server
+        mqtt
+    end
+    subgraph iot-agent
+        handler--http-->api
+        api-->facade
+        decoder-->converter
+    end 
+```
+Iot-Agent gets sensor uplink messages on subscribed mqtt-topics exposed by application servers. Messages are handled and POSTed to `/api/v0/messages`, which is an local http endpoint. 
+Metadata about the sensor is fetched from iot-device-mgmt, this metadata contains information about which decoder to use to decode the message payload. The metadata also contains information about the converters to use for measurements. 
+
 ## Dependencies  
  - [iot-device-mgmt](https://github.com/diwise/iot-device-mgmt)
  - [RabbitMQ](https://www.rabbitmq.com/)
@@ -14,8 +33,8 @@ Since application servers such as [Chirpstack](https://www.chirpstack.io/applica
 Support for Chirpstack v3 payloads.
 ### Netmore
 Support for payloads from [netmore](https://netmoregroup.com/iot-network/)
-# Codecs
-Codec implementations for sensors
+# Decoders
+Decoder implementations for sensors
 ### Presence
 []() Uses codec for Sensative
 ### Qalcosonic
@@ -90,7 +109,7 @@ docker build -f deployments/Dockerfile . -t diwise/iot-agent:latest
 ```
 ## Test
 ```bash
-curl -X POST http://localhost:8080 
+curl -X POST http://localhost:8080/api/v0/messages 
      -H "Content-Type: application/json"
      -d '{
             "deviceName": "mcg-ers-co2-01",
