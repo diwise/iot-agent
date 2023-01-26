@@ -121,7 +121,12 @@ curl -X POST http://localhost:8080
 "MQTT_TOPIC_1": "topic-02/#", # it possible to specify multiple topics
 ...
 "MQTT_TOPIC_n": "topic-n/#",
-"RABBITMQ_HOST": "<rabbit mq hostname>"
+"RABBITMQ_HOST": "<rabbit mq hostname>",
+"RABBITMQ_PORT": "5672",
+"RABBITMQ_VHOST": "/",
+"RABBITMQ_USER": "user",
+"RABBITMQ_PASS": "bitnami",
+"RABBITMQ_DISABLED": "false",
 "DEV_MGMT_URL": "http://iot-device-mgmt:8080", 
 "SERVICE_PORT": "<custom service port, default 8080>",
 "MSG_FWD_ENDPOINT" : "http://iot-agent:8080/api/v0/messages",
