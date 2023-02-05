@@ -22,7 +22,7 @@ var tracer = otel.Tracer("iot-agent/mqtt/message-handler")
 func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
 
 	messageCounter, err := meter.Int64Counter(
-		"mqtt.messages",
+		"diwise.mqtt.messages.total",
 		instrument.WithUnit("1"),
 		instrument.WithDescription("Total number of received mqtt messages"),
 	)
