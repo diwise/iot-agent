@@ -48,7 +48,8 @@ func decodePayload(b []byte) ([]payload.PayloadDecoratorFunc, error) {
 	// filter out sensor reading errors
 	// TODO: Figure out if we want to signal this error in some way
 	if distance != -1 {
-		decorators = append(decorators, payload.Distance(int(distance)))
+		// convert the reported distance in millimeters to meters instead
+		decorators = append(decorators, payload.Distance(float64(distance)/1000.0))
 	}
 
 	return decorators, nil

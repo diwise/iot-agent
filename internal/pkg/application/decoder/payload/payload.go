@@ -166,9 +166,9 @@ func CO2(co2 int) PayloadDecoratorFunc {
 	})
 }
 
-func Distance(d int) PayloadDecoratorFunc {
+func Distance(d float64) PayloadDecoratorFunc {
 	return S("distance", struct {
-		Distance int
+		Distance float64
 	}{
 		d,
 	})

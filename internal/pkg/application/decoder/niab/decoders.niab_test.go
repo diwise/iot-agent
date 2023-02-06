@@ -24,9 +24,9 @@ func TestNIAB(t *testing.T) {
 		is.True(ok)
 		is.Equal(temperature, 15.0)
 
-		distance, ok := payload.Get[int](p, "distance")
+		distance, ok := payload.Get[float64](p, "distance")
 		is.True(ok)
-		is.Equal(distance, 965)
+		is.Equal(distance, 0.965)
 
 		callBackCount = 1
 		return nil
