@@ -36,6 +36,10 @@ func decodePayload(b []byte) ([]payload.PayloadDecoratorFunc, error) {
 	battery := int(b[0])
 	temp := int(b[1])
 
+	if temp > 127 {
+		temp = temp - 255
+	}
+
 	decorators := append(
 		make([]payload.PayloadDecoratorFunc, 0, 3),
 		payload.BatteryLevel(battery*100/255),

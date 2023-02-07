@@ -36,6 +36,26 @@ func TestNIAB(t *testing.T) {
 	is.Equal(callBackCount, 1)
 }
 
+func TestNIABCanReportMinusTemperatures(t *testing.T) {
+	is := is.New(t)
+
+	evt := sensorEventFromTestData([]byte{0xcc, 0xF0, 0x03, 0xc5})
+	callBackCount := 0
+
+	FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
+
+		temperature, ok := payload.Get[float64](p, "temperature")
+		is.True(ok)
+		is.Equal(temperature, -15.0)
+
+		callBackCount = 1
+		return nil
+	})
+
+	// Make sure that the callback was in fact invoked
+	is.Equal(callBackCount, 1)
+}
+
 func TestNIABIgnoresReadErrors(t *testing.T) {
 	is := is.New(t)
 
