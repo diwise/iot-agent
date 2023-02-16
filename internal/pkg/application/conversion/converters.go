@@ -34,6 +34,18 @@ func DigitalInput(ctx context.Context, deviceID string, p payload.Payload, fn fu
 	return fn(NewSenMLPack(deviceID, DigitalInputURN, p.Timestamp(), decorators...))
 }
 
+func Distance(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	SensorValue := func(v float64) SenMLDecoratorFunc {
+		return Rec("5700", &v, nil, "", nil, senml.UnitMeter, nil)
+	}
+
+	if distance, ok := payload.Get[float64](p, "distance"); ok {
+		return fn(NewSenMLPack(deviceID, DistanceURN, p.Timestamp(), SensorValue(distance)))
+	} else {
+		return errors.New("no distance value in payload")
+	}
+}
+
 func PeopleCount(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	PeopleCount := func(v int) SenMLDecoratorFunc {
 		const CurrentPeopleCount string = "1"

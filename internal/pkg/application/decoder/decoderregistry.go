@@ -3,6 +3,8 @@ package decoder
 import (
 	"context"
 	"strings"
+
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/niab"
 )
 
 type DecoderRegistry interface {
@@ -24,6 +26,7 @@ func NewDecoderRegistry() DecoderRegistry {
 		"strips_lora_ms_h": SensativeDecoder,
 		"cube02":           SensefarmBasicDecoder,
 		"milesight_am100":  MilesightDecoder,
+		"niab-fls":         niab.FillLevelSensorDecoder,
 	}
 
 	return &decoderRegistry{

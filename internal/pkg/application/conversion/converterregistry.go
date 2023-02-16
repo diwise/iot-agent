@@ -14,6 +14,7 @@ const (
 	PresenceURN     string = "urn:oma:lwm2m:ext:3302"
 	PressureURN     string = "urn:oma:lwm2m:ext:3323"
 	TemperatureURN  string = "urn:oma:lwm2m:ext:3303"
+	DistanceURN     string = "urn:oma:lwm2m:ext:3330"
 	WatermeterURN   string = "urn:oma:lwm2m:ext:3424"
 )
 
