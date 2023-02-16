@@ -59,7 +59,8 @@ func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(conte
 	}
 
 	if d.Occupancy != nil {
-		decorators = append(decorators, payload.Occupancy(*d.Occupancy))
+		// 0 = Unoccupied / 1 = Pending (Entering or leaving) / 2 = Occupied
+		decorators = append(decorators, payload.Presence(*d.Occupancy == 2))
 	}
 
 	if d.DigitalInput != nil {
