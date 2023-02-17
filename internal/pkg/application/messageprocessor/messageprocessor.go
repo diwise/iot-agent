@@ -55,10 +55,12 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload, d
 		return errors.New("no matching converters for device")
 	}
 
+	conversionErrors := make([]error, 0, len(messageConverters))
+
 	for _, convert := range messageConverters {
 		err := convert(ctx, device.ID(), p, func(sp senml.Pack) error {
 			if err := sp.Validate(); err != nil {
-				return fmt.Errorf("could not validate senML package, %w", err)
+				return fmt.Errorf("invalid senML package: %w", err)
 			}
 
 			m := core.MessageReceived{
@@ -68,25 +70,27 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload, d
 			}
 
 			if device.IsActive() {
-				err = mp.event.Send(ctx, &m)
-				if err != nil {
-					log.Error().Err(err).Msg("failed to send event")
-				} else {
-					log.Debug().Msg("event published")
+				if err := mp.event.Send(ctx, &m); err != nil {
+					return fmt.Errorf("failed to send event: %w", err)
 				}
+
+				log.Debug().Msg("event published")
 			}
 
 			return nil
 		})
 
 		if err != nil {
-			log.Error().Err(err).Msg("conversion failed")
-			continue
+			conversionErrors = append(conversionErrors, err)
 		}
 	}
 
+	if len(conversionErrors) > 0 {
+		log.Warn().Msgf("%d out of %d converters failed: %v", len(conversionErrors), len(messageConverters), conversionErrors)
+	}
+
 	if !device.IsActive() {
-		log.Warn().Str("deviceID", device.ID()).Msg("ignoring message from inactive device")
+		log.Warn().Msg("ignored message from inactive device")
 	}
 
 	return nil
