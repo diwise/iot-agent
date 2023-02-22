@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	app "github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
@@ -15,26 +15,26 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
-//go:generate moq -rm -out iotagent_mock.go . IoTAgent
+//go:generate moq -rm -out iotagent_mock.go . App
 
-type IoTAgent interface {
-	MessageReceived(ctx context.Context, ue app.SensorEvent) error
-	MessageReceivedFn(ctx context.Context, msg []byte, ue app.UplinkASFunc) error
+type App interface {
+	MessageReceived(ctx context.Context, ue application.SensorEvent) error
+	MessageReceivedFn(ctx context.Context, msg []byte, ue application.UplinkASFunc) error
 }
 
-type iotAgent struct {
+type app struct {
 	messageProcessor       messageprocessor.MessageProcessor
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
 	notFoundDevices        map[string]time.Time
 }
 
-func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
+func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
 	c := conversion.NewConverterRegistry()
 	d := decoder.NewDecoderRegistry()
 	m := messageprocessor.NewMessageReceivedProcessor(c, eventPub)
 
-	return &iotAgent{
+	return &app{
 		messageProcessor:       m,
 		decoderRegistry:        d,
 		deviceManagementClient: dmc,
@@ -42,7 +42,7 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
 	}
 }
 
-func (a *iotAgent) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc app.UplinkASFunc) error {
+func (a *app) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc application.UplinkASFunc) error {
 	ue, err := ueFunc(msg)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func (a *iotAgent) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc app
 	return a.MessageReceived(ctx, ue)
 }
 
-func (a *iotAgent) MessageReceived(ctx context.Context, ue app.SensorEvent) error {
+func (a *app) MessageReceived(ctx context.Context, ue application.SensorEvent) error {
 	log := logging.GetFromContext(ctx).With().Str("devEui", ue.DevEui).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 

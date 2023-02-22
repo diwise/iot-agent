@@ -25,14 +25,14 @@ type API interface {
 
 type api struct {
 	r   chi.Router
-	app iotagent.IoTAgent
+	app iotagent.App
 }
 
-func New(ctx context.Context, r chi.Router, facade string, app iotagent.IoTAgent) API {
+func New(ctx context.Context, r chi.Router, facade string, app iotagent.App) API {
 	return newAPI(ctx, r, facade, app)
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.IoTAgent) *api {
+func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.App) *api {
 
 	a := &api{
 		r:   r,
@@ -51,6 +51,7 @@ func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.IoTAg
 
 	r.Get("/health", a.health)
 	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade))
+	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
 
 	return a
 }
@@ -93,6 +94,36 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 
 			return
 		}
+
+		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc {
+	logger := logging.GetFromContext(ctx)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx, span := tracer.Start(r.Context(), "incoming-lwm2m-message")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+		msg, _ := io.ReadAll(r.Body)
+		defer r.Body.Close()
+
+		log.Debug().Str("body", string(msg)).Msg("starting to process message")
+
+		/*err = a.app.MessageReceivedFn(ctx, msg, facade)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to handle message")
+
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+
+			return
+		}*/
 
 		w.WriteHeader(http.StatusCreated)
 	}
