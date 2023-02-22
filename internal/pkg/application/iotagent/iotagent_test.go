@@ -17,9 +17,9 @@ import (
 func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := New(dmc, e)
+	agent := New(dmc, e).(*app)
 	ue, _ := application.Netmore([]byte(senlabT))
-	err := app.MessageReceived(context.Background(), ue)
+	err := agent.sensorEventReceived(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)
@@ -31,9 +31,9 @@ func TestSenlabTPayload(t *testing.T) {
 func TestStripsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := New(dmc, e)
+	agent := New(dmc, e).(*app)
 	ue, _ := application.Netmore([]byte(stripsPayload))
-	err := app.MessageReceived(context.Background(), ue)
+	err := agent.sensorEventReceived(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)
@@ -45,9 +45,9 @@ func TestStripsPayload(t *testing.T) {
 func TestElsysPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := New(dmc, e)
+	agent := New(dmc, e).(*app)
 	ue, _ := application.ChirpStack([]byte(elsys))
-	err := app.MessageReceived(context.Background(), ue)
+	err := agent.sensorEventReceived(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)
@@ -59,9 +59,9 @@ func TestElsysPayload(t *testing.T) {
 func TestErsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := New(dmc, e)
+	agent := New(dmc, e).(*app)
 	ue, _ := application.ChirpStack([]byte(ers))
-	err := app.MessageReceived(context.Background(), ue)
+	err := agent.sensorEventReceived(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) == 2) // expecting two calls since payload should produce measurement for both temperature and co2.
@@ -79,9 +79,9 @@ func TestErsPayload(t *testing.T) {
 func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := New(dmc, e)
+	agent := New(dmc, e).(*app)
 	ue, _ := application.ChirpStack([]byte(livboj))
-	err := app.MessageReceived(context.Background(), ue)
+	err := agent.sensorEventReceived(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)

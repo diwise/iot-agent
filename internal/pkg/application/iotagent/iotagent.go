@@ -18,8 +18,7 @@ import (
 //go:generate moq -rm -out iotagent_mock.go . App
 
 type App interface {
-	MessageReceived(ctx context.Context, ue application.SensorEvent) error
-	MessageReceivedFn(ctx context.Context, msg []byte, ue application.UplinkASFunc) error
+	MessageReceived(ctx context.Context, msg []byte, ue application.UplinkASFunc) error
 }
 
 type app struct {
@@ -42,15 +41,15 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
 	}
 }
 
-func (a *app) MessageReceivedFn(ctx context.Context, msg []byte, ueFunc application.UplinkASFunc) error {
+func (a *app) MessageReceived(ctx context.Context, msg []byte, ueFunc application.UplinkASFunc) error {
 	ue, err := ueFunc(msg)
 	if err != nil {
 		return err
 	}
-	return a.MessageReceived(ctx, ue)
+	return a.sensorEventReceived(ctx, ue)
 }
 
-func (a *app) MessageReceived(ctx context.Context, ue application.SensorEvent) error {
+func (a *app) sensorEventReceived(ctx context.Context, ue application.SensorEvent) error {
 	log := logging.GetFromContext(ctx).With().Str("devEui", ue.DevEui).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 
