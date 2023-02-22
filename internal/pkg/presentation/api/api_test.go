@@ -11,7 +11,6 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 )
@@ -50,7 +49,7 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.IoTAgentMock) {
 		},
 	}
 
-	a := newAPI(zerolog.Logger{}, r, app)
+	a := newAPI(context.Background(), r, "chirpstack", app)
 
 	return is, a, app
 }

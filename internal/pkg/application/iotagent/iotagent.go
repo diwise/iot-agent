@@ -29,7 +29,7 @@ type iotAgent struct {
 	notFoundDevices        map[string]time.Time
 }
 
-func NewIoTAgent(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
+func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) IoTAgent {
 	c := conversion.NewConverterRegistry()
 	d := decoder.NewDecoderRegistry()
 	m := messageprocessor.NewMessageReceivedProcessor(c, eventPub)

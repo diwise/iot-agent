@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/rs/zerolog"
 
 	"github.com/diwise/messaging-golang/pkg/messaging"
 )
@@ -20,14 +19,14 @@ type EventSender interface {
 }
 
 type eventSender struct {
-	rmqConfig    messaging.Config
 	rmqMessenger messaging.MsgContext
+	initContext  func() (messaging.MsgContext, error)
 	started      bool
 }
 
-func NewEventSender(serviceName string, logger zerolog.Logger) EventSender {
+func NewSender(ctx context.Context, initMsgCtx func() (messaging.MsgContext, error)) EventSender {
 	sender := &eventSender{
-		rmqConfig: messaging.LoadConfiguration(serviceName, logger),
+		initContext: initMsgCtx,
 	}
 
 	return sender
@@ -62,7 +61,7 @@ func (e *eventSender) Publish(ctx context.Context, m messaging.TopicMessage) err
 
 func (e *eventSender) Start() error {
 	var err error
-	e.rmqMessenger, err = messaging.Initialize(e.rmqConfig)
+	e.rmqMessenger, err = e.initContext()
 	if err == nil {
 		e.started = true
 	}
