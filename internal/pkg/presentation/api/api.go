@@ -2,14 +2,20 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	core "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/farshidtz/senml/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/riandyrn/otelchi"
 	"github.com/rs/cors"
@@ -28,11 +34,11 @@ type api struct {
 	app iotagent.App
 }
 
-func New(ctx context.Context, r chi.Router, facade string, app iotagent.App) API {
-	return newAPI(ctx, r, facade, app)
+func New(ctx context.Context, r chi.Router, facade string, sender events.EventSender, app iotagent.App) API {
+	return newAPI(ctx, r, facade, sender, app)
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.App) *api {
+func newAPI(ctx context.Context, r chi.Router, facade string, sender events.EventSender, app iotagent.App) *api {
 
 	a := &api{
 		r:   r,
@@ -51,7 +57,7 @@ func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.App) 
 
 	r.Get("/health", a.health)
 	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade))
-	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
+	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx, sender))
 
 	return a
 }
@@ -85,7 +91,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 			facade = application.GetFacade(r.URL.Query().Get("facade"))
 		}
 
-		err = a.app.MessageReceivedFn(ctx, msg, facade)
+		err = a.app.MessageReceived(ctx, msg, facade)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to handle message")
 
@@ -99,7 +105,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 	}
 }
 
-func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc {
+func (a *api) incomingLWM2MMessageHandler(ctx context.Context, sender events.EventSender) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -115,15 +121,32 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 
 		log.Debug().Str("body", string(msg)).Msg("starting to process message")
 
-		/*err = a.app.MessageReceivedFn(ctx, msg, facade)
+		pack := senml.Pack{}
+		err = json.Unmarshal(msg, &pack)
+
+		if err == nil && len(pack) == 0 {
+			err = errors.New("empty senML pack received")
+		}
+
 		if err != nil {
-			log.Error().Err(err).Msg("failed to handle message")
-
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-
+			log.Error().Err(err).Msg("failed to decode incoming senML pack")
+			w.WriteHeader(http.StatusBadRequest)
 			return
-		}*/
+		}
+
+		deviceID := pack[0].StringValue
+		m := core.MessageReceived{
+			Device:    deviceID,
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			Pack:      pack,
+		}
+
+		err = sender.Send(ctx, &m)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to send command message")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusCreated)
 	}

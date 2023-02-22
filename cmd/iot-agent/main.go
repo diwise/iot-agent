@@ -89,13 +89,13 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint string) mqtt.
 
 func initialize(ctx context.Context, facade string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error)) (api.API, error) {
 
-	event := events.NewSender(ctx, initMsgCtx)
-	event.Start()
+	sender := events.NewSender(ctx, initMsgCtx)
+	sender.Start()
 
-	app := iotagent.New(dmc, event)
+	app := iotagent.New(dmc, sender)
 
 	r := chi.NewRouter()
-	a := api.New(ctx, r, facade, app)
+	a := api.New(ctx, r, facade, sender, app)
 
 	metrics.AddHandlers(r)
 
