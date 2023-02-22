@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
+	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/metrics"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
 const serviceName string = "iot-agent"
@@ -25,20 +27,54 @@ func main() {
 	defer cleanup()
 
 	forwardingEndpoint := env.GetVariableOrDie(logger, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
-	deviceMgmtClientURL := env.GetVariableOrDie(logger, "DEV_MGMT_URL", "device management client URL")
 
-	apiPort := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
+	dmClient := createDeviceManagementClientOrDie(ctx)
+	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint)
 
-	tokenURL := env.GetVariableOrDie(logger, "OAUTH2_TOKEN_URL", "a valid oauth2 token URL")
-	clientID := env.GetVariableOrDie(logger, "OAUTH2_CLIENT_ID", "a valid oauth2 client id")
-	clientSecret := env.GetVariableOrDie(logger, "OAUTH2_CLIENT_SECRET", "a valid oauth2 client secret")
+	msgCfg := messaging.LoadConfiguration(serviceName, logger)
+	initMsgCtx := func() (messaging.MsgContext, error) {
+		return messaging.Initialize(msgCfg)
+	}
 
-	app, err := SetupIoTAgent(ctx, logger, serviceName, deviceMgmtClientURL, tokenURL, clientID, clientSecret)
+	facade := env.GetVariableOrDefault(logger, "APPSERVER_FACADE", "chirpstack")
+	svcAPI, err := initialize(ctx, facade, dmClient, initMsgCtx)
+
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to setup iot agent")
 	}
 
+	mqttClient.Start()
+	defer mqttClient.Stop()
+
+	apiPort := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
+	logger.Info().Str("port", apiPort).Msg("starting to listen for incoming connections")
+	err = http.ListenAndServe(":"+apiPort, svcAPI.Router())
+
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to start request router")
+	}
+}
+
+func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.DeviceManagementClient {
+	logger := logging.GetFromContext(ctx)
+
+	dmURL := env.GetVariableOrDie(logger, "DEV_MGMT_URL", "url to iot-device-mgmt")
+	tokenURL := env.GetVariableOrDie(logger, "OAUTH2_TOKEN_URL", "a valid oauth2 token URL")
+	clientID := env.GetVariableOrDie(logger, "OAUTH2_CLIENT_ID", "a valid oauth2 client id")
+	clientSecret := env.GetVariableOrDie(logger, "OAUTH2_CLIENT_SECRET", "a valid oauth2 client secret")
+
+	dmClient, err := devicemgmtclient.New(ctx, dmURL, tokenURL, clientID, clientSecret)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to create device managagement client")
+	}
+
+	return dmClient
+}
+
+func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint string) mqtt.Client {
 	mqttConfig, err := mqtt.NewConfigFromEnvironment()
+	logger := logging.GetFromContext(ctx)
+
 	if err != nil {
 		logger.Fatal().Err(err).Msg("mqtt configuration error")
 	}
@@ -47,30 +83,21 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create mqtt client")
 	}
-	mqttClient.Start()
-	defer mqttClient.Stop()
 
-	SetupAndRunApi(logger, app, apiPort)
+	return mqttClient
 }
 
-func SetupIoTAgent(ctx context.Context, logger zerolog.Logger, serviceName, deviceMgmtClientURL, oauth2TokenURL, oauth2ClientID, oauth2ClientSecret string) (iotagent.IoTAgent, error) {
-	dmc, err := devicemgmtclient.New(ctx, deviceMgmtClientURL, oauth2TokenURL, oauth2ClientID, oauth2ClientSecret)
-	if err != nil {
-		return nil, err
-	}
+func initialize(ctx context.Context, facade string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error)) (api.API, error) {
 
-	event := events.NewEventSender(serviceName, logger)
+	event := events.NewSender(ctx, initMsgCtx)
 	event.Start()
 
-	return iotagent.NewIoTAgent(dmc, event), nil
-}
+	app := iotagent.New(dmc, event)
 
-func SetupAndRunApi(logger zerolog.Logger, app iotagent.IoTAgent, port string) {
 	r := chi.NewRouter()
-
-	a := api.NewApi(logger, r, app)
+	a := api.New(ctx, r, facade, app)
 
 	metrics.AddHandlers(r)
 
-	a.Start(port)
+	return a, nil
 }

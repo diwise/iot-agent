@@ -17,7 +17,7 @@ import (
 func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
+	app := New(dmc, e)
 	ue, _ := application.Netmore([]byte(senlabT))
 	err := app.MessageReceived(context.Background(), ue)
 
@@ -31,7 +31,7 @@ func TestSenlabTPayload(t *testing.T) {
 func TestStripsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
+	app := New(dmc, e)
 	ue, _ := application.Netmore([]byte(stripsPayload))
 	err := app.MessageReceived(context.Background(), ue)
 
@@ -45,7 +45,7 @@ func TestStripsPayload(t *testing.T) {
 func TestElsysPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
+	app := New(dmc, e)
 	ue, _ := application.ChirpStack([]byte(elsys))
 	err := app.MessageReceived(context.Background(), ue)
 
@@ -59,7 +59,7 @@ func TestElsysPayload(t *testing.T) {
 func TestErsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
+	app := New(dmc, e)
 	ue, _ := application.ChirpStack([]byte(ers))
 	err := app.MessageReceived(context.Background(), ue)
 
@@ -79,7 +79,7 @@ func TestErsPayload(t *testing.T) {
 func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	app := NewIoTAgent(dmc, e)
+	app := New(dmc, e)
 	ue, _ := application.ChirpStack([]byte(livboj))
 	err := app.MessageReceived(context.Background(), ue)
 
