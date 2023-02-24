@@ -32,6 +32,7 @@ func NewConverterRegistry() ConverterRegistry {
 		AirQualityURN:   AirQuality,
 		ConductivityURN: Conductivity,
 		DigitalInputURN: DigitalInput,
+		DistanceURN:     Distance,
 		HumidityURN:     Humidity,
 		IlluminanceURN:  Illuminance,
 		PeopleCountURN:  PeopleCount,
