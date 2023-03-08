@@ -44,6 +44,23 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 	is.Equal(r.Timestamp(), ts)
 }
 
+func TestSenlabTTempDecoder(t *testing.T) {
+	is, _ := testSetup(t)
+
+	var r Payload
+	ue, _ := application.ChirpStack([]byte(senlabTemp))
+	err := SenlabTBasicDecoder(context.Background(), ue, func(c context.Context, m Payload) error {
+		r = m
+		return nil
+	})
+
+	is.NoErr(err)
+
+	v, ok := Get[float64](r, "temperature")
+	is.True(ok)
+	is.Equal(v, float64(22.375))
+}
+
 func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := application.Netmore([]byte(senlabT_sensorReadingError))
@@ -53,6 +70,7 @@ func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 
 	is.True(err != nil)
 }
+
 func TestElsysTemperatureDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
@@ -391,6 +409,14 @@ const senlabT string = `[{
 	"latitude": 57.806266,
 	"longitude": 12.07727
 }]`
+
+const senlabTemp string = `{
+	"devEUI": "70b3d580a010c5c3",
+	"adr": true,
+	"fCnt": 7299,
+	"fPort": 3,
+	"data": "AbaOFpwQAWY="
+ }`
 
 // payload ...0xFD14 = -46.75 = sensor reading error
 const senlabT_sensorReadingError string = `[{
