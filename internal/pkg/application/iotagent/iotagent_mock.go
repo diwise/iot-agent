@@ -6,6 +6,7 @@ package iotagent
 import (
 	"context"
 	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/farshidtz/senml/v2"
 	"sync"
 )
 
@@ -22,6 +23,9 @@ var _ App = &AppMock{}
 //			HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
 //				panic("mock out the HandleSensorEvent method")
 //			},
+//			HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error {
+//				panic("mock out the HandleSensorMeasurementList method")
+//			},
 //		}
 //
 //		// use mockedApp in code that requires App
@@ -32,6 +36,9 @@ type AppMock struct {
 	// HandleSensorEventFunc mocks the HandleSensorEvent method.
 	HandleSensorEventFunc func(ctx context.Context, se application.SensorEvent) error
 
+	// HandleSensorMeasurementListFunc mocks the HandleSensorMeasurementList method.
+	HandleSensorMeasurementListFunc func(ctx context.Context, deviceID string, pack senml.Pack) error
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// HandleSensorEvent holds details about calls to the HandleSensorEvent method.
@@ -41,8 +48,18 @@ type AppMock struct {
 			// Se is the se argument value.
 			Se application.SensorEvent
 		}
+		// HandleSensorMeasurementList holds details about calls to the HandleSensorMeasurementList method.
+		HandleSensorMeasurementList []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DeviceID is the deviceID argument value.
+			DeviceID string
+			// Pack is the pack argument value.
+			Pack senml.Pack
+		}
 	}
-	lockHandleSensorEvent sync.RWMutex
+	lockHandleSensorEvent           sync.RWMutex
+	lockHandleSensorMeasurementList sync.RWMutex
 }
 
 // HandleSensorEvent calls HandleSensorEventFunc.
@@ -78,5 +95,45 @@ func (mock *AppMock) HandleSensorEventCalls() []struct {
 	mock.lockHandleSensorEvent.RLock()
 	calls = mock.calls.HandleSensorEvent
 	mock.lockHandleSensorEvent.RUnlock()
+	return calls
+}
+
+// HandleSensorMeasurementList calls HandleSensorMeasurementListFunc.
+func (mock *AppMock) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
+	if mock.HandleSensorMeasurementListFunc == nil {
+		panic("AppMock.HandleSensorMeasurementListFunc: method is nil but App.HandleSensorMeasurementList was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		DeviceID string
+		Pack     senml.Pack
+	}{
+		Ctx:      ctx,
+		DeviceID: deviceID,
+		Pack:     pack,
+	}
+	mock.lockHandleSensorMeasurementList.Lock()
+	mock.calls.HandleSensorMeasurementList = append(mock.calls.HandleSensorMeasurementList, callInfo)
+	mock.lockHandleSensorMeasurementList.Unlock()
+	return mock.HandleSensorMeasurementListFunc(ctx, deviceID, pack)
+}
+
+// HandleSensorMeasurementListCalls gets all the calls that were made to HandleSensorMeasurementList.
+// Check the length with:
+//
+//	len(mockedApp.HandleSensorMeasurementListCalls())
+func (mock *AppMock) HandleSensorMeasurementListCalls() []struct {
+	Ctx      context.Context
+	DeviceID string
+	Pack     senml.Pack
+} {
+	var calls []struct {
+		Ctx      context.Context
+		DeviceID string
+		Pack     senml.Pack
+	}
+	mock.lockHandleSensorMeasurementList.RLock()
+	calls = mock.calls.HandleSensorMeasurementList
+	mock.lockHandleSensorMeasurementList.RUnlock()
 	return calls
 }

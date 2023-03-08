@@ -13,20 +13,24 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/messageprocessor"
+	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/farshidtz/senml/v2"
 )
 
 //go:generate moq -rm -out iotagent_mock.go . App
 
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
+	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
 }
 
 type app struct {
 	messageProcessor       messageprocessor.MessageProcessor
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
+	eventSender            events.EventSender
 	notFoundDevices        map[string]time.Time
 	notFoundDevicesMu      sync.Mutex
 }
@@ -40,6 +44,7 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
 		messageProcessor:       m,
 		decoderRegistry:        d,
 		deviceManagementClient: dmc,
+		eventSender:            eventPub,
 		notFoundDevices:        make(map[string]time.Time),
 	}
 }
@@ -81,6 +86,18 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	return err
+}
+
+func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
+	m := core.MessageReceived{
+		Device:    deviceID,
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Pack:      pack,
+	}
+
+	a.eventSender.Send(ctx, &m)
+
+	return nil
 }
 
 var errDeviceOnBlackList = errors.New("blacklisted")
