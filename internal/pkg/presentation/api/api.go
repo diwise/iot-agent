@@ -91,7 +91,12 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 			facade = application.GetFacade(r.URL.Query().Get("facade"))
 		}
 
-		err = a.app.MessageReceived(ctx, msg, facade)
+		sensorEvent, err := facade(msg)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to decode sensor event using facade")
+		}
+
+		err = a.app.HandleSensorEvent(ctx, sensorEvent)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to handle message")
 

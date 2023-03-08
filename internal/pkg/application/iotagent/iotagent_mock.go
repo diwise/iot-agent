@@ -19,8 +19,8 @@ var _ App = &AppMock{}
 //
 //		// make and configure a mocked App
 //		mockedApp := &AppMock{
-//			MessageReceivedFunc: func(ctx context.Context, msg []byte, ue application.UplinkASFunc) error {
-//				panic("mock out the MessageReceived method")
+//			HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
+//				panic("mock out the HandleSensorEvent method")
 //			},
 //		}
 //
@@ -29,60 +29,54 @@ var _ App = &AppMock{}
 //
 //	}
 type AppMock struct {
-	// MessageReceivedFunc mocks the MessageReceived method.
-	MessageReceivedFunc func(ctx context.Context, msg []byte, ue application.UplinkASFunc) error
+	// HandleSensorEventFunc mocks the HandleSensorEvent method.
+	HandleSensorEventFunc func(ctx context.Context, se application.SensorEvent) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// MessageReceived holds details about calls to the MessageReceived method.
-		MessageReceived []struct {
+		// HandleSensorEvent holds details about calls to the HandleSensorEvent method.
+		HandleSensorEvent []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Msg is the msg argument value.
-			Msg []byte
-			// Ue is the ue argument value.
-			Ue application.UplinkASFunc
+			// Se is the se argument value.
+			Se application.SensorEvent
 		}
 	}
-	lockMessageReceived sync.RWMutex
+	lockHandleSensorEvent sync.RWMutex
 }
 
-// MessageReceived calls MessageReceivedFunc.
-func (mock *AppMock) MessageReceived(ctx context.Context, msg []byte, ue application.UplinkASFunc) error {
-	if mock.MessageReceivedFunc == nil {
-		panic("AppMock.MessageReceivedFunc: method is nil but App.MessageReceived was just called")
+// HandleSensorEvent calls HandleSensorEventFunc.
+func (mock *AppMock) HandleSensorEvent(ctx context.Context, se application.SensorEvent) error {
+	if mock.HandleSensorEventFunc == nil {
+		panic("AppMock.HandleSensorEventFunc: method is nil but App.HandleSensorEvent was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Msg []byte
-		Ue  application.UplinkASFunc
+		Se  application.SensorEvent
 	}{
 		Ctx: ctx,
-		Msg: msg,
-		Ue:  ue,
+		Se:  se,
 	}
-	mock.lockMessageReceived.Lock()
-	mock.calls.MessageReceived = append(mock.calls.MessageReceived, callInfo)
-	mock.lockMessageReceived.Unlock()
-	return mock.MessageReceivedFunc(ctx, msg, ue)
+	mock.lockHandleSensorEvent.Lock()
+	mock.calls.HandleSensorEvent = append(mock.calls.HandleSensorEvent, callInfo)
+	mock.lockHandleSensorEvent.Unlock()
+	return mock.HandleSensorEventFunc(ctx, se)
 }
 
-// MessageReceivedCalls gets all the calls that were made to MessageReceived.
+// HandleSensorEventCalls gets all the calls that were made to HandleSensorEvent.
 // Check the length with:
 //
-//	len(mockedApp.MessageReceivedCalls())
-func (mock *AppMock) MessageReceivedCalls() []struct {
+//	len(mockedApp.HandleSensorEventCalls())
+func (mock *AppMock) HandleSensorEventCalls() []struct {
 	Ctx context.Context
-	Msg []byte
-	Ue  application.UplinkASFunc
+	Se  application.SensorEvent
 } {
 	var calls []struct {
 		Ctx context.Context
-		Msg []byte
-		Ue  application.UplinkASFunc
+		Se  application.SensorEvent
 	}
-	mock.lockMessageReceived.RLock()
-	calls = mock.calls.MessageReceived
-	mock.lockMessageReceived.RUnlock()
+	mock.lockHandleSensorEvent.RLock()
+	calls = mock.calls.HandleSensorEvent
+	mock.lockHandleSensorEvent.RUnlock()
 	return calls
 }

@@ -2,7 +2,9 @@ package iotagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -18,7 +20,7 @@ import (
 //go:generate moq -rm -out iotagent_mock.go . App
 
 type App interface {
-	MessageReceived(ctx context.Context, msg []byte, ue application.UplinkASFunc) error
+	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
 }
 
 type app struct {
@@ -26,6 +28,7 @@ type app struct {
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
 	notFoundDevices        map[string]time.Time
+	notFoundDevicesMu      sync.Mutex
 }
 
 func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
@@ -41,31 +44,18 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
 	}
 }
 
-func (a *app) MessageReceived(ctx context.Context, msg []byte, ueFunc application.UplinkASFunc) error {
-	ue, err := ueFunc(msg)
-	if err != nil {
-		return err
-	}
-	return a.sensorEventReceived(ctx, ue)
-}
-
-func (a *app) sensorEventReceived(ctx context.Context, ue application.SensorEvent) error {
-	log := logging.GetFromContext(ctx).With().Str("devEui", ue.DevEui).Logger()
+func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent) error {
+	log := logging.GetFromContext(ctx).With().Str("devEui", se.DevEui).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	if timeForFirstError, ok := a.notFoundDevices[ue.DevEui]; ok {
-		if time.Now().UTC().After(timeForFirstError.Add(1 * time.Hour)) {
-			delete(a.notFoundDevices, ue.DevEui)
-		} else {
-			log.Warn().Str("deviceName", ue.DeviceName).Msg("blacklisted")
+	device, err := a.findDevice(ctx, se.DevEui)
+	if err != nil {
+		if errors.Is(err, errDeviceOnBlackList) {
+			log.Warn().Str("deviceName", se.DeviceName).Msg("blacklisted")
 			return nil
 		}
-	}
 
-	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, ue.DevEui)
-	if err != nil {
-		a.notFoundDevices[ue.DevEui] = time.Now().UTC()
-		return fmt.Errorf("device lookup failure (%w)", err)
+		return err
 	}
 
 	log = log.With().Str("device", device.ID()).Logger()
@@ -73,14 +63,12 @@ func (a *app) sensorEventReceived(ctx context.Context, ue application.SensorEven
 
 	log.Debug().Str("type", device.SensorType()).Msg("message received")
 
-	var decoderFn decoder.MessageDecoderFunc
-	if ue.HasError() {
-		decoderFn = decoder.PayloadErrorDecoder
-	} else {
+	decoderFn := decoder.PayloadErrorDecoder
+	if !se.HasError() {
 		decoderFn = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 	}
 
-	err = decoderFn(ctx, ue, func(ctx context.Context, p payload.Payload) error {
+	err = decoderFn(ctx, se, func(ctx context.Context, p payload.Payload) error {
 		err := a.messageProcessor.ProcessMessage(ctx, p, device)
 		if err != nil {
 			err = fmt.Errorf("failed to process message (%w)", err)
@@ -93,4 +81,43 @@ func (a *app) sensorEventReceived(ctx context.Context, ue application.SensorEven
 	}
 
 	return err
+}
+
+var errDeviceOnBlackList = errors.New("blacklisted")
+
+func (a *app) findDevice(ctx context.Context, devEui string) (dmc.Device, error) {
+
+	if a.deviceIsCurrentlyIgnored(ctx, devEui) {
+		return nil, errDeviceOnBlackList
+	}
+
+	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, devEui)
+	if err != nil {
+		a.ignoreDeviceFor(ctx, devEui, 1*time.Hour)
+		return nil, fmt.Errorf("device lookup failure (%w)", err)
+	}
+
+	return device, nil
+}
+
+func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, devEui string) bool {
+	a.notFoundDevicesMu.Lock()
+	defer a.notFoundDevicesMu.Unlock()
+
+	if timeOfNextAllowedRetry, ok := a.notFoundDevices[devEui]; ok {
+		if !time.Now().UTC().After(timeOfNextAllowedRetry) {
+			return true
+		}
+
+		delete(a.notFoundDevices, devEui)
+	}
+
+	return false
+}
+
+func (a *app) ignoreDeviceFor(ctx context.Context, devEui string, period time.Duration) {
+	a.notFoundDevicesMu.Lock()
+	defer a.notFoundDevicesMu.Unlock()
+
+	a.notFoundDevices[devEui] = time.Now().UTC().Add(period)
 }

@@ -35,7 +35,7 @@ func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T)
 
 	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages", bytes.NewBuffer([]byte(msgfromMQTT)))
 	is.Equal(resp.StatusCode, http.StatusCreated)
-	is.Equal(len(app.MessageReceivedCalls()), 1)
+	is.Equal(len(app.HandleSensorEventCalls()), 1)
 }
 
 func TestSenMLPayload(t *testing.T) {
@@ -60,7 +60,7 @@ func testSetup(t *testing.T) (*is.I, *api, *events.EventSenderMock, *iotagent.Ap
 	}
 
 	app := &iotagent.AppMock{
-		MessageReceivedFunc: func(ctx context.Context, msg []byte, ue application.UplinkASFunc) error {
+		HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
 			return nil
 		},
 	}
