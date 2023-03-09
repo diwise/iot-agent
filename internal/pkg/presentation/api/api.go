@@ -6,12 +6,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
-	core "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -34,11 +31,11 @@ type api struct {
 	app iotagent.App
 }
 
-func New(ctx context.Context, r chi.Router, facade string, sender events.EventSender, app iotagent.App) API {
-	return newAPI(ctx, r, facade, sender, app)
+func New(ctx context.Context, r chi.Router, facade string, app iotagent.App) API {
+	return newAPI(ctx, r, facade, app)
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade string, sender events.EventSender, app iotagent.App) *api {
+func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.App) *api {
 
 	a := &api{
 		r:   r,
@@ -57,7 +54,7 @@ func newAPI(ctx context.Context, r chi.Router, facade string, sender events.Even
 
 	r.Get("/health", a.health)
 	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade))
-	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx, sender))
+	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
 
 	return a
 }
@@ -91,7 +88,12 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 			facade = application.GetFacade(r.URL.Query().Get("facade"))
 		}
 
-		err = a.app.MessageReceived(ctx, msg, facade)
+		sensorEvent, err := facade(msg)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to decode sensor event using facade")
+		}
+
+		err = a.app.HandleSensorEvent(ctx, sensorEvent)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to handle message")
 
@@ -105,7 +107,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 	}
 }
 
-func (a *api) incomingLWM2MMessageHandler(ctx context.Context, sender events.EventSender) http.HandlerFunc {
+func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -135,15 +137,10 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context, sender events.Eve
 		}
 
 		deviceID := pack[0].StringValue
-		m := core.MessageReceived{
-			Device:    deviceID,
-			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
-			Pack:      pack,
-		}
+		err = a.app.HandleSensorMeasurementList(ctx, deviceID, pack)
 
-		err = sender.Send(ctx, &m)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to send command message")
+			log.Error().Err(err).Msg("failed to handle measurement list")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

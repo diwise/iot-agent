@@ -8,9 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
-	"github.com/diwise/messaging-golang/pkg/messaging"
+	"github.com/farshidtz/senml/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 
@@ -18,7 +17,7 @@ import (
 )
 
 func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
-	is, a, _, _ := testSetup(t)
+	is, a, _ := testSetup(t)
 
 	server := httptest.NewServer(a.r)
 	defer server.Close()
@@ -28,46 +27,43 @@ func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
 }
 
 func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T) {
-	is, api, _, app := testSetup(t)
+	is, api, app := testSetup(t)
 
 	server := httptest.NewServer(api.r)
 	defer server.Close()
 
 	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages", bytes.NewBuffer([]byte(msgfromMQTT)))
 	is.Equal(resp.StatusCode, http.StatusCreated)
-	is.Equal(len(app.MessageReceivedCalls()), 1)
+	is.Equal(len(app.HandleSensorEventCalls()), 1)
 }
 
 func TestSenMLPayload(t *testing.T) {
-	is, api, sender, _ := testSetup(t)
+	is, api, app := testSetup(t)
 
 	server := httptest.NewServer(api.r)
 	defer server.Close()
 
 	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages/lwm2m", bytes.NewBuffer([]byte(senMLPayload)))
 	is.Equal(resp.StatusCode, http.StatusCreated)
-	is.Equal(len(sender.SendCalls()), 1)
+	is.Equal(len(app.HandleSensorMeasurementListCalls()), 1)
 }
 
-func testSetup(t *testing.T) (*is.I, *api, *events.EventSenderMock, *iotagent.AppMock) {
+func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 	is := is.New(t)
 	r := chi.NewRouter()
 
-	sender := &events.EventSenderMock{
-		SendFunc: func(ctx context.Context, m messaging.CommandMessage) error {
-			return nil
-		},
-	}
-
 	app := &iotagent.AppMock{
-		MessageReceivedFunc: func(ctx context.Context, msg []byte, ue application.UplinkASFunc) error {
+		HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
+			return nil
+		},
+		HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error {
 			return nil
 		},
 	}
 
-	a := newAPI(context.Background(), r, "chirpstack", sender, app)
+	a := newAPI(context.Background(), r, "chirpstack", app)
 
-	return is, a, sender, app
+	return is, a, app
 }
 
 func testRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
