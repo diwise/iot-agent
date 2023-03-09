@@ -7,22 +7,20 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
-	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/farshidtz/senml/v2"
 	"github.com/matryer/is"
 )
 
 func TestProcessMessageWorksWithValidTemperatureInput(t *testing.T) {
-	is, cr, ep := testSetup(t)
-	mp := NewMessageReceivedProcessor(cr, ep)
+	is, cr := testSetup(t)
+	mp := NewMessageReceivedProcessor(cr)
 
-	err := mp.ProcessMessage(context.Background(), newPayload(), newDevice())
+	packs, err := mp.ProcessMessage(context.Background(), newPayload(), newDevice())
 	is.NoErr(err)
-	is.Equal(len(ep.SendCalls()), 1) // should have been called once
+	is.Equal(len(packs), 1) // should have returned a single senml pack
 }
 
-func testSetup(t *testing.T) (*is.I, conversion.ConverterRegistry, *events.EventSenderMock) {
+func testSetup(t *testing.T) (*is.I, conversion.ConverterRegistry) {
 	is := is.New(t)
 
 	cr := &conversion.ConverterRegistryMock{
@@ -39,16 +37,7 @@ func testSetup(t *testing.T) (*is.I, conversion.ConverterRegistry, *events.Event
 		},
 	}
 
-	ep := &events.EventSenderMock{
-		SendFunc: func(ctx context.Context, m messaging.CommandMessage) error {
-			return nil
-		},
-		PublishFunc: func(ctx context.Context, m messaging.TopicMessage) error {
-			return nil
-		},
-	}
-
-	return is, cr, ep
+	return is, cr
 }
 
 func newPayload() payload.Payload {

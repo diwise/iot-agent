@@ -31,14 +31,15 @@ type app struct {
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
 	eventSender            events.EventSender
-	notFoundDevices        map[string]time.Time
-	notFoundDevicesMu      sync.Mutex
+
+	notFoundDevices   map[string]time.Time
+	notFoundDevicesMu sync.Mutex
 }
 
 func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
 	c := conversion.NewConverterRegistry()
 	d := decoder.NewDecoderRegistry()
-	m := messageprocessor.NewMessageReceivedProcessor(c, eventPub)
+	m := messageprocessor.NewMessageReceivedProcessor(c)
 
 	return &app{
 		messageProcessor:       m,
@@ -68,17 +69,28 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 
 	log.Debug().Str("type", device.SensorType()).Msg("message received")
 
-	decoderFn := decoder.PayloadErrorDecoder
+	decodePayload := decoder.PayloadErrorDecoder
 	if !se.HasError() {
-		decoderFn = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
+		decodePayload = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 	}
 
-	err = decoderFn(ctx, se, func(ctx context.Context, p payload.Payload) error {
-		err := a.messageProcessor.ProcessMessage(ctx, p, device)
+	err = decodePayload(ctx, se, func(ctx context.Context, p payload.Payload) error {
+		a.sendStatusMessage(ctx, device.ID(), p)
+
+		packs, err := a.messageProcessor.ProcessMessage(ctx, p, device)
 		if err != nil {
-			err = fmt.Errorf("failed to process message (%w)", err)
+			return fmt.Errorf("failed to process message (%w)", err)
 		}
-		return err
+
+		if device.IsActive() {
+			for _, pack := range packs {
+				a.HandleSensorMeasurementList(ctx, device.ID(), pack)
+			}
+		} else {
+			log.Warn().Msg("ignored message from inactive device")
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -102,21 +114,6 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 var errDeviceOnBlackList = errors.New("blacklisted")
 
-func (a *app) findDevice(ctx context.Context, devEui string) (dmc.Device, error) {
-
-	if a.deviceIsCurrentlyIgnored(ctx, devEui) {
-		return nil, errDeviceOnBlackList
-	}
-
-	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, devEui)
-	if err != nil {
-		a.ignoreDeviceFor(ctx, devEui, 1*time.Hour)
-		return nil, fmt.Errorf("device lookup failure (%w)", err)
-	}
-
-	return device, nil
-}
-
 func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, devEui string) bool {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
@@ -132,9 +129,38 @@ func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, devEui string) bool 
 	return false
 }
 
+func (a *app) findDevice(ctx context.Context, devEui string) (dmc.Device, error) {
+
+	if a.deviceIsCurrentlyIgnored(ctx, devEui) {
+		return nil, errDeviceOnBlackList
+	}
+
+	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, devEui)
+	if err != nil {
+		a.ignoreDeviceFor(ctx, devEui, 1*time.Hour)
+		return nil, fmt.Errorf("device lookup failure (%w)", err)
+	}
+
+	return device, nil
+}
+
 func (a *app) ignoreDeviceFor(ctx context.Context, devEui string, period time.Duration) {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
 
 	a.notFoundDevices[devEui] = time.Now().UTC().Add(period)
+}
+
+func (a *app) sendStatusMessage(ctx context.Context, deviceID string, p payload.Payload) {
+	var d []func(*events.StatusMessage)
+	d = append(d, events.WithStatus(p.Status().Code, p.Status().Messages))
+	if bat, ok := payload.Get[int](p, "batteryLevel"); ok {
+		d = append(d, events.WithBatteryLevel(bat))
+	}
+
+	err := a.eventSender.Publish(ctx, events.NewStatusMessage(deviceID, d...))
+	if err != nil {
+		logger := logging.GetFromContext(ctx)
+		logger.Error().Err(err).Msg("failed to publish status message")
+	}
 }
