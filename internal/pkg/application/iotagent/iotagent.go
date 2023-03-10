@@ -154,7 +154,7 @@ func (a *app) ignoreDeviceFor(ctx context.Context, devEui string, period time.Du
 func (a *app) sendStatusMessage(ctx context.Context, deviceID string, p payload.Payload) {
 	var d []func(*events.StatusMessage)
 	d = append(d, events.WithStatus(p.Status().Code, p.Status().Messages))
-	if bat, ok := payload.Get[int](p, "batteryLevel"); ok {
+	if bat, ok := payload.Get[int](p, payload.BatteryLevelProperty); ok {
 		d = append(d, events.WithBatteryLevel(bat))
 	}
 

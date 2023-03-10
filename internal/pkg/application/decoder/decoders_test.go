@@ -56,7 +56,7 @@ func TestSenlabTTempDecoder(t *testing.T) {
 
 	is.NoErr(err)
 
-	v, ok := Get[float64](r, "temperature")
+	v, ok := Get[float64](r, TemperatureProperty)
 	is.True(ok)
 	is.Equal(v, float64(22.375))
 }
@@ -110,11 +110,11 @@ func TestEnviotDecoder(t *testing.T) {
 	})
 
 	is.NoErr(err)
-	temp, _ := Get[float64](r, "temperature")
+	temp, _ := Get[float64](r, TemperatureProperty)
 	is.Equal(temp, 11.5)
-	humidity, _ := Get[int](r, "humidity")
+	humidity, _ := Get[int](r, HumidityProperty)
 	is.Equal(humidity, 85)
-	batterylevel, _ := Get[int](r, "batterylevel")
+	batterylevel, _ := Get[int](r, BatteryLevelProperty)
 	is.Equal(batterylevel, 86)
 }
 
@@ -134,12 +134,12 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 
 	s, _ := GetSlice[struct {
 		Pressure int16
-	}](r, "pressure")
+	}](r, PressureProperty)
 	is.Equal(s[0].Pressure, int16(6))
 
 	ohm, _ := GetSlice[struct {
 		Resistance int32
-	}](r, "resistance")
+	}](r, ResistanceProperty)
 	is.Equal(ohm[0].Resistance, int32(815))
 }
 
@@ -154,7 +154,7 @@ func TestPresenceSensorReading(t *testing.T) {
 	})
 	is.NoErr(err)
 
-	_, ok := resultPayload.Get("Presence")
+	_, ok := resultPayload.Get(PresenceProperty)
 	is.True(ok)
 }
 
@@ -198,16 +198,16 @@ func TestQalcosonic_w1t(t *testing.T) {
 	is.NoErr(err)
 	is.True(r != nil)
 	is.Equal("116c52b4274f", r.DevEui())
-	temp, _ := Get[float64](r, "temperature")
+	temp, _ := Get[float64](r, TemperatureProperty)
 	is.Equal(float64(2578), temp)
-	timestamp, _ := Get[time.Time](r, "timestamp")
+	timestamp, _ := Get[time.Time](r, TimestampProperty)
 	is.Equal(timestamp, toT("2020-09-09T12:32:21Z"))            // time for reading
 	is.Equal(r.Timestamp(), toT("2022-08-25T07:35:21.834484Z")) // time from gateway
 	volumes, _ := GetSlice[struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
-	}](r, "volume")
+	}](r, VolumeProperty)
 	is.Equal(16, len(volumes))
 	is.Equal(float64(0), volumes[0].Volume)
 	is.Equal(float64(284554), volumes[0].Cumulated)
@@ -228,13 +228,13 @@ func TestQalcosonic_w1h(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
 	is.Equal(r.Status().Code, 48)
-	timestamp, _ := Get[time.Time](r, "timestamp")
+	timestamp, _ := Get[time.Time](r, TimestampProperty)
 	is.Equal(timestamp, toT("2020-05-29T07:51:59Z")) // time for reading
 	volumes, _ := GetSlice[struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
-	}](r, "volume")
+	}](r, VolumeProperty)
 	is.Equal(24, len(volumes))
 	is.Equal(float64(0), volumes[0].Volume)
 	is.Equal(float64(528333), volumes[0].Cumulated)
@@ -256,13 +256,13 @@ func TestQalcosonic_w1e(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "116c52b4274f")
 	is.Equal(r.Status().Code, 0x30)
-	timestamp, _ := Get[time.Time](r, "timestamp")
+	timestamp, _ := Get[time.Time](r, TimestampProperty)
 	is.Equal(timestamp, toT("2019-07-22T11:37:50Z")) // time for reading
 	volumes, _ := GetSlice[struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
-	}](r, "volume")
+	}](r, VolumeProperty)
 	is.Equal(17, len(volumes))
 	is.Equal(float64(0), volumes[0].Volume)
 	is.Equal(float64(10727), volumes[0].Cumulated)
@@ -282,7 +282,7 @@ func TestQalcosonicAlarmMessage(t *testing.T) {
 	})
 
 	is.NoErr(err)
-	timestamp, _ := Get[time.Time](r, "timestamp")
+	timestamp, _ := Get[time.Time](r, TimestampProperty)
 	is.Equal(timestamp, toT("2019-07-19T12:02:11Z")) // time for reading
 	is.Equal(r.Status().Code, 48)
 	is.Equal(r.Status().Messages[0], "Temporary error")
@@ -338,12 +338,12 @@ func TestQalcosonicStatusCodes(t *testing.T) {
 func TestGetSlice(t *testing.T) {
 	is := is.New(t)
 
-	p, _ := New("test", time.Now().UTC(), S("s", struct{ S int }{1}), M("m", struct{ M int }{1}))
+	p, _ := New("test", time.Now().UTC(), S("s", struct{ S int }{1}), M("m", struct{ M int }{2}))
 	s, _ := Get[int](p, "s")
 	is.Equal(1, s)
 
 	m, _ := GetSlice[struct{ M int }](p, "m")
-	is.Equal(1, m[0].M)
+	is.Equal(2, m[0].M)
 
 	m2, _ := GetSlice[struct{ S int }](p, "s")
 	is.Equal(1, m2[0].S)
