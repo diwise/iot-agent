@@ -120,6 +120,7 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 				SensorTypeFunc: func() string { return sensorType },
 				TypesFunc:      func() []string { return types },
 				IsActiveFunc:   func() bool { return true },
+				TenantFunc:     func() string { return "default" },
 			}
 
 			return res, nil
