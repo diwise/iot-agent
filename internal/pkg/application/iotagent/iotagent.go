@@ -75,7 +75,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	err = decodePayload(ctx, se, func(ctx context.Context, p payload.Payload) error {
-		a.sendStatusMessage(ctx, device.ID(), p)
+		a.sendStatusMessage(ctx, device.ID(), device.Tenant(), p)
 
 		packs, err := a.messageProcessor.ProcessMessage(ctx, p, device)
 		if err != nil {
@@ -151,14 +151,19 @@ func (a *app) ignoreDeviceFor(ctx context.Context, devEui string, period time.Du
 	a.notFoundDevices[devEui] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, deviceID string, p payload.Payload) {
-	var d []func(*events.StatusMessage)
-	d = append(d, events.WithStatus(p.Status().Code, p.Status().Messages))
-	if bat, ok := payload.Get[int](p, payload.BatteryLevelProperty); ok {
-		d = append(d, events.WithBatteryLevel(bat))
-	}
+func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p payload.Payload) {
+	var decorators []func(*events.StatusMessage)
 
-	err := a.eventSender.Publish(ctx, events.NewStatusMessage(deviceID, d...))
+	decorators = append(decorators, 
+		events.WithStatus(p.Status().Code, p.Status().Messages),
+		events.WithTenant(tenant),
+	)
+	
+	if bat, ok := payload.Get[int](p, payload.BatteryLevelProperty); ok {
+		decorators = append(decorators, events.WithBatteryLevel(bat))
+	}	
+
+	err := a.eventSender.Publish(ctx, events.NewStatusMessage(deviceID, decorators...))
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
 		logger.Error().Err(err).Msg("failed to publish status message")
