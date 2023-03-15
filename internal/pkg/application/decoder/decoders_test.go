@@ -135,7 +135,7 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 	s, _ := GetSlice[struct {
 		Pressure int16
 	}](r, PressureProperty)
-	is.Equal(s[0].Pressure, int16(6))
+	is.Equal(s[0].Pressure, int16(6000))
 
 	ohm, _ := GetSlice[struct {
 		Resistance int32

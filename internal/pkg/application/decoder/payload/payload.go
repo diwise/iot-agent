@@ -332,6 +332,7 @@ func Occupancy(p int) PayloadDecoratorFunc {
 	})
 }
 
+// Pressure accepts a pressure value in Pascal
 func Pressure(p int16) PayloadDecoratorFunc {
 	return M(PressureProperty, struct {
 		Pressure int16

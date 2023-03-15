@@ -167,7 +167,7 @@ func TestThatSensefarmConvertsPressureAndConductivity(t *testing.T) {
 	is.Equal(pressure[0].Time, float64(0))
 	is.Equal(pressure[0].StringValue, "deviceID")
 	is.Equal(pressure[1].Name, "5700")
-	is.Equal(*pressure[1].Value, float64(6))
+	is.Equal(*pressure[1].Value, float64(6000))
 
 	is.Equal(conductivity[0].BaseName, ConductivityURN)
 	is.Equal(conductivity[0].Time, float64(0))

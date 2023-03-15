@@ -166,8 +166,8 @@ func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	var decorators []SenMLDecoratorFunc
 	SensorValue := func(v int16) SenMLDecoratorFunc {
 		f := float64(v)
-		return Rec("5700", &f, nil, "", nil, "kPa", nil)
-	} // TODO: kPa not in senml units
+		return Rec("5700", &f, nil, "", nil, senml.UnitPascal, nil)
+	}
 
 	if pressures, ok := payload.GetSlice[struct {
 		Pressure int16
