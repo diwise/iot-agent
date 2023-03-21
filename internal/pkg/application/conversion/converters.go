@@ -19,11 +19,11 @@ func DigitalInput(ctx context.Context, deviceID string, p payload.Payload, fn fu
 
 	var decorators []SenMLDecoratorFunc
 
-	if isOn, ok := payload.Get[bool](p, "digitalInputState"); ok {
+	if isOn, ok := payload.Get[bool](p, payload.InputStateProperty); ok {
 		decorators = append(decorators, DigitalInputState(isOn))
 	}
 
-	if counter, ok := payload.Get[int64](p, "digitalInputCounter"); ok {
+	if counter, ok := payload.Get[int64](p, payload.InputCounterProperty); ok {
 		decorators = append(decorators, DigitalInputCounter(counter))
 	}
 
@@ -39,7 +39,7 @@ func Distance(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 		return Rec("5700", &v, nil, "", nil, senml.UnitMeter, nil)
 	}
 
-	if distance, ok := payload.Get[float64](p, "distance"); ok {
+	if distance, ok := payload.Get[float64](p, payload.DistanceProperty); ok {
 		return fn(NewSenMLPack(deviceID, DistanceURN, p.Timestamp(), SensorValue(distance)))
 	} else {
 		return errors.New("no distance value in payload")
@@ -52,7 +52,7 @@ func PeopleCount(ctx context.Context, deviceID string, p payload.Payload, fn fun
 		return Value(CurrentPeopleCount, float64(v))
 	}
 
-	if count, ok := payload.Get[int](p, "occupancy"); ok {
+	if count, ok := payload.Get[int](p, payload.OccupancyProperty); ok {
 		return fn(NewSenMLPack(deviceID, PeopleCountURN, p.Timestamp(), PeopleCount(count)))
 	} else {
 		return errors.New("no people count value in payload")
@@ -62,7 +62,7 @@ func PeopleCount(ctx context.Context, deviceID string, p payload.Payload, fn fun
 func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	SensorValue := func(v float64) SenMLDecoratorFunc { return Value("5700", v) }
 
-	if temp, ok := payload.Get[float64](p, "temperature"); ok {
+	if temp, ok := payload.Get[float64](p, payload.TemperatureProperty); ok {
 		return fn(NewSenMLPack(deviceID, TemperatureURN, p.Timestamp(), SensorValue(temp)))
 	} else {
 		return errors.New("no temperature value in payload")
@@ -72,7 +72,7 @@ func Temperature(ctx context.Context, deviceID string, p payload.Payload, fn fun
 func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	CO2 := func(v int) SenMLDecoratorFunc { return Value("17", float64(v)) }
 
-	if c, ok := payload.Get[int](p, "co2"); ok {
+	if c, ok := payload.Get[int](p, payload.CO2Property); ok {
 		return fn(NewSenMLPack(deviceID, AirQualityURN, p.Timestamp(), CO2(c)))
 	} else {
 		return errors.New("no co2 value in payload")
@@ -82,7 +82,7 @@ func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func
 func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	DigitalInputState := func(vb bool) SenMLDecoratorFunc { return BoolValue("5500", vb) }
 
-	if b, ok := payload.Get[bool](p, "presence"); ok {
+	if b, ok := payload.Get[bool](p, payload.PresenceProperty); ok {
 		return fn(NewSenMLPack(deviceID, PresenceURN, p.Timestamp(), DigitalInputState(b)))
 	} else {
 		return errors.New("no presence value in payload")
@@ -92,7 +92,7 @@ func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 func Illuminance(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	SensorValue := func(l int) SenMLDecoratorFunc { return Value("5700", float64(l)) }
 
-	if i, ok := payload.Get[int](p, "light"); ok {
+	if i, ok := payload.Get[int](p, payload.LightProperty); ok {
 		return fn(NewSenMLPack(deviceID, IlluminanceURN, p.Timestamp(), SensorValue(i)))
 	} else {
 		return errors.New("no illuminance value in payload")
@@ -127,7 +127,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
-	}](p, "volume"); ok {
+	}](p, payload.VolumeProperty); ok {
 		for _, v := range volumes {
 			volm3 := roundFloat(v.Volume * 0.001)
 			summ3 := roundFloat(v.Cumulated * 0.001)
@@ -135,7 +135,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 		}
 	}
 
-	if t, ok := payload.Get[string](p, "type"); ok {
+	if t, ok := payload.Get[string](p, payload.TypeProperty); ok {
 		decorators = append(decorators, TypeOfMeter(t))
 	}
 
@@ -153,7 +153,7 @@ func Watermeter(ctx context.Context, deviceID string, p payload.Payload, fn func
 
 	// use timestamp from sensor as default, fallback to timestamp from sensorEvent (gateway)
 	var timestamp time.Time
-	if ts, ok := payload.Get[time.Time](p, "timestamp"); ok {
+	if ts, ok := payload.Get[time.Time](p, payload.TimestampProperty); ok {
 		timestamp = ts
 	} else {
 		timestamp = p.Timestamp()
@@ -166,12 +166,12 @@ func Pressure(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 	var decorators []SenMLDecoratorFunc
 	SensorValue := func(v int16) SenMLDecoratorFunc {
 		f := float64(v)
-		return Rec("5700", &f, nil, "", nil, "kPa", nil)
-	} // TODO: kPa not in senml units
+		return Rec("5700", &f, nil, "", nil, senml.UnitPascal, nil)
+	}
 
 	if pressures, ok := payload.GetSlice[struct {
 		Pressure int16
-	}](p, "pressure"); ok {
+	}](p, payload.PressureProperty); ok {
 		for _, pressure := range pressures {
 			decorators = append(decorators, SensorValue(pressure.Pressure))
 		}
@@ -192,7 +192,7 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 
 	if resistances, ok := payload.GetSlice[struct {
 		Resistance int32
-	}](p, "resistance"); ok {
+	}](p, payload.ResistanceProperty); ok {
 		for _, r := range resistances {
 			if r.Resistance != 0 {
 				decorators = append(decorators, SensorValue(1/float64(r.Resistance)))
@@ -213,7 +213,7 @@ func Humidity(ctx context.Context, deviceID string, p payload.Payload, fn func(p
 		return Rec("5700", &f, nil, "", nil, senml.UnitRelativeHumidity, nil)
 	}
 
-	if h, ok := payload.Get[int](p, "humidity"); ok {
+	if h, ok := payload.Get[int](p, payload.HumidityProperty); ok {
 		return fn(NewSenMLPack(deviceID, HumidityURN, p.Timestamp(), SensorValue(h)))
 	} else {
 		return errors.New("no humidity value in payload")

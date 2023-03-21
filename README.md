@@ -30,10 +30,13 @@ Metadata about the sensor is fetched from iot-device-mgmt, this metadata contain
 
 # Facades
 Since application servers such as [Chirpstack](https://www.chirpstack.io/application-server/) has different uplink payloads a facade is used to transform the specific payload into an internal format.
+
 ### Chirpstack
 Support for Chirpstack v3 payloads.
+
 ### Netmore
 Support for payloads from [netmore](https://netmoregroup.com/iot-network/)
+
 # Decoders
 Decoder implementations for sensors
 ### Presence
@@ -81,6 +84,7 @@ Depends on the [Generic Javascript decoder](https://www.elsys.se/en/elsys-payloa
 - Resistances    
 - SoilMoistures  
 - Temperature    
+
 # Converters
 Converters converts sensor data to lwm2m measurements.
 ### AirQuality   
@@ -105,10 +109,11 @@ Converters converts sensor data to lwm2m measurements.
 [urn:oma:lwm2m:ext:3303](https://github.com/OpenMobileAlliance/lwm2m-registry/blob/prod/3303.xml)
 ### Watermeter
 [urn:oma:lwm2m:ext:3424](https://github.com/OpenMobileAlliance/lwm2m-registry/blob/prod/3424.xml)
+
 # Build and test
 ## Build
 ```bash
-docker build -f deployments/Dockerfile . -t diwise/iot-agent:latest
+docker build -f deployments/Dockerfile -t diwise/iot-agent:latest .
 ```
 ## Test
 ```bash
@@ -140,7 +145,7 @@ curl -X POST http://localhost:8080/api/v0/messages
 "MQTT_USER": "<username>",
 "MQTT_PASSWORD": "<password>",
 "MQTT_TOPIC_0": "topic-01/#", # configure mqtt topic names
-"MQTT_TOPIC_1": "topic-02/#", # it possible to specify multiple topics
+"MQTT_TOPIC_1": "topic-02/#", # it is possible to specify multiple topics
 ...
 "MQTT_TOPIC_n": "topic-n/#",
 "RABBITMQ_HOST": "<rabbit mq hostname>",
@@ -155,13 +160,14 @@ curl -X POST http://localhost:8080/api/v0/messages
 "OAUTH2_TOKEN_URL": "http://keycloak:8080/realms/diwise-local/protocol/openid-connect/token",
 "OAUTH2_CLIENT_ID": "diwise-devmgmt-api",
 "OAUTH2_CLIENT_SECRET": "<client secret>",
-"APPSERVER_FACADE": "<facade>" # configure application server, chripstack (default) or netmore
+"APPSERVER_FACADE": "<facade>" # configure application server, chirpstack (default) or netmore
 ```
+
 ## CLI flags
 none
+
 ## Configuration files
 none
+
 # Links
 [iot-agent](https://diwise.github.io/) on diwise.github.io
-
-

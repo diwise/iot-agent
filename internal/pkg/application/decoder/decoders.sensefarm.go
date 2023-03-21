@@ -44,7 +44,8 @@ func SensefarmBasicDecoder(ctx context.Context, ue application.SensorEvent, fn f
 	})
 
 	forEach(psf.SoilMoistures, func(v int16) {
-		decorators = append(decorators, payload.Pressure(v))
+		// Convert the reported kPa value to Pa
+		decorators = append(decorators, payload.Pressure(v*1000))
 	})
 
 	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)

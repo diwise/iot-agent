@@ -18,6 +18,34 @@ type Payload interface {
 	Get(name string) (any, bool)
 }
 
+const (
+	BatteryLevelProperty string = "batteryLevel"
+	CO2Property          string = "co2"
+	DistanceProperty     string = "distance"
+	HumidityProperty     string = "humidity"
+	InputCounterProperty string = "digitalInputCounter"
+	InputStateProperty   string = "digitalInputState"
+	LightProperty        string = "light"
+	MotionProperty       string = "motion"
+	OccupancyProperty    string = "occupancy"
+	PresenceProperty     string = "presence"
+	PressureProperty     string = "pressure"
+	ResistanceProperty   string = "resistance"
+	StatusProperty       string = "status"
+	TemperatureProperty  string = "temperature"
+	TimestampProperty    string = "timestamp"
+	TypeProperty         string = "type"
+	VolumeProperty       string = "volume"
+
+	DoorAlarmProperty  string = "doorAlarm"
+	DoorReportProperty string = "doorReport"
+	SnowHeightProperty string = "snowHeight"
+
+	FrameVersionProperty       string = "frameVersion"
+	ProtocolVersionProperty    string = "protocolVersion"
+	TransmissionReasonProperty string = "transmissionReason"
+)
+
 type PayloadImpl struct {
 	devEui       string
 	measurements map[string]any
@@ -68,7 +96,7 @@ func (p *PayloadImpl) Timestamp() time.Time {
 }
 
 func (p *PayloadImpl) Status() StatusImpl {
-	if s, ok := p.Get("status"); ok {
+	if s, ok := p.Get(StatusProperty); ok {
 		if si, ok := s.(StatusImpl); ok {
 			return si
 		}
@@ -138,7 +166,7 @@ func BatteryVoltage(b int) PayloadDecoratorFunc {
 }
 
 func BatteryLevel(b int) PayloadDecoratorFunc {
-	return S("batteryLevel", struct {
+	return S(BatteryLevelProperty, struct {
 		BatteryLevel int
 	}{
 		b,
@@ -151,7 +179,7 @@ func Temperature(t float64) PayloadDecoratorFunc {
 		return math.Round(val*ratio) / ratio
 	}
 
-	return S("temperature", struct {
+	return S(TemperatureProperty, struct {
 		Temperature float64
 	}{
 		roundFloat(t),
@@ -159,7 +187,7 @@ func Temperature(t float64) PayloadDecoratorFunc {
 }
 
 func CO2(co2 int) PayloadDecoratorFunc {
-	return S("co2", struct {
+	return S(CO2Property, struct {
 		CO2 int
 	}{
 		co2,
@@ -167,7 +195,7 @@ func CO2(co2 int) PayloadDecoratorFunc {
 }
 
 func Distance(d float64) PayloadDecoratorFunc {
-	return S("distance", struct {
+	return S(DistanceProperty, struct {
 		Distance float64
 	}{
 		d,
@@ -175,7 +203,7 @@ func Distance(d float64) PayloadDecoratorFunc {
 }
 
 func Humidity(h int) PayloadDecoratorFunc {
-	return S("humidity", struct {
+	return S(HumidityProperty, struct {
 		Humidity int
 	}{
 		h,
@@ -183,7 +211,7 @@ func Humidity(h int) PayloadDecoratorFunc {
 }
 
 func Light(l int) PayloadDecoratorFunc {
-	return S("light", struct {
+	return S(LightProperty, struct {
 		Light int
 	}{
 		l,
@@ -191,7 +219,7 @@ func Light(l int) PayloadDecoratorFunc {
 }
 
 func Motion(m int) PayloadDecoratorFunc {
-	return S("motion", struct {
+	return S(MotionProperty, struct {
 		Motion int
 	}{
 		m,
@@ -199,14 +227,14 @@ func Motion(m int) PayloadDecoratorFunc {
 }
 
 func Status(c uint8, msg []string) PayloadDecoratorFunc {
-	return S("status", StatusImpl{
+	return S(StatusProperty, StatusImpl{
 		Code:     int(c),
 		Messages: msg,
 	})
 }
 
 func Volume(v, c float64, t time.Time) PayloadDecoratorFunc {
-	return M("volume", struct {
+	return M(VolumeProperty, struct {
 		Volume    float64
 		Cumulated float64
 		Time      time.Time
@@ -216,7 +244,7 @@ func Volume(v, c float64, t time.Time) PayloadDecoratorFunc {
 }
 
 func FrameVersion(fv uint8) PayloadDecoratorFunc {
-	return S("frameVersion", struct {
+	return S(FrameVersionProperty, struct {
 		FrameVersion int `json:"frameVersion"`
 	}{
 		FrameVersion: int(fv),
@@ -224,7 +252,7 @@ func FrameVersion(fv uint8) PayloadDecoratorFunc {
 }
 
 func Presence(p bool) PayloadDecoratorFunc {
-	return S("presence", struct {
+	return S(PresenceProperty, struct {
 		Presence bool
 	}{
 		p,
@@ -232,7 +260,7 @@ func Presence(p bool) PayloadDecoratorFunc {
 }
 
 func SnowHeight(sh int) PayloadDecoratorFunc {
-	return S("snowHeight", struct {
+	return S(SnowHeightProperty, struct {
 		SnowHeight int
 	}{
 		sh,
@@ -240,7 +268,7 @@ func SnowHeight(sh int) PayloadDecoratorFunc {
 }
 
 func DigitalInputCounter(count int64) PayloadDecoratorFunc {
-	return S("digitalInputCounter", struct {
+	return S(InputCounterProperty, struct {
 		DigitalInputCounter int64
 	}{
 		count,
@@ -248,7 +276,7 @@ func DigitalInputCounter(count int64) PayloadDecoratorFunc {
 }
 
 func DigitalInputState(on bool) PayloadDecoratorFunc {
-	return S("digitalInputState", struct {
+	return S(InputStateProperty, struct {
 		DigitalInputState bool
 	}{
 		on,
@@ -257,7 +285,7 @@ func DigitalInputState(on bool) PayloadDecoratorFunc {
 
 func DoorReport(p bool) PayloadDecoratorFunc {
 	// TODO: Return DigitalInputState ?
-	return S("doorReport", struct {
+	return S(DoorReportProperty, struct {
 		DoorReport bool
 	}{
 		p,
@@ -265,7 +293,7 @@ func DoorReport(p bool) PayloadDecoratorFunc {
 }
 
 func DoorAlarm(p bool) PayloadDecoratorFunc {
-	return S("doorAlarm", struct {
+	return S(DoorAlarmProperty, struct {
 		DoorAlarm bool
 	}{
 		p,
@@ -273,7 +301,7 @@ func DoorAlarm(p bool) PayloadDecoratorFunc {
 }
 
 func TransmissionReason(tr int8) PayloadDecoratorFunc {
-	return S("transmissionReason", struct {
+	return S(TransmissionReasonProperty, struct {
 		TransmissionReason int8
 	}{
 		tr,
@@ -281,7 +309,7 @@ func TransmissionReason(tr int8) PayloadDecoratorFunc {
 }
 
 func ProtocolVersion(v int8) PayloadDecoratorFunc {
-	return S("protocolVersion", struct {
+	return S(ProtocolVersionProperty, struct {
 		ProtocolVersion int8
 	}{
 		v,
@@ -289,7 +317,7 @@ func ProtocolVersion(v int8) PayloadDecoratorFunc {
 }
 
 func Resistance(r int32) PayloadDecoratorFunc {
-	return M("resistance", struct {
+	return M(ResistanceProperty, struct {
 		Resistance int32
 	}{
 		r,
@@ -297,15 +325,16 @@ func Resistance(r int32) PayloadDecoratorFunc {
 }
 
 func Occupancy(p int) PayloadDecoratorFunc {
-	return S("occupancy", struct {
+	return S(OccupancyProperty, struct {
 		Occupancy int
 	}{
 		p,
 	})
 }
 
+// Pressure accepts a pressure value in Pascal
 func Pressure(p int16) PayloadDecoratorFunc {
-	return M("pressure", struct {
+	return M(PressureProperty, struct {
 		Pressure int16
 	}{
 		p,
@@ -313,7 +342,7 @@ func Pressure(p int16) PayloadDecoratorFunc {
 }
 
 func Type(t string) PayloadDecoratorFunc {
-	return S("type", struct {
+	return S(TypeProperty, struct {
 		Type string
 	}{
 		t,
@@ -321,7 +350,7 @@ func Type(t string) PayloadDecoratorFunc {
 }
 
 func Timestamp(t time.Time) PayloadDecoratorFunc {
-	return S("timestamp", struct {
+	return S(TimestampProperty, struct {
 		Timestamp time.Time
 	}{
 		t,

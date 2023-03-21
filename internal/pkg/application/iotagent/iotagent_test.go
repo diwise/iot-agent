@@ -19,7 +19,7 @@ func TestSenlabTPayload(t *testing.T) {
 
 	agent := New(dmc, e).(*app)
 	ue, _ := application.Netmore([]byte(senlabT))
-	err := agent.sensorEventReceived(context.Background(), ue)
+	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)
@@ -33,7 +33,7 @@ func TestStripsPayload(t *testing.T) {
 
 	agent := New(dmc, e).(*app)
 	ue, _ := application.Netmore([]byte(stripsPayload))
-	err := agent.sensorEventReceived(context.Background(), ue)
+	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)
@@ -47,7 +47,7 @@ func TestElsysPayload(t *testing.T) {
 
 	agent := New(dmc, e).(*app)
 	ue, _ := application.ChirpStack([]byte(elsys))
-	err := agent.sensorEventReceived(context.Background(), ue)
+	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)
@@ -61,7 +61,7 @@ func TestErsPayload(t *testing.T) {
 
 	agent := New(dmc, e).(*app)
 	ue, _ := application.ChirpStack([]byte(ers))
-	err := agent.sensorEventReceived(context.Background(), ue)
+	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) == 2) // expecting two calls since payload should produce measurement for both temperature and co2.
@@ -81,7 +81,7 @@ func TestPresencePayload(t *testing.T) {
 
 	agent := New(dmc, e).(*app)
 	ue, _ := application.ChirpStack([]byte(livboj))
-	err := agent.sensorEventReceived(context.Background(), ue)
+	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCalls()) > 0)
@@ -120,6 +120,7 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 				SensorTypeFunc: func() string { return sensorType },
 				TypesFunc:      func() []string { return types },
 				IsActiveFunc:   func() bool { return true },
+				TenantFunc:     func() string { return "default" },
 			}
 
 			return res, nil

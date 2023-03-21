@@ -16,15 +16,15 @@ func TestNIAB(t *testing.T) {
 	callBackCount := 0
 
 	FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
-		battery, ok := payload.Get[int](p, "batteryLevel")
+		battery, ok := payload.Get[int](p, payload.BatteryLevelProperty)
 		is.True(ok)
 		is.Equal(battery, 80)
 
-		temperature, ok := payload.Get[float64](p, "temperature")
+		temperature, ok := payload.Get[float64](p, payload.TemperatureProperty)
 		is.True(ok)
 		is.Equal(temperature, 15.0)
 
-		distance, ok := payload.Get[float64](p, "distance")
+		distance, ok := payload.Get[float64](p, payload.DistanceProperty)
 		is.True(ok)
 		is.Equal(distance, 0.965)
 
@@ -44,7 +44,7 @@ func TestNIABCanReportMinusTemperatures(t *testing.T) {
 
 	FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
 
-		temperature, ok := payload.Get[float64](p, "temperature")
+		temperature, ok := payload.Get[float64](p, payload.TemperatureProperty)
 		is.True(ok)
 		is.Equal(temperature, -15.0)
 
@@ -63,7 +63,7 @@ func TestNIABIgnoresReadErrors(t *testing.T) {
 	callBackCount := 1
 
 	FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
-		_, ok := payload.Get[int](p, "distance")
+		_, ok := payload.Get[int](p, payload.DistanceProperty)
 		is.True(!ok)
 
 		callBackCount = 1

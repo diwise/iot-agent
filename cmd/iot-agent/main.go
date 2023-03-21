@@ -95,7 +95,7 @@ func initialize(ctx context.Context, facade string, dmc devicemgmtclient.DeviceM
 	app := iotagent.New(dmc, sender)
 
 	r := chi.NewRouter()
-	a := api.New(ctx, r, facade, sender, app)
+	a := api.New(ctx, r, facade, app)
 
 	metrics.AddHandlers(r)
 
