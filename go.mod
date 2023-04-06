@@ -3,7 +3,7 @@ module github.com/diwise/iot-agent
 go 1.20
 
 require (
-	github.com/diwise/iot-device-mgmt v0.0.0-20230405093530-2eacf96acfd3
+	github.com/diwise/iot-device-mgmt v0.0.0-20230406141454-46fd764a80ab
 	github.com/diwise/messaging-golang v0.0.0-20230112181152-6d313f5f9451
 	github.com/diwise/service-chassis v0.0.0-20230328091322-2d5d6ed7c9d3
 	github.com/eclipse/paho.mqtt.golang v1.4.2

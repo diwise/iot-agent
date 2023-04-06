@@ -130,7 +130,6 @@ func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, devEui string) bool 
 }
 
 func (a *app) findDevice(ctx context.Context, devEui string) (dmc.Device, error) {
-
 	if a.deviceIsCurrentlyIgnored(ctx, devEui) {
 		return nil, errDeviceOnBlackList
 	}
@@ -152,20 +151,30 @@ func (a *app) ignoreDeviceFor(ctx context.Context, devEui string, period time.Du
 }
 
 func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p payload.Payload) {
+	logger := logging.GetFromContext(ctx).
+		With().Str("device_id", deviceID).Logger().
+		With().Str("func", "sendStatusMessage").
+		Logger()
+		
 	var decorators []func(*events.StatusMessage)
 
-	decorators = append(decorators, 
+	decorators = append(decorators,
 		events.WithStatus(p.Status().Code, p.Status().Messages),
 		events.WithTenant(tenant),
 	)
-	
+
 	if bat, ok := payload.Get[int](p, payload.BatteryLevelProperty); ok {
 		decorators = append(decorators, events.WithBatteryLevel(bat))
-	}	
+	}
 
-	err := a.eventSender.Publish(ctx, events.NewStatusMessage(deviceID, decorators...))
+	statusMsg := events.NewStatusMessage(deviceID, decorators...)
+
+	if statusMsg.Tenant == "" {
+		logger.Warn().Msg("tenant information is missing")
+	}
+
+	err := a.eventSender.Publish(ctx, statusMsg)
 	if err != nil {
-		logger := logging.GetFromContext(ctx)
 		logger.Error().Err(err).Msg("failed to publish status message")
 	}
 }
