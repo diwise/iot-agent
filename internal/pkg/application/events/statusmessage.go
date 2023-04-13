@@ -9,7 +9,7 @@ type StatusMessage struct {
 	BatteryLevel int      `json:"batteryLevel"`
 	Code         int      `json:"statusCode"`
 	Messages     []string `json:"statusMessages,omitempty"`
-	Tenant       string   `json:"tenant,omitempty"`
+	Tenant       string   `json:"tenant"`
 	Timestamp    string   `json:"timestamp"`
 }
 
@@ -35,7 +35,7 @@ func WithStatus(code int, messages []string) func(*StatusMessage) {
 
 func WithTenant(tenant string) func(*StatusMessage) {
 	return func(sm *StatusMessage) {
-		sm.Tenant = tenant		
+		sm.Tenant = tenant
 	}
 }
 
