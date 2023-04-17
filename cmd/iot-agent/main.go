@@ -21,7 +21,6 @@ import (
 const serviceName string = "iot-agent"
 
 func main() {
-
 	serviceVersion := buildinfo.SourceVersion()
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
@@ -29,7 +28,7 @@ func main() {
 	forwardingEndpoint := env.GetVariableOrDie(logger, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
 
 	dmClient := createDeviceManagementClientOrDie(ctx)
-	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint)
+	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
 
 	msgCfg := messaging.LoadConfiguration(serviceName, logger)
 	initMsgCtx := func() (messaging.MsgContext, error) {
@@ -45,6 +44,14 @@ func main() {
 
 	mqttClient.Start()
 	defer mqttClient.Stop()
+
+	schneiderEnabled := env.GetVariableOrDefault(logger, "SCHNEIDER_ENABLED", "false")
+
+	if schneiderEnabled == "true" {
+		schneiderClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "SCHNEIDER_")
+		schneiderClient.Start()
+		defer schneiderClient.Stop()
+	}
 
 	apiPort := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
 	logger.Info().Str("port", apiPort).Msg("starting to listen for incoming connections")
@@ -71,12 +78,12 @@ func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.Dev
 	return dmClient
 }
 
-func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint string) mqtt.Client {
-	mqttConfig, err := mqtt.NewConfigFromEnvironment()
+func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix string) mqtt.Client {
+	mqttConfig, err := mqtt.NewConfigFromEnvironment(prefix)
 	logger := logging.GetFromContext(ctx)
 
 	if err != nil {
-		logger.Fatal().Err(err).Msg("mqtt configuration error")
+		logger.Fatal().Err(err).Msgf("%smqtt configuration error", prefix)
 	}
 
 	mqttClient, err := mqtt.NewClient(logger, mqttConfig, forwardingEndpoint)

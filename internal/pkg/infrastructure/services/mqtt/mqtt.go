@@ -60,17 +60,17 @@ func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Cl
 	}, nil
 }
 
-func NewConfigFromEnvironment() (Config, error) {
+func NewConfigFromEnvironment(prefix string) (Config, error) {
 
-	const topicEnvNamePattern string = "MQTT_TOPIC_%d"
+	const topicEnvNamePattern string = "%sMQTT_TOPIC_%d"
 
 	cfg := Config{
 		enabled:  os.Getenv("MQTT_DISABLED") != "true",
-		host:     os.Getenv("MQTT_HOST"),
-		user:     os.Getenv("MQTT_USER"),
-		password: os.Getenv("MQTT_PASSWORD"),
+		host:     os.Getenv(fmt.Sprintf("%sMQTT_HOST", prefix)),
+		user:     os.Getenv(fmt.Sprintf("%sMQTT_USER", prefix)),
+		password: os.Getenv(fmt.Sprintf("%sMQTT_PASSWORD", prefix)),
 		topics: []string{
-			os.Getenv(fmt.Sprintf(topicEnvNamePattern, 0)),
+			os.Getenv(fmt.Sprintf(topicEnvNamePattern, prefix, 0)),
 		},
 	}
 
@@ -89,7 +89,7 @@ func NewConfigFromEnvironment() (Config, error) {
 	const maxTopicCount int = 10
 
 	for idx := 1; idx < maxTopicCount; idx++ {
-		varName := fmt.Sprintf(topicEnvNamePattern, idx)
+		varName := fmt.Sprintf(topicEnvNamePattern, prefix, idx)
 		value := os.Getenv(varName)
 
 		if value != "" {
