@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"os"
 
@@ -60,17 +59,17 @@ func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Cl
 	}, nil
 }
 
-func NewConfigFromEnvironment() (Config, error) {
+func NewConfigFromEnvironment(prefix string) (Config, error) {
 
-	const topicEnvNamePattern string = "MQTT_TOPIC_%d"
+	const topicEnvNamePattern string = "%sMQTT_TOPIC_%d"
 
 	cfg := Config{
-		enabled:  os.Getenv("MQTT_DISABLED") != "true",
-		host:     os.Getenv("MQTT_HOST"),
-		user:     os.Getenv("MQTT_USER"),
-		password: os.Getenv("MQTT_PASSWORD"),
+		enabled:  os.Getenv(fmt.Sprintf("%sMQTT_DISABLED", prefix)) != "true",
+		host:     os.Getenv(fmt.Sprintf("%sMQTT_HOST", prefix)),
+		user:     os.Getenv(fmt.Sprintf("%sMQTT_USER", prefix)),
+		password: os.Getenv(fmt.Sprintf("%sMQTT_PASSWORD", prefix)),
 		topics: []string{
-			os.Getenv(fmt.Sprintf(topicEnvNamePattern, 0)),
+			os.Getenv(fmt.Sprintf(topicEnvNamePattern, prefix, 0)),
 		},
 	}
 
@@ -79,17 +78,17 @@ func NewConfigFromEnvironment() (Config, error) {
 	}
 
 	if cfg.host == "" {
-		return cfg, errors.New("the mqtt host must be specified using the MQTT_HOST environment variable")
+		return cfg, fmt.Errorf("the mqtt host must be specified using the %sMQTT_HOST environment variable", prefix)
 	}
 
 	if cfg.topics[0] == "" {
-		return cfg, errors.New("at least one topic (MQTT_TOPIC_0) must be added to the configuration")
+		return cfg, fmt.Errorf("at least one topic (%sMQTT_TOPIC_0) must be added to the configuration", prefix)
 	}
 
 	const maxTopicCount int = 10
 
 	for idx := 1; idx < maxTopicCount; idx++ {
-		varName := fmt.Sprintf(topicEnvNamePattern, idx)
+		varName := fmt.Sprintf(topicEnvNamePattern, prefix, idx)
 		value := os.Getenv(varName)
 
 		if value != "" {
