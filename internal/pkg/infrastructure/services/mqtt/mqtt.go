@@ -65,7 +65,7 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 	const topicEnvNamePattern string = "%sMQTT_TOPIC_%d"
 
 	cfg := Config{
-		enabled:  os.Getenv("MQTT_DISABLED") != "true",
+		enabled:  os.Getenv(fmt.Sprintf("%sMQTT_DISABLED", prefix)) != "true",
 		host:     os.Getenv(fmt.Sprintf("%sMQTT_HOST", prefix)),
 		user:     os.Getenv(fmt.Sprintf("%sMQTT_USER", prefix)),
 		password: os.Getenv(fmt.Sprintf("%sMQTT_PASSWORD", prefix)),
