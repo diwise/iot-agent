@@ -48,7 +48,7 @@ func main() {
 	schneiderEnabled := env.GetVariableOrDefault(logger, "SCHNEIDER_ENABLED", "false")
 
 	if schneiderEnabled == "true" {
-		schneiderClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "SCHNEIDER_")
+		schneiderClient := createMQTTClientOrDie(ctx, forwardingEndpoint+"/schneider", "SCHNEIDER_")
 		schneiderClient.Start()
 		defer schneiderClient.Stop()
 	}
