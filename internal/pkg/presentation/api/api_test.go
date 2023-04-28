@@ -27,7 +27,7 @@ func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
 }
 
 func TestSchneiderHandler(t *testing.T) {
-	is, api, _ := testSetup(t)
+	is, api, app := testSetup(t)
 
 	server := httptest.NewServer(api.r)
 	defer server.Close()
@@ -35,7 +35,8 @@ func TestSchneiderHandler(t *testing.T) {
 	api.forwardingEndpoint = server.URL + "/api/v0/messages"
 
 	resp, _ := testRequest(is, http.MethodPost, api.forwardingEndpoint+"/schneider", bytes.NewBuffer([]byte(schneiderData)))
-	is.Equal(resp.StatusCode, http.StatusOK) // status code should be 200
+	is.Equal(resp.StatusCode, http.StatusOK)                 // status code should be 200
+	is.Equal(len(app.HandleSensorMeasurementListCalls()), 9) // should be 9 - once for each object in schneider data
 }
 
 func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T) {
