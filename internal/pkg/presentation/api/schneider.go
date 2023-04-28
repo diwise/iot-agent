@@ -2,9 +2,15 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -24,9 +30,86 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 
-		//log.Debug().Str("body", string(msg)).Msg("starting to process message")
-		log.Error().Str("body", string(msg)).Msg("not implemented")
+		log.Debug().Str("body", string(msg)).Msg("starting to process message")
 
-		w.WriteHeader(http.StatusInternalServerError)
+		dataList := []Data{}
+
+		err = json.Unmarshal(msg, &dataList)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to handle message")
+
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		for _, object := range dataList {
+			name, err := trimName(object.Name)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to trim name")
+
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			value, err := strconv.ParseFloat(object.Value, 64)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to parse value")
+
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			decorators := []conversion.SenMLDecoratorFunc{
+				conversion.Value("5700", value),
+			}
+
+			basename := ""
+
+			if object.Unit == "°C" {
+				basename = conversion.TemperatureURN
+			} else if object.Unit == "Wh" {
+				basename = conversion.EnergyURN
+			} else if object.Unit == "W" {
+				basename = conversion.PowerURN
+			}
+
+			pack := conversion.NewSenMLPack(name, basename, time.Now().UTC(), decorators...)
+			b, _ := json.Marshal(pack)
+			fmt.Println(string(b))
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
+}
+
+func trimName(name string) (string, error) {
+	if name == "" {
+		return "", fmt.Errorf("name cannot be empty")
+	}
+	prefix := "/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/"
+	suffix := "/Value"
+
+	name = strings.TrimPrefix(name, prefix)
+	name = strings.TrimSuffix(name, suffix)
+
+	name = strings.ReplaceAll(name, "_", "-")
+	name = strings.ReplaceAll(name, "Å", "A")
+	name = strings.ToLower(name)
+
+	return name, nil
+}
+
+type DTO struct {
+	Name  string
+	Value float64
+	Unit  string
+}
+
+type Data struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	Unit  string `json:"unit"`
 }
