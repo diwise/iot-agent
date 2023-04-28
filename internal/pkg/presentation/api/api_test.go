@@ -26,6 +26,18 @@ func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
 	is.Equal(resp.StatusCode, http.StatusNoContent)
 }
 
+func TestSchneiderHandler(t *testing.T) {
+	is, a, _ := testSetup(t)
+
+	server := httptest.NewServer(a.r)
+	defer server.Close()
+
+	//lwm2mServer := httptest.NewServer(nil)
+
+	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages/schneider", bytes.NewBuffer([]byte(schneiderData)))
+	is.Equal(resp.StatusCode, http.StatusOK)
+}
+
 func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T) {
 	is, api, app := testSetup(t)
 
@@ -61,7 +73,7 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 		},
 	}
 
-	a := newAPI(context.Background(), r, "chirpstack", app)
+	a := newAPI(context.Background(), r, "chirpstack", "", app)
 
 	return is, a, app
 }
@@ -77,3 +89,49 @@ func testRequest(is *is.I, ts *httptest.Server, method, path string, body io.Rea
 
 const senMLPayload string = `[{"bn": "urn:oma:lwm2m:ext:3303", "bt": 1677079794, "n": "0", "vs": "net:serva:iot:a81758fffe051d02"}, {"n": "5700", "v": -4.5}, {"u": "lat", "v": 62.36956}, {"u": "lon", "v": 17.31984}, {"n": "env", "vs": "air"}, {"n": "tenant", "vs": "default"}]`
 const msgfromMQTT string = `{"level":"info","service":"iot-agent","version":"","mqtt-host":"iot.serva.net","timestamp":"2022-03-28T14:39:11.695538+02:00","message":"received payload: {\"applicationID\":\"8\",\"applicationName\":\"Water-Temperature\",\"deviceName\":\"sk-elt-temp-16\",\"deviceProfileName\":\"Elsys_Codec\",\"deviceProfileID\":\"xxxxxxxxxxxx\",\"devEUI\":\"xxxxxxxxxxxxxx\",\"rxInfo\":[{\"gatewayID\":\"xxxxxxxxxxx\",\"uplinkID\":\"xxxxxxxxxxx\",\"name\":\"SN-LGW-047\",\"time\":\"2022-03-28T12:40:40.653515637Z\",\"rssi\":-105,\"loRaSNR\":8.5,\"location\":{\"latitude\":62.36956091265246,\"longitude\":17.319844410529534,\"altitude\":0}}],\"txInfo\":{\"frequency\":867700000,\"dr\":5},\"adr\":true,\"fCnt\":10301,\"fPort\":5,\"data\":\"Bw2KDADB\",\"object\":{\"externalTemperature\":19.3,\"vdd\":3466},\"tags\":{\"Location\":\"Vangen\"}}"}`
+const schneiderData string = `[{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VV1_EM01-T2/Value",
+	"value":"8",
+	"unit":"°C",
+	"description":"Returtemperatur Varmvatten"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_OUTDOOR-TEMP/Value",
+	"value":"2.1800000667572021",
+	"unit":"°C",
+	"description":"Utetemperatur"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VP1_EM01-ENERGY/Value",
+	"value":"3372000000",
+	"unit":"Wh",
+	"description":"Mätarställning Värme Primär"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VP1_EM01-POWER/Value",
+	"value":"66000",
+	"unit":"W",
+	"description":"Momentaneffekt Värme Primär"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VP1_EM01-T1/Value",
+	"value":"76",
+	"unit":"°C",
+	"description":"Tilloppstemperatur Värme Primär"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VP1_EM01-T2/Value",
+	"value":"25",
+	"unit":"°C",
+	"description":"Returtemperatur Värme Primär"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VV1_EM01-ENERGY/Value",
+	"value":"215000000",
+	"unit":"Wh",
+	"description":"Mätarställning Varmvatten"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VV1_EM01-POWER/Value",
+	"value":"12000",
+	"unit":"W",
+	"description":"Momentaneffekt Varmvatten"
+	},{
+	"name":"/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/UC_FRAMÅT_VV1_EM01-T1/Value",
+	"value":"53",
+	"unit":"°C",
+	"description":"Tilloppstemperatur Varmvatten"
+	}]`
