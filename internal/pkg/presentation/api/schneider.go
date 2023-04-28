@@ -79,7 +79,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			}
 
 			decorators := []conversion.SenMLDecoratorFunc{
-				conversion.Rec("5700", &value, nil, "", nil, unit, nil),
+				conversion.ValueWithUnit("5700", unit, value),
 			}
 
 			pack := conversion.NewSenMLPack(name, basename, time.Now().UTC(), decorators...)
