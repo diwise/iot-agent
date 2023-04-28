@@ -14,6 +14,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/farshidtz/senml/v2"
 )
 
 func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerFunc {
@@ -62,18 +63,23 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 				return
 			}
 
-			decorators := []conversion.SenMLDecoratorFunc{
-				conversion.Value("5700", value),
-			}
-
 			basename := ""
+			unit := ""
 
 			if object.Unit == "°C" {
 				basename = conversion.TemperatureURN
+				unit = senml.UnitCelsius
 			} else if object.Unit == "Wh" {
 				basename = conversion.EnergyURN
+				unit = senml.UnitJoule
+				value = value * 3600
 			} else if object.Unit == "W" {
 				basename = conversion.PowerURN
+				unit = senml.UnitWatt
+			}
+
+			decorators := []conversion.SenMLDecoratorFunc{
+				conversion.Rec("5700", &value, nil, "", nil, unit, nil),
 			}
 
 			pack := conversion.NewSenMLPack(name, basename, time.Now().UTC(), decorators...)
