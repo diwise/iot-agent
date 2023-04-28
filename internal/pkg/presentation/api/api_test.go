@@ -22,20 +22,20 @@ func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
 	server := httptest.NewServer(a.r)
 	defer server.Close()
 
-	resp, _ := testRequest(is, server, http.MethodGet, "/health", nil)
+	resp, _ := testRequest(is, http.MethodGet, server.URL+"/health", nil)
 	is.Equal(resp.StatusCode, http.StatusNoContent)
 }
 
 func TestSchneiderHandler(t *testing.T) {
-	is, a, _ := testSetup(t)
+	is, api, _ := testSetup(t)
 
-	server := httptest.NewServer(a.r)
+	server := httptest.NewServer(api.r)
 	defer server.Close()
 
-	//lwm2mServer := httptest.NewServer(nil)
+	api.forwardingEndpoint = server.URL + "/api/v0/messages"
 
-	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages/schneider", bytes.NewBuffer([]byte(schneiderData)))
-	is.Equal(resp.StatusCode, http.StatusOK)
+	resp, _ := testRequest(is, http.MethodPost, api.forwardingEndpoint+"/schneider", bytes.NewBuffer([]byte(schneiderData)))
+	is.Equal(resp.StatusCode, http.StatusOK) // status code should be 200
 }
 
 func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T) {
@@ -44,7 +44,7 @@ func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T)
 	server := httptest.NewServer(api.r)
 	defer server.Close()
 
-	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages", bytes.NewBuffer([]byte(msgfromMQTT)))
+	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer([]byte(msgfromMQTT)))
 	is.Equal(resp.StatusCode, http.StatusCreated)
 	is.Equal(len(app.HandleSensorEventCalls()), 1)
 }
@@ -55,7 +55,7 @@ func TestSenMLPayload(t *testing.T) {
 	server := httptest.NewServer(api.r)
 	defer server.Close()
 
-	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages/lwm2m", bytes.NewBuffer([]byte(senMLPayload)))
+	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages/lwm2m", bytes.NewBuffer([]byte(senMLPayload)))
 	is.Equal(resp.StatusCode, http.StatusCreated)
 	is.Equal(len(app.HandleSensorMeasurementListCalls()), 1)
 }
@@ -78,8 +78,8 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 	return is, a, app
 }
 
-func testRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
-	req, _ := http.NewRequest(method, ts.URL+path, body)
+func testRequest(is *is.I, method, url string, body io.Reader) (*http.Response, string) {
+	req, _ := http.NewRequest(method, url, body)
 	resp, _ := http.DefaultClient.Do(req)
 	respBody, _ := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
