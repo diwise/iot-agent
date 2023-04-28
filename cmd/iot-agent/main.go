@@ -36,7 +36,7 @@ func main() {
 	}
 
 	facade := env.GetVariableOrDefault(logger, "APPSERVER_FACADE", "chirpstack")
-	svcAPI, err := initialize(ctx, facade, dmClient, initMsgCtx)
+	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, initMsgCtx)
 
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to setup iot agent")
@@ -94,7 +94,7 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix strin
 	return mqttClient
 }
 
-func initialize(ctx context.Context, facade string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error)) (api.API, error) {
+func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error)) (api.API, error) {
 
 	sender := events.NewSender(ctx, initMsgCtx)
 	sender.Start()
@@ -102,7 +102,7 @@ func initialize(ctx context.Context, facade string, dmc devicemgmtclient.DeviceM
 	app := iotagent.New(dmc, sender)
 
 	r := chi.NewRouter()
-	a := api.New(ctx, r, facade, app)
+	a := api.New(ctx, r, facade, forwardingEndpoint, app)
 
 	metrics.AddHandlers(r)
 

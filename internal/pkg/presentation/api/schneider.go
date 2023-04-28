@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -85,6 +86,25 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			pack := conversion.NewSenMLPack(name, basename, time.Now().UTC(), decorators...)
 			b, _ := json.Marshal(pack)
 			fmt.Println(string(b))
+
+			url := a.forwardingEndpoint + "/lwm2m"
+
+			resp, err := http.Post(url, "application/json", bytes.NewBuffer(b))
+			if err != nil {
+				log.Error().Err(err).Msg("failed to post senml pack")
+
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			if resp.StatusCode != http.StatusCreated {
+				log.Error().Err(err).Msgf("request failed, expected status code %d but got status code %d ", http.StatusCreated, resp.StatusCode)
+
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)

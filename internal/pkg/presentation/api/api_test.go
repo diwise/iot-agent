@@ -32,6 +32,8 @@ func TestSchneiderHandler(t *testing.T) {
 	server := httptest.NewServer(a.r)
 	defer server.Close()
 
+	//lwm2mServer := httptest.NewServer(nil)
+
 	resp, _ := testRequest(is, server, http.MethodPost, "/api/v0/messages/schneider", bytes.NewBuffer([]byte(schneiderData)))
 	is.Equal(resp.StatusCode, http.StatusOK)
 }
@@ -71,7 +73,7 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 		},
 	}
 
-	a := newAPI(context.Background(), r, "chirpstack", app)
+	a := newAPI(context.Background(), r, "chirpstack", "", app)
 
 	return is, a, app
 }
