@@ -80,9 +80,9 @@ func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func
 }
 
 func Energy(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	SensorValue := func(l int) SenMLDecoratorFunc { return Value("5700", float64(l)) }
+	SensorValue := func(e float64) SenMLDecoratorFunc { return Rec("5700", &e, nil, "", nil, senml.UnitJoule, nil) }
 
-	if i, ok := payload.Get[int](p, payload.EnergyProperty); ok {
+	if i, ok := payload.Get[float64](p, payload.EnergyProperty); ok {
 		return fn(NewSenMLPack(deviceID, EnergyURN, p.Timestamp(), SensorValue(i)))
 	} else {
 		return errors.New("no energy value in payload")
@@ -90,9 +90,9 @@ func Energy(ctx context.Context, deviceID string, p payload.Payload, fn func(p s
 }
 
 func Power(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	SensorValue := func(l int) SenMLDecoratorFunc { return Value("5700", float64(l)) }
+	SensorValue := func(p float64) SenMLDecoratorFunc { return Rec("5700", &p, nil, "", nil, senml.UnitWatt, nil) }
 
-	if i, ok := payload.Get[int](p, payload.PowerProperty); ok {
+	if i, ok := payload.Get[float64](p, payload.PowerProperty); ok {
 		return fn(NewSenMLPack(deviceID, PowerURN, p.Timestamp(), SensorValue(i)))
 	} else {
 		return errors.New("no power value in payload")
