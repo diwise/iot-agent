@@ -115,11 +115,11 @@ func trimName(name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("name cannot be empty")
 	}
-	prefix := "/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Framåt/"
-	suffix := "/Value"
 
-	name = strings.TrimPrefix(name, prefix)
-	name = strings.TrimSuffix(name, suffix)
+	s := strings.Split(name, "/")
+	i := len(s)
+
+	name = s[i-2]
 
 	name = strings.ReplaceAll(name, "_", "-")
 	name = strings.ReplaceAll(name, "Å", "A")
