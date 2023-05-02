@@ -83,7 +83,7 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix strin
 	logger := logging.GetFromContext(ctx)
 
 	if err != nil {
-		logger.Fatal().Err(err).Msgf("%smqtt configuration error", prefix)
+		logger.Fatal().Err(err).Msg("mqtt configuration error")
 	}
 
 	mqttClient, err := mqtt.NewClient(logger, mqttConfig, forwardingEndpoint)
