@@ -128,12 +128,6 @@ func trimName(name string) (string, error) {
 	return name, nil
 }
 
-type DTO struct {
-	Name  string
-	Value float64
-	Unit  string
-}
-
 type Data struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
