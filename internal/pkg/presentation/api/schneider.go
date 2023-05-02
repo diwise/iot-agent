@@ -116,10 +116,19 @@ func trimName(name string) (string, error) {
 		return "", fmt.Errorf("name cannot be empty")
 	}
 
-	s := strings.Split(name, "/")
-	i := len(s)
+	parts := strings.Split(name, "/")
+	numberOfParts := len(parts)
 
-	name = s[i-2]
+	if numberOfParts < 2 || parts[numberOfParts-1] != "Value" {
+		return "", fmt.Errorf("name is too short or does not have a trailing \"Value\" component")
+	}
+
+	name = parts[numberOfParts-2]
+
+	hyphenIndex := strings.Index(name, "-")
+	if hyphenIndex > 0 {
+		name = name[0:hyphenIndex]
+	}
 
 	name = strings.ReplaceAll(name, "_", "-")
 	name = strings.ReplaceAll(name, "Å", "A")
