@@ -27,19 +27,21 @@ type API interface {
 }
 
 type api struct {
-	r   chi.Router
-	app iotagent.App
+	r                  chi.Router
+	app                iotagent.App
+	forwardingEndpoint string
 }
 
-func New(ctx context.Context, r chi.Router, facade string, app iotagent.App) API {
-	return newAPI(ctx, r, facade, app)
+func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App) API {
+	return newAPI(ctx, r, facade, forwardingEndpoint, app)
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.App) *api {
+func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App) *api {
 
 	a := &api{
-		r:   r,
-		app: app,
+		r:                  r,
+		app:                app,
+		forwardingEndpoint: forwardingEndpoint,
 	}
 
 	r.Use(cors.New(cors.Options{
@@ -55,6 +57,7 @@ func newAPI(ctx context.Context, r chi.Router, facade string, app iotagent.App) 
 	r.Get("/health", a.health)
 	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade))
 	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
+	r.Post("/api/v0/messages/schneider", a.incomingSchneiderMessageHandler(ctx))
 
 	return a
 }

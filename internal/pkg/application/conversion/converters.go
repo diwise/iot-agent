@@ -79,6 +79,26 @@ func AirQuality(ctx context.Context, deviceID string, p payload.Payload, fn func
 	}
 }
 
+func Energy(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	SensorValue := func(e float64) SenMLDecoratorFunc { return Rec("5700", &e, nil, "", nil, senml.UnitJoule, nil) }
+
+	if i, ok := payload.Get[float64](p, payload.EnergyProperty); ok {
+		return fn(NewSenMLPack(deviceID, EnergyURN, p.Timestamp(), SensorValue(i)))
+	} else {
+		return errors.New("no energy value in payload")
+	}
+}
+
+func Power(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
+	SensorValue := func(p float64) SenMLDecoratorFunc { return Rec("5700", &p, nil, "", nil, senml.UnitWatt, nil) }
+
+	if i, ok := payload.Get[float64](p, payload.PowerProperty); ok {
+		return fn(NewSenMLPack(deviceID, PowerURN, p.Timestamp(), SensorValue(i)))
+	} else {
+		return errors.New("no power value in payload")
+	}
+}
+
 func Presence(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
 	DigitalInputState := func(vb bool) SenMLDecoratorFunc { return BoolValue("5500", vb) }
 

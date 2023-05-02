@@ -33,6 +33,10 @@ func Value(n string, v float64) SenMLDecoratorFunc {
 	return Rec(n, &v, nil, "", nil, "", nil)
 }
 
+func ValueWithUnit(n, u string, v float64) SenMLDecoratorFunc {
+	return Rec(n, &v, nil, "", nil, u, nil)
+}
+
 func BoolValue(n string, vb bool) SenMLDecoratorFunc {
 	return Rec(n, nil, nil, "", nil, "", &vb)
 }

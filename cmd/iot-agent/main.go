@@ -21,7 +21,6 @@ import (
 const serviceName string = "iot-agent"
 
 func main() {
-
 	serviceVersion := buildinfo.SourceVersion()
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
@@ -29,7 +28,7 @@ func main() {
 	forwardingEndpoint := env.GetVariableOrDie(logger, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
 
 	dmClient := createDeviceManagementClientOrDie(ctx)
-	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint)
+	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
 
 	msgCfg := messaging.LoadConfiguration(serviceName, logger)
 	initMsgCtx := func() (messaging.MsgContext, error) {
@@ -37,7 +36,7 @@ func main() {
 	}
 
 	facade := env.GetVariableOrDefault(logger, "APPSERVER_FACADE", "chirpstack")
-	svcAPI, err := initialize(ctx, facade, dmClient, initMsgCtx)
+	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, initMsgCtx)
 
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to setup iot agent")
@@ -45,6 +44,14 @@ func main() {
 
 	mqttClient.Start()
 	defer mqttClient.Stop()
+
+	schneiderEnabled := env.GetVariableOrDefault(logger, "SCHNEIDER_ENABLED", "false")
+
+	if schneiderEnabled == "true" {
+		schneiderClient := createMQTTClientOrDie(ctx, forwardingEndpoint+"/schneider", "SCHNEIDER_")
+		schneiderClient.Start()
+		defer schneiderClient.Stop()
+	}
 
 	apiPort := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
 	logger.Info().Str("port", apiPort).Msg("starting to listen for incoming connections")
@@ -71,8 +78,8 @@ func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.Dev
 	return dmClient
 }
 
-func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint string) mqtt.Client {
-	mqttConfig, err := mqtt.NewConfigFromEnvironment()
+func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix string) mqtt.Client {
+	mqttConfig, err := mqtt.NewConfigFromEnvironment(prefix)
 	logger := logging.GetFromContext(ctx)
 
 	if err != nil {
@@ -87,7 +94,7 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint string) mqtt.
 	return mqttClient
 }
 
-func initialize(ctx context.Context, facade string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error)) (api.API, error) {
+func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error)) (api.API, error) {
 
 	sender := events.NewSender(ctx, initMsgCtx)
 	sender.Start()
@@ -95,7 +102,7 @@ func initialize(ctx context.Context, facade string, dmc devicemgmtclient.DeviceM
 	app := iotagent.New(dmc, sender)
 
 	r := chi.NewRouter()
-	a := api.New(ctx, r, facade, app)
+	a := api.New(ctx, r, facade, forwardingEndpoint, app)
 
 	metrics.AddHandlers(r)
 
