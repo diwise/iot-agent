@@ -85,7 +85,6 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 
 			pack := conversion.NewSenMLPack(name, basename, time.Now().UTC(), decorators...)
 			b, _ := json.Marshal(pack)
-			fmt.Println(string(b))
 
 			url := a.forwardingEndpoint + "/lwm2m"
 
