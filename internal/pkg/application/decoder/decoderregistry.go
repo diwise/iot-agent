@@ -4,7 +4,14 @@ import (
 	"context"
 	"strings"
 
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/elsys"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/enviot"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/milesight"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/niab"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/qalcosonic"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/senlabt"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/sensative"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/sensefarm"
 )
 
 type DecoderRegistry interface {
@@ -18,15 +25,15 @@ type decoderRegistry struct {
 func NewDecoderRegistry() DecoderRegistry {
 
 	Decoders := map[string]MessageDecoderFunc{
-		"qalcosonic":       QalcosonicW1,
-		"presence":         PresenceDecoder,
-		"elsys_codec":      ElsysDecoder,
-		"enviot":           EnviotDecoder,
-		"tem_lab_14ns":     SenlabTBasicDecoder,
-		"strips_lora_ms_h": SensativeDecoder,
-		"cube02":           SensefarmBasicDecoder,
-		"milesight_am100":  MilesightDecoder,
+		"cube02":           sensefarm.SensefarmBasicDecoder,
+		"elsys_codec":      elsys.ElsysDecoder,
+		"enviot":           enviot.EnviotDecoder,
+		"milesight_am100":  milesight.MilesightDecoder,
 		"niab-fls":         niab.FillLevelSensorDecoder,
+		"presence":         sensative.PresenceDecoder,
+		"qalcosonic":       qalcosonic.QalcosonicW1,
+		"strips_lora_ms_h": sensative.SensativeDecoder,
+		"tem_lab_14ns":     senlabt.SenlabTBasicDecoder,
 	}
 
 	return &decoderRegistry{
@@ -35,7 +42,6 @@ func NewDecoderRegistry() DecoderRegistry {
 }
 
 func (c *decoderRegistry) GetDecoderForSensorType(ctx context.Context, sensorType string) MessageDecoderFunc {
-
 	if d, ok := c.registeredDecoders[strings.ToLower(sensorType)]; ok {
 		return d
 	}

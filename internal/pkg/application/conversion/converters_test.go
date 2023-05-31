@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/qalcosonic"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/sensefarm"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/farshidtz/senml/v2"
 	"github.com/matryer/is"
@@ -74,7 +75,7 @@ func TestThatWatermeterConvertsW1hValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-	decoder.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	qalcosonic.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -96,7 +97,7 @@ func TestThatWatermeterConvertsW1eValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
-	decoder.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	qalcosonic.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -118,7 +119,7 @@ func TestThatWatermeterConvertsW1tValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	decoder.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	qalcosonic.QalcosonicW1(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -141,8 +142,8 @@ func TestThatSensefarmConvertsPressureAndConductivity(t *testing.T) {
 	ctx := context.Background()
 
 	var r payload.Payload
-	ue, _ := application.Netmore([]byte(sensefarm))
-	decoder.SensefarmBasicDecoder(ctx, ue, func(ctx context.Context, p payload.Payload) error {
+	ue, _ := application.Netmore([]byte(sensefarm_data))
+	sensefarm.SensefarmBasicDecoder(ctx, ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})
@@ -304,7 +305,7 @@ const qalcosonic_w1t string = `
   ]
 }]
 `
-const sensefarm string = `[
+const sensefarm_data string = `[
 	{
 	  "devEui":"71b4d554600002b0",
 	  "sensorType":"cube02",
