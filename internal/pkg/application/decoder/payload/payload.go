@@ -9,12 +9,12 @@ import (
 
 var PayloadError = 100
 
-type PayloadDecoratorFunc func(p *PayloadImpl)
+type PayloadDecoratorFunc func(p *payloadImpl)
 
 type Payload interface {
 	DevEui() string
 	Timestamp() time.Time
-	Status() StatusImpl
+	Status() statusImpl
 	Get(name string) (any, bool)
 }
 
@@ -48,19 +48,19 @@ const (
 	TransmissionReasonProperty string = "transmissionReason"
 )
 
-type PayloadImpl struct {
+type payloadImpl struct {
 	devEui       string
 	measurements map[string]any
 	timestamp    time.Time
 }
 
-type StatusImpl struct {
+type statusImpl struct {
 	Code     int
 	Messages []string
 }
 
 func New(devEui string, timestamp time.Time, decorators ...PayloadDecoratorFunc) (Payload, error) {
-	p := &PayloadImpl{
+	p := &payloadImpl{
 		devEui:       devEui,
 		timestamp:    timestamp,
 		measurements: make(map[string]any),
@@ -73,14 +73,14 @@ func New(devEui string, timestamp time.Time, decorators ...PayloadDecoratorFunc)
 
 func S(name string, value any) PayloadDecoratorFunc {
 	name = strings.ToLower(name)
-	return func(p *PayloadImpl) {
+	return func(p *payloadImpl) {
 		p.measurements[name] = value
 	}
 }
 
 func M(name string, value any) PayloadDecoratorFunc {
 	name = strings.ToLower(name)
-	return func(p *PayloadImpl) {
+	return func(p *payloadImpl) {
 		if _, ok := p.measurements[name]; ok {
 			p.measurements[name] = append(p.measurements[name].([]any), value)
 		} else {
@@ -89,24 +89,24 @@ func M(name string, value any) PayloadDecoratorFunc {
 	}
 }
 
-func (p *PayloadImpl) DevEui() string {
+func (p *payloadImpl) DevEui() string {
 	return p.devEui
 }
 
-func (p *PayloadImpl) Timestamp() time.Time {
+func (p *payloadImpl) Timestamp() time.Time {
 	return p.timestamp
 }
 
-func (p *PayloadImpl) Status() StatusImpl {
+func (p *payloadImpl) Status() statusImpl {
 	if s, ok := p.Get(StatusProperty); ok {
-		if si, ok := s.(StatusImpl); ok {
+		if si, ok := s.(statusImpl); ok {
 			return si
 		}
 	}
-	return StatusImpl{}
+	return statusImpl{}
 }
 
-func (p *PayloadImpl) Get(name string) (any, bool) {
+func (p *payloadImpl) Get(name string) (any, bool) {
 	name = strings.ToLower(name)
 	if m, ok := p.measurements[name]; ok {
 		return m, ok
@@ -229,7 +229,7 @@ func Motion(m int) PayloadDecoratorFunc {
 }
 
 func Status(c uint8, msg []string) PayloadDecoratorFunc {
-	return S(StatusProperty, StatusImpl{
+	return S(StatusProperty, statusImpl{
 		Code:     int(c),
 		Messages: msg,
 	})

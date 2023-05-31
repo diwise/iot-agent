@@ -64,10 +64,11 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		return err
 	}
 
-	log = log.With().Str("device", device.ID()).Logger()
+	log = log.With().Str("device", device.ID()).Logger().
+			  With().Str("type", device.SensorType()).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	log.Debug().Str("type", device.SensorType()).Msg("message received")
+	log.Debug().Msg("message received")
 
 	decodePayload := decoder.PayloadErrorDecoder
 	if !se.HasError() {
