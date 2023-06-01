@@ -65,7 +65,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	log = log.With().Str("device", device.ID()).Logger().
-			  With().Str("type", device.SensorType()).Logger()
+		With().Str("type", device.SensorType()).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	log.Debug().Msg("message received")
@@ -85,7 +85,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 
 		if device.IsActive() {
 			for _, pack := range packs {
-				a.HandleSensorMeasurementList(ctx, device.ID(), pack)
+				a.handleSensorMeasurementList(ctx, device.ID(), pack)
 			}
 		} else {
 			log.Warn().Msg("ignored message from inactive device")
@@ -102,6 +102,18 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
+	device, err := a.deviceManagementClient.FindDeviceFromInternalID(ctx, deviceID)
+	if err != nil {
+		
+		return fmt.Errorf("device not found, %w", err)
+	}
+
+	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
+
+	return a.handleSensorMeasurementList(ctx, deviceID, pack)
+}
+
+func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	m := core.MessageReceived{
 		Device:    deviceID,
 		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
@@ -156,13 +168,16 @@ func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p 
 		With().Str("device_id", deviceID).Logger().
 		With().Str("func", "sendStatusMessage").
 		Logger()
-		
+
 	var decorators []func(*events.StatusMessage)
 
-	decorators = append(decorators,
-		events.WithStatus(p.Status().Code, p.Status().Messages),
-		events.WithTenant(tenant),
-	)
+	decorators = append(decorators, events.WithTenant(tenant))
+
+	if p != nil {
+		decorators = append(decorators, events.WithStatus(p.Status().Code, p.Status().Messages))
+	} else {
+		decorators = append(decorators, events.WithStatus(0, []string{}))
+	}
 
 	if bat, ok := payload.Get[int](p, payload.BatteryLevelProperty); ok {
 		decorators = append(decorators, events.WithBatteryLevel(bat))

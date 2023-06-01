@@ -116,6 +116,11 @@ func (p *payloadImpl) Get(name string) (any, bool) {
 
 func Get[T any](p Payload, name string) (T, bool) {
 	var result T
+
+	if p == nil {
+		return result, false
+	}
+
 	if m, ok := p.Get(name); ok {
 		if t := reflect.TypeOf(m); t.Kind() == reflect.Struct {
 			for i := 0; i < t.NumField(); i++ {
