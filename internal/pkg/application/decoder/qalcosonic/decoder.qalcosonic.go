@@ -16,7 +16,7 @@ import (
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 
-func QalcosonicW1(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func W1Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	var err error
 
 	buf := bytes.NewReader(ue.Data)

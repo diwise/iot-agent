@@ -15,7 +15,7 @@ func TestMilesightDecoder(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(data))
-	err := MilesightDecoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})

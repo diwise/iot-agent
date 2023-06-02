@@ -16,7 +16,7 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.Netmore([]byte(senlabT))
-	err := SenlabTBasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	err := BasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		r = m
 		return nil
 	})
@@ -31,7 +31,7 @@ func TestSenlabTTempDecoder(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(senlabTemp))
-	err := SenlabTBasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	err := BasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		r = m
 		return nil
 	})
@@ -46,7 +46,7 @@ func TestSenlabTTempDecoder(t *testing.T) {
 func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := application.Netmore([]byte(senlabT_sensorReadingError))
-	err := SenlabTBasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	err := BasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		return nil
 	})
 

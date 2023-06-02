@@ -15,7 +15,7 @@ func TestElsysCO2Decoder(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(elsysCO2))
-	err := ElsysDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		r = m
 		return nil
 	})
@@ -29,7 +29,7 @@ func TestElsysTemperatureDecoder(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(elsysTemp))
-	err := ElsysDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		r = m
 		return nil
 	})

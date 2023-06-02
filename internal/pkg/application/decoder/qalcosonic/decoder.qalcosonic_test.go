@@ -12,13 +12,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-
 func TestQalcosonic_w1t(t *testing.T) {
 	is, _ := testSetup(t)
 
 	var r payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+	err := W1Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})
@@ -48,7 +47,7 @@ func TestQalcosonic_w1h(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+	err := W1Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})
@@ -76,7 +75,7 @@ func TestQalcosonic_w1e(t *testing.T) {
 	var r payload.Payload
 
 	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
-	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+	err := W1Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})
@@ -104,7 +103,7 @@ func TestQalcosonicAlarmMessage(t *testing.T) {
 	var r payload.Payload
 
 	ue, _ := application.Netmore([]byte(qalcosonicAlarmPacket))
-	err := QalcosonicW1(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+	err := W1Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})

@@ -16,7 +16,7 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.Netmore([]byte(sensefarm))
-	err := SensefarmBasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	err := BasicDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		r = m
 		return nil
 	})
@@ -35,7 +35,6 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 	}](r, payload.ResistanceProperty)
 	is.Equal(ohm[0].Resistance, int32(815))
 }
-
 
 func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
 	is := is.New(t)

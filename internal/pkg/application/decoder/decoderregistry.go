@@ -25,15 +25,15 @@ type decoderRegistry struct {
 func NewDecoderRegistry() DecoderRegistry {
 
 	Decoders := map[string]MessageDecoderFunc{
-		"cube02":           sensefarm.SensefarmBasicDecoder,
-		"elsys_codec":      elsys.ElsysDecoder,
-		"enviot":           enviot.EnviotDecoder,
-		"milesight_am100":  milesight.MilesightDecoder,
+		"cube02":           sensefarm.BasicDecoder,
+		"elsys_codec":      elsys.Decoder,
+		"enviot":           enviot.Decoder,
+		"milesight_am100":  milesight.Decoder,
 		"niab-fls":         niab.FillLevelSensorDecoder,
 		"presence":         sensative.PresenceDecoder,
-		"qalcosonic":       qalcosonic.QalcosonicW1,
-		"strips_lora_ms_h": sensative.SensativeDecoder,
-		"tem_lab_14ns":     senlabt.SenlabTBasicDecoder,
+		"qalcosonic":       qalcosonic.W1Decoder,
+		"strips_lora_ms_h": sensative.Decoder,
+		"tem_lab_14ns":     senlabt.BasicDecoder,
 	}
 
 	return &decoderRegistry{

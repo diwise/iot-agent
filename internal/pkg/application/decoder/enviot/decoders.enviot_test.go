@@ -15,7 +15,7 @@ func TestEnviotDecoder(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(enviot))
-	err := EnviotDecoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		r = m
 		return nil
 	})
