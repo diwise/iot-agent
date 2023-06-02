@@ -54,7 +54,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	log := logging.GetFromContext(ctx).With().Str("devEui", se.DevEui).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	device, err := a.findDevice(ctx, se.DevEui)
+	device, err := a.findDevice(ctx, se.DevEui, a.deviceManagementClient.FindDeviceFromDevEUI)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn().Str("deviceName", se.DeviceName).Msg("blacklisted")
@@ -102,10 +102,16 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
-	device, err := a.deviceManagementClient.FindDeviceFromInternalID(ctx, deviceID)
+	log := logging.GetFromContext(ctx)
+	
+	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID) 
 	if err != nil {
-		
-		return fmt.Errorf("device not found, %w", err)
+		if errors.Is(err, errDeviceOnBlackList) {
+			log.Warn().Str("device_id", deviceID).Msg("blacklisted")
+			return nil
+		}
+
+		return err
 	}
 
 	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
@@ -127,40 +133,40 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 var errDeviceOnBlackList = errors.New("blacklisted")
 
-func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, devEui string) bool {
+func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, id string) bool {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
 
-	if timeOfNextAllowedRetry, ok := a.notFoundDevices[devEui]; ok {
+	if timeOfNextAllowedRetry, ok := a.notFoundDevices[id]; ok {
 		if !time.Now().UTC().After(timeOfNextAllowedRetry) {
 			return true
 		}
 
-		delete(a.notFoundDevices, devEui)
+		delete(a.notFoundDevices, id)
 	}
 
 	return false
 }
 
-func (a *app) findDevice(ctx context.Context, devEui string) (dmc.Device, error) {
-	if a.deviceIsCurrentlyIgnored(ctx, devEui) {
+func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context.Context, id string) (dmc.Device, error)) (dmc.Device, error) {
+	if a.deviceIsCurrentlyIgnored(ctx, id) {
 		return nil, errDeviceOnBlackList
 	}
 
-	device, err := a.deviceManagementClient.FindDeviceFromDevEUI(ctx, devEui)
+	device, err := finder(ctx, id)
 	if err != nil {
-		a.ignoreDeviceFor(ctx, devEui, 1*time.Hour)
+		a.ignoreDeviceFor(ctx, id, 1*time.Hour)
 		return nil, fmt.Errorf("device lookup failure (%w)", err)
 	}
 
 	return device, nil
 }
 
-func (a *app) ignoreDeviceFor(ctx context.Context, devEui string, period time.Duration) {
+func (a *app) ignoreDeviceFor(ctx context.Context, id string, period time.Duration) {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
 
-	a.notFoundDevices[devEui] = time.Now().UTC().Add(period)
+	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
 func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p payload.Payload) {
