@@ -1,4 +1,4 @@
-package decoder
+package elsys
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func ElsysDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	d := struct {
 		Temperature         *float32 `json:"temperature,omitempty"`
 		ExternalTemperature *float32 `json:"externalTemperature,omitempty"`

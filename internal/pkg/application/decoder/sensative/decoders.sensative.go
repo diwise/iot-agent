@@ -1,4 +1,4 @@
-package decoder
+package sensative
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func SensativeDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 
 	if len(ue.Data) < 2 {
 		return errors.New("payload too short")

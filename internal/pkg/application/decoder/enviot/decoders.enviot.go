@@ -1,4 +1,4 @@
-package decoder
+package enviot
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
 
-func EnviotDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	obj := struct {
 		Payload struct {
 			Battery      *int     `json:"battery,omitempty"`

@@ -1,4 +1,4 @@
-package decoder
+package sensative
 
 import (
 	"context"
@@ -8,5 +8,5 @@ import (
 )
 
 func PresenceDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	return SensativeDecoder(ctx, ue, fn)
+	return Decoder(ctx, ue, fn)
 }
