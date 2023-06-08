@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
-	"golang.org/x/exp/maps"
 )
 
 //go:generate moq -rm -out storage_mock.go . Storage
@@ -227,5 +226,15 @@ func (i *impl) GetMeasurements(ctx context.Context, id string) ([]senml.Pack, er
 		return nil, rows.Err()
 	}
 
-	return maps.Values(packs), errors.Join(errs...)
+	return values(packs), errors.Join(errs...)
+}
+
+func values(m map[uuid.UUID]senml.Pack) []senml.Pack {
+	p := make([]senml.Pack, len(m))
+	i := 0
+	for _, v := range m {
+		p[i] = v
+		i++
+	}
+	return p
 }
