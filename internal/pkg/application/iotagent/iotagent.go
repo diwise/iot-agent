@@ -13,6 +13,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/messageprocessor"
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -24,6 +25,7 @@ import (
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
+	GetMeasurements(ctx context.Context, deviceID string) ([]senml.Pack, error)
 }
 
 type app struct {
@@ -31,12 +33,13 @@ type app struct {
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
 	eventSender            events.EventSender
+	storage                storage.Storage
 
 	notFoundDevices   map[string]time.Time
 	notFoundDevicesMu sync.Mutex
 }
 
-func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
+func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage) App {
 	c := conversion.NewConverterRegistry()
 	d := decoder.NewDecoderRegistry()
 	m := messageprocessor.NewMessageReceivedProcessor(c)
@@ -46,6 +49,7 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender) App {
 		decoderRegistry:        d,
 		deviceManagementClient: dmc,
 		eventSender:            eventPub,
+		storage:                store,
 		notFoundDevices:        make(map[string]time.Time),
 	}
 }
@@ -103,8 +107,8 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	log := logging.GetFromContext(ctx)
-	
-	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID) 
+
+	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn().Str("device_id", deviceID).Msg("blacklisted")
@@ -119,6 +123,10 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	return a.handleSensorMeasurementList(ctx, deviceID, pack)
 }
 
+func (a *app) GetMeasurements(ctx context.Context, deviceID string) ([]senml.Pack, error) {
+	return a.storage.GetMeasurements(ctx, deviceID)
+}
+
 func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	m := core.MessageReceived{
 		Device:    deviceID,
@@ -126,6 +134,7 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, 
 		Pack:      pack,
 	}
 
+	a.storage.Add(ctx, deviceID, pack, time.Now().UTC())
 	a.eventSender.Send(ctx, &m)
 
 	return nil

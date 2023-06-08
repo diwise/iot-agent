@@ -6,6 +6,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
@@ -15,9 +16,9 @@ import (
 )
 
 func TestSenlabTPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	is, dmc, e, s := testSetup(t)
 
-	agent := New(dmc, e).(*app)
+	agent := New(dmc, e, s).(*app)
 	ue, _ := application.Netmore([]byte(senlabT))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -29,9 +30,9 @@ func TestSenlabTPayload(t *testing.T) {
 }
 
 func TestStripsPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	is, dmc, e, s := testSetup(t)
 
-	agent := New(dmc, e).(*app)
+	agent := New(dmc, e, s).(*app)
 	ue, _ := application.Netmore([]byte(stripsPayload))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -43,9 +44,9 @@ func TestStripsPayload(t *testing.T) {
 }
 
 func TestElsysPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	is, dmc, e, s := testSetup(t)
 
-	agent := New(dmc, e).(*app)
+	agent := New(dmc, e, s).(*app)
 	ue, _ := application.ChirpStack([]byte(elsys))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -57,9 +58,9 @@ func TestElsysPayload(t *testing.T) {
 }
 
 func TestErsPayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	is, dmc, e, s := testSetup(t)
 
-	agent := New(dmc, e).(*app)
+	agent := New(dmc, e, s).(*app)
 	ue, _ := application.ChirpStack([]byte(ers))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -77,9 +78,9 @@ func TestErsPayload(t *testing.T) {
 }
 
 func TestPresencePayload(t *testing.T) {
-	is, dmc, e := testSetup(t)
+	is, dmc, e, s := testSetup(t)
 
-	agent := New(dmc, e).(*app)
+	agent := New(dmc, e, s).(*app)
 	ue, _ := application.ChirpStack([]byte(livboj))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -95,7 +96,7 @@ func getPackFromSendCalls(e *events.EventSenderMock, i int) senml.Pack {
 	return m.Pack
 }
 
-func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *events.EventSenderMock) {
+func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *events.EventSenderMock, *storage.StorageMock) {
 	is := is.New(t)
 	dmc := &dmctest.DeviceManagementClientMock{
 		FindDeviceFromDevEUIFunc: func(ctx context.Context, devEUI string) (client.Device, error) {
@@ -136,7 +137,9 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 		},
 	}
 
-	return is, dmc, e
+	s := &storage.StorageMock{}
+
+	return is, dmc, e, s
 }
 
 const senlabT string = `[{

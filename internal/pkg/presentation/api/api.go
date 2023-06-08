@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
@@ -55,6 +57,8 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
 
 	r.Get("/health", a.health)
+	r.Get("/api/v0/measurements/{id}", a.getMeasurementsHandler(ctx))
+
 	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade))
 	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
 	r.Post("/api/v0/messages/schneider", a.incomingSchneiderMessageHandler(ctx))
@@ -149,5 +153,36 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 		}
 
 		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
+	logger := logging.GetFromContext(ctx)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		ctx, span := tracer.Start(r.Context(), "retrieve-measurements")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+		deviceID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
+		if deviceID == "" {
+			err = fmt.Errorf("no device id is supplied in query")
+			log.Error().Err(err).Msg("bad request")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		packs, err := a.app.GetMeasurements(ctx, deviceID)
+		if err != nil || len(packs) == 0 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		b, _ := json.MarshalIndent(packs, "  ", "  ")
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/messaging-golang/pkg/messaging"
@@ -29,6 +30,7 @@ func main() {
 
 	dmClient := createDeviceManagementClientOrDie(ctx)
 	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
+	storage := createStorageOrDie(ctx)
 
 	msgCfg := messaging.LoadConfiguration(serviceName, logger)
 	initMsgCtx := func() (messaging.MsgContext, error) {
@@ -36,7 +38,7 @@ func main() {
 	}
 
 	facade := env.GetVariableOrDefault(logger, "APPSERVER_FACADE", "chirpstack")
-	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, initMsgCtx)
+	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, initMsgCtx, storage)
 
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to setup iot agent")
@@ -94,12 +96,25 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix strin
 	return mqttClient
 }
 
-func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error)) (api.API, error) {
+func createStorageOrDie(ctx context.Context) storage.Storage {
+	log := logging.GetFromContext(ctx)
+	cfg := storage.LoadConfiguration(log)
+	s, err := storage.Connect(ctx, log, cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("could not connect to database")
+	}
+
+	s.Initialize(ctx)
+
+	return s
+}
+
+func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error), storage storage.Storage) (api.API, error) {
 
 	sender := events.NewSender(ctx, initMsgCtx)
 	sender.Start()
 
-	app := iotagent.New(dmc, sender)
+	app := iotagent.New(dmc, sender, storage)
 
 	r := chi.NewRouter()
 	a := api.New(ctx, r, facade, forwardingEndpoint, app)

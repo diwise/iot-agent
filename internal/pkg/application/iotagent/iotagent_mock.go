@@ -20,6 +20,9 @@ var _ App = &AppMock{}
 //
 //		// make and configure a mocked App
 //		mockedApp := &AppMock{
+//			GetMeasurementsFunc: func(ctx context.Context, deviceID string) ([]senml.Pack, error) {
+//				panic("mock out the GetMeasurements method")
+//			},
 //			HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
 //				panic("mock out the HandleSensorEvent method")
 //			},
@@ -33,6 +36,9 @@ var _ App = &AppMock{}
 //
 //	}
 type AppMock struct {
+	// GetMeasurementsFunc mocks the GetMeasurements method.
+	GetMeasurementsFunc func(ctx context.Context, deviceID string) ([]senml.Pack, error)
+
 	// HandleSensorEventFunc mocks the HandleSensorEvent method.
 	HandleSensorEventFunc func(ctx context.Context, se application.SensorEvent) error
 
@@ -41,6 +47,13 @@ type AppMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetMeasurements holds details about calls to the GetMeasurements method.
+		GetMeasurements []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DeviceID is the deviceID argument value.
+			DeviceID string
+		}
 		// HandleSensorEvent holds details about calls to the HandleSensorEvent method.
 		HandleSensorEvent []struct {
 			// Ctx is the ctx argument value.
@@ -58,8 +71,45 @@ type AppMock struct {
 			Pack senml.Pack
 		}
 	}
+	lockGetMeasurements             sync.RWMutex
 	lockHandleSensorEvent           sync.RWMutex
 	lockHandleSensorMeasurementList sync.RWMutex
+}
+
+// GetMeasurements calls GetMeasurementsFunc.
+func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string) ([]senml.Pack, error) {
+	if mock.GetMeasurementsFunc == nil {
+		panic("AppMock.GetMeasurementsFunc: method is nil but App.GetMeasurements was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		DeviceID string
+	}{
+		Ctx:      ctx,
+		DeviceID: deviceID,
+	}
+	mock.lockGetMeasurements.Lock()
+	mock.calls.GetMeasurements = append(mock.calls.GetMeasurements, callInfo)
+	mock.lockGetMeasurements.Unlock()
+	return mock.GetMeasurementsFunc(ctx, deviceID)
+}
+
+// GetMeasurementsCalls gets all the calls that were made to GetMeasurements.
+// Check the length with:
+//
+//	len(mockedApp.GetMeasurementsCalls())
+func (mock *AppMock) GetMeasurementsCalls() []struct {
+	Ctx      context.Context
+	DeviceID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		DeviceID string
+	}
+	mock.lockGetMeasurements.RLock()
+	calls = mock.calls.GetMeasurements
+	mock.lockGetMeasurements.RUnlock()
+	return calls
 }
 
 // HandleSensorEvent calls HandleSensorEventFunc.
