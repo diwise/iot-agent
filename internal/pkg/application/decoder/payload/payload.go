@@ -209,9 +209,9 @@ func Distance(d float64) PayloadDecoratorFunc {
 	})
 }
 
-func Humidity(h int) PayloadDecoratorFunc {
+func Humidity(h float32) PayloadDecoratorFunc {
 	return S(HumidityProperty, struct {
-		Humidity int
+		Humidity float32
 	}{
 		h,
 	})

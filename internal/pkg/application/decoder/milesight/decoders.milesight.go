@@ -29,7 +29,7 @@ func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Co
 	}
 
 	if d.Humidity != nil {
-		decorators = append(decorators, payload.Humidity(int(*d.Humidity)))
+		decorators = append(decorators, payload.Humidity(*d.Humidity))
 	}
 
 	if d.CO2 != nil {
