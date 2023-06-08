@@ -23,8 +23,8 @@ func TestEnviotDecoder(t *testing.T) {
 	is.NoErr(err)
 	temp, _ := payload.Get[float64](r, payload.TemperatureProperty)
 	is.Equal(temp, 11.5)
-	humidity, _ := payload.Get[int](r, payload.HumidityProperty)
-	is.Equal(humidity, 85)
+	humidity, _ := payload.Get[float32](r, payload.HumidityProperty)
+	is.Equal(humidity, float32(85))
 	batterylevel, _ := payload.Get[int](r, payload.BatteryLevelProperty)
 	is.Equal(batterylevel, 86)
 }

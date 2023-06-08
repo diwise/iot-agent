@@ -51,7 +51,7 @@ func decodeSensativeMeasurements(b []byte, callback func(m payload.PayloadDecora
 		case 4: // average temp report
 			size = 2
 		case 6: // humidity report
-			callback(payload.Humidity(int(b[pos] / 2)))
+			callback(payload.Humidity(float32(b[pos]) / 2.0))
 		case 7: // lux report
 			size = 2
 		case 8: // lux2 report
