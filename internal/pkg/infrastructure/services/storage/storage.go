@@ -215,11 +215,7 @@ func (i *impl) GetMeasurements(ctx context.Context, id string) ([]senml.Pack, er
 			Sum:         s,
 		}
 
-		if _, ok := packs[corrId]; ok {
-			packs[corrId] = append(packs[corrId], r)
-		} else {
-			packs[corrId] = senml.Pack{r}
-		}
+		packs[corrId] = append(packs[corrId], r)
 	}
 
 	if rows.Err() != nil {
