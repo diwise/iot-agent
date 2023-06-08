@@ -173,8 +173,7 @@ func (i *impl) GetMeasurements(ctx context.Context, id string) ([]senml.Pack, er
 		SELECT corr_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s
 		FROM measurements
 		WHERE device_id = $1
-		ORDER BY "time" ASC, corr_id ASC, row_id ASC
-	`, id)
+		ORDER BY "time" ASC, corr_id ASC, row_id ASC;`, id)
 	if err != nil {
 		return nil, err
 	}
