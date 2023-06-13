@@ -35,17 +35,19 @@ func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Cl
 	options.SetClientID("diwise/iot-agent/" + uuid.NewString())
 	options.SetDefaultPublishHandler(NewMessageHandler(logger, forwardingEndpoint))
 
+	log := logger.With().Str("mqtt-host", cfg.host).Logger()
+
 	options.OnConnect = func(mc mqtt.Client) {
-		logger.Info().Msg("connected")
+		log.Info().Msg("connected")
 		for _, topic := range cfg.topics {
-			logger.Info().Msgf("subscribing to %s", topic)
+			log.Info().Msgf("subscribing to %s", topic)
 			token := mc.Subscribe(topic, 0, nil)
 			token.Wait()
 		}
 	}
 
 	options.OnConnectionLost = func(mc mqtt.Client, err error) {
-		logger.Fatal().Err(err).Msg("connection lost")
+		log.Fatal().Err(err).Msg("connection lost")
 	}
 
 	options.TLSConfig = &tls.Config{
@@ -54,7 +56,7 @@ func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Cl
 
 	return &mqttClient{
 		cfg:     cfg,
-		log:     logger.With().Str("mqtt-host", cfg.host).Logger(),
+		log:     log,
 		options: options,
 	}, nil
 }
