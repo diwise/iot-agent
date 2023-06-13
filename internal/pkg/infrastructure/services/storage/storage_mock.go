@@ -23,7 +23,7 @@ var _ Storage = &StorageMock{}
 //			AddFunc: func(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error {
 //				panic("mock out the Add method")
 //			},
-//			GetMeasurementsFunc: func(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error) {
+//			GetMeasurementsFunc: func(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]Measurement, error) {
 //				panic("mock out the GetMeasurements method")
 //			},
 //			InitializeFunc: func(contextMoqParam context.Context) error {
@@ -40,7 +40,7 @@ type StorageMock struct {
 	AddFunc func(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error
 
 	// GetMeasurementsFunc mocks the GetMeasurements method.
-	GetMeasurementsFunc func(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error)
+	GetMeasurementsFunc func(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]Measurement, error)
 
 	// InitializeFunc mocks the Initialize method.
 	InitializeFunc func(contextMoqParam context.Context) error
@@ -129,7 +129,7 @@ func (mock *StorageMock) AddCalls() []struct {
 }
 
 // GetMeasurements calls GetMeasurementsFunc.
-func (mock *StorageMock) GetMeasurements(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error) {
+func (mock *StorageMock) GetMeasurements(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]Measurement, error) {
 	if mock.GetMeasurementsFunc == nil {
 		panic("StorageMock.GetMeasurementsFunc: method is nil but Storage.GetMeasurements was just called")
 	}

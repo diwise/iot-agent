@@ -21,7 +21,7 @@ var _ App = &AppMock{}
 //
 //		// make and configure a mocked App
 //		mockedApp := &AppMock{
-//			GetMeasurementsFunc: func(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error) {
+//			GetMeasurementsFunc: func(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error) {
 //				panic("mock out the GetMeasurements method")
 //			},
 //			HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
@@ -38,7 +38,7 @@ var _ App = &AppMock{}
 //	}
 type AppMock struct {
 	// GetMeasurementsFunc mocks the GetMeasurements method.
-	GetMeasurementsFunc func(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error)
+	GetMeasurementsFunc func(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error)
 
 	// HandleSensorEventFunc mocks the HandleSensorEvent method.
 	HandleSensorEventFunc func(ctx context.Context, se application.SensorEvent) error
@@ -86,7 +86,7 @@ type AppMock struct {
 }
 
 // GetMeasurements calls GetMeasurementsFunc.
-func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error) {
+func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error) {
 	if mock.GetMeasurementsFunc == nil {
 		panic("AppMock.GetMeasurementsFunc: method is nil but App.GetMeasurements was just called")
 	}

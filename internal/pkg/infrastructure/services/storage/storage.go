@@ -18,7 +18,7 @@ import (
 type Storage interface {
 	Initialize(context.Context) error
 	Add(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error
-	GetMeasurements(ctx context.Context, id, temprel string, t, et time.Time, lastN int) ([]senml.Pack, error)
+	GetMeasurements(ctx context.Context, id, temprel string, t, et time.Time, lastN int) ([]Measurement, error)
 }
 
 type impl struct {
@@ -32,6 +32,11 @@ type Config struct {
 	port     string
 	dbname   string
 	sslmode  string
+}
+
+type Measurement struct {
+	Timestamp time.Time  `json:"ts"`
+	Pack      senml.Pack `json:"pack"`
 }
 
 func LoadConfiguration(log zerolog.Logger) Config {
@@ -187,9 +192,9 @@ func (i *impl) Add(ctx context.Context, id string, pack senml.Pack, timestamp ti
 	return tx.Commit(ctx)
 }
 
-func (i *impl) GetMeasurements(ctx context.Context, id, temprel string, t, et time.Time, lastN int) ([]senml.Pack, error) {
+func (i *impl) GetMeasurements(ctx context.Context, id, temprel string, t, et time.Time, lastN int) ([]Measurement, error) {
 	rows, err := i.db.Query(ctx, `
-		SELECT m.corr_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s
+		SELECT m."time", m.corr_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s
 		FROM measurements m
 		LEFT JOIN measurements_values mv ON m.corr_id = mv.corr_id
 		WHERE m.corr_id IN (
@@ -206,10 +211,12 @@ func (i *impl) GetMeasurements(ctx context.Context, id, temprel string, t, et ti
 	}
 	defer rows.Close()
 
-	packs := make(map[uuid.UUID]senml.Pack)
 	errs := make([]error, 0)
+	packs := make(map[uuid.UUID]senml.Pack)
+	timestamps := make(map[uuid.UUID]time.Time)
 
 	for rows.Next() {
+		var ts time.Time
 		var corrId uuid.UUID
 		var bn, bu, n, u, vs, vd string
 		var bt, t, ut float64
@@ -217,7 +224,7 @@ func (i *impl) GetMeasurements(ctx context.Context, id, temprel string, t, et ti
 		var bver *int
 		var vb *bool
 
-		err := rows.Scan(&corrId, &bn, &bt, &bu, &bver, &bv, &bs, &n, &u, &t, &ut, &v, &vs, &vd, &vb, &s)
+		err := rows.Scan(&ts, &corrId, &bn, &bt, &bu, &bver, &bv, &bs, &n, &u, &t, &ut, &v, &vs, &vd, &vb, &s)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -241,6 +248,7 @@ func (i *impl) GetMeasurements(ctx context.Context, id, temprel string, t, et ti
 			Sum:         s,
 		}
 
+		timestamps[corrId] = ts
 		packs[corrId] = append(packs[corrId], r)
 	}
 
@@ -248,7 +256,22 @@ func (i *impl) GetMeasurements(ctx context.Context, id, temprel string, t, et ti
 		return nil, rows.Err()
 	}
 
-	return values(packs), errors.Join(errs...)
+	return measurements(packs, timestamps), errors.Join(errs...)
+}
+
+func measurements(val map[uuid.UUID]senml.Pack, ts map[uuid.UUID]time.Time) []Measurement {
+	m := make([]Measurement, len(val))
+	i := 0
+
+	for k, v := range val {
+		m[i] = Measurement{
+			Timestamp: ts[k],
+			Pack: v,
+		}
+		i++
+	}
+
+	return m
 }
 
 func values(m map[uuid.UUID]senml.Pack) []senml.Pack {

@@ -25,7 +25,7 @@ import (
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
-	GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]senml.Pack, error)
+	GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error)
 }
 
 type app struct {
@@ -123,7 +123,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	return a.handleSensorMeasurementList(ctx, deviceID, pack)
 }
 
-func (a *app) GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]senml.Pack, error) {
+func (a *app) GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error) {
 	if temprel == "before" {
 		et = t
 		t = time.Unix(0, 0)
@@ -133,7 +133,21 @@ func (a *app) GetMeasurements(ctx context.Context, deviceID, temprel string, t, 
 		et = time.Now().UTC()
 	}
 
-	return a.storage.GetMeasurements(ctx, deviceID, temprel, t, et, lastN)
+	rows, err := a.storage.GetMeasurements(ctx, deviceID, temprel, t, et, lastN)
+	if err != nil {
+		return []application.Measurement{}, err
+	}
+	
+	measurements := make([]application.Measurement, len(rows))
+
+	for i, m := range rows {
+		measurements[i] = application.Measurement{
+			Timestamp: m.Timestamp,
+			Pack: m.Pack,
+		}
+	}
+
+	return measurements, nil
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
