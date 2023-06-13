@@ -220,7 +220,7 @@ func (i *impl) GetMeasurements(ctx context.Context, id string, tenants []string,
 			LIMIT $4
 		)
 		GROUP BY m.corr_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s, row_id
-		ORDER BY m."time" ASC, mv.row_id ASC`, id, t, et, lastN)
+		ORDER BY m."time" ASC, m.corr_id ASC, mv.row_id ASC`, id, t, et, lastN)
 	if err != nil {
 		return nil, err
 	}

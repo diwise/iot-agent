@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -215,13 +216,23 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		}
 
 		// TODO: Introduce an authenticator to manage tenant access
-		packs, err := a.app.GetMeasurements(ctx, deviceID, []string{"default"}, temprel, t, et, l)
-		if err != nil || len(packs) == 0 {
+		measurements, err := a.app.GetMeasurements(ctx, deviceID, []string{"default"}, temprel, t, et, l)
+		if err != nil || len(measurements) == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		b, _ := json.MarshalIndent(packs, "  ", "  ")
+		sortOrder := strings.ToLower(r.URL.Query().Get("sort"))
+
+		sort.Slice(measurements, func(i, j int) bool {
+			if sortOrder == "desc" {
+				return measurements[i].Timestamp.After(measurements[j].Timestamp)
+			} else {
+				return measurements[i].Timestamp.Before(measurements[j].Timestamp)
+			}
+		})
+
+		b, _ := json.MarshalIndent(measurements, "  ", "  ")
 
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
