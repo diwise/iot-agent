@@ -214,7 +214,8 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 			}
 		}
 
-		packs, err := a.app.GetMeasurements(ctx, deviceID, temprel, t, et, l)
+		// TODO: Introduce an authenticator to manage tenant access
+		packs, err := a.app.GetMeasurements(ctx, deviceID, []string{"default"}, temprel, t, et, l)
 		if err != nil || len(packs) == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			return

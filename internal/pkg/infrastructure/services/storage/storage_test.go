@@ -39,12 +39,12 @@ func TestSQL(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = s.Add(ctx, "devID", pack, time.Now())
+	err = s.Add(ctx, "devID", "default", pack, time.Now())
 	if err != nil {
 		t.Error(err)
 	}
 
-	packs, err := s.GetMeasurements(ctx, "devID", "", time.Unix(0, 0), time.Now(), 1000)
+	packs, err := s.GetMeasurements(ctx, "devID", []string{"default"}, "", time.Unix(0, 0), time.Now(), 1000)
 	if err != nil {
 		t.Error(err)
 	}

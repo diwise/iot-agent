@@ -25,7 +25,7 @@ import (
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
-	GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error)
+	GetMeasurements(ctx context.Context, deviceID string, tenants []string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error)
 }
 
 type app struct {
@@ -87,6 +87,12 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 			return fmt.Errorf("failed to process message (%w)", err)
 		}
 
+		err = a.storage.AddMany(ctx, device.ID(), device.Tenant(), packs, time.Now().UTC())
+		if err != nil {
+			log.Error().Err(err).Msg("could not store measurements")
+			return err
+		}
+
 		if device.IsActive() {
 			for _, pack := range packs {
 				a.handleSensorMeasurementList(ctx, device.ID(), pack)
@@ -118,12 +124,18 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		return err
 	}
 
+	err = a.storage.Add(ctx, device.ID(), device.Tenant(), pack, time.Now().UTC())
+	if err != nil {
+		log.Error().Err(err).Msg("could not store measurement")
+		return err
+	}
+
 	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
 
 	return a.handleSensorMeasurementList(ctx, deviceID, pack)
 }
 
-func (a *app) GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error) {
+func (a *app) GetMeasurements(ctx context.Context, deviceID string, tenants []string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error) {
 	if temprel == "before" {
 		et = t
 		t = time.Unix(0, 0)
@@ -133,17 +145,17 @@ func (a *app) GetMeasurements(ctx context.Context, deviceID, temprel string, t, 
 		et = time.Now().UTC()
 	}
 
-	rows, err := a.storage.GetMeasurements(ctx, deviceID, temprel, t, et, lastN)
+	rows, err := a.storage.GetMeasurements(ctx, deviceID, tenants, temprel, t, et, lastN)
 	if err != nil {
 		return []application.Measurement{}, err
 	}
-	
+
 	measurements := make([]application.Measurement, len(rows))
 
 	for i, m := range rows {
 		measurements[i] = application.Measurement{
 			Timestamp: m.Timestamp,
-			Pack: m.Pack,
+			Pack:      m.Pack,
 		}
 	}
 
@@ -157,7 +169,6 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, 
 		Pack:      pack,
 	}
 
-	a.storage.Add(ctx, deviceID, pack, time.Now().UTC())
 	a.eventSender.Send(ctx, &m)
 
 	return nil

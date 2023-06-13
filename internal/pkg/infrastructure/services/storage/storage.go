@@ -17,8 +17,9 @@ import (
 
 type Storage interface {
 	Initialize(context.Context) error
-	Add(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error
-	GetMeasurements(ctx context.Context, id, temprel string, t, et time.Time, lastN int) ([]Measurement, error)
+	Add(ctx context.Context, id, tenant string, pack senml.Pack, timestamp time.Time) error
+	AddMany(ctx context.Context, id, tenant string, packs []senml.Pack, timestamp time.Time) error
+	GetMeasurements(ctx context.Context, id string, tenants []string, temprel string, t, et time.Time, lastN int) ([]Measurement, error)
 }
 
 type impl struct {
@@ -82,12 +83,13 @@ func (i *impl) createTables(ctx context.Context) error {
 			time 		TIMESTAMPTZ NOT NULL,
 			corr_id		UUID NOT NULL,			
 			device_id 	TEXT NOT NULL,
+			tenant 		TEXT NOT NULL,
 			PRIMARY KEY (corr_id)
 		);
 
 		CREATE INDEX IF NOT EXISTS measurements_device_id_idx ON measurements (device_id);
 
-		CREATE TABLE IF NOT EXISTS measurements_values (
+		CREATE TABLE IF NOT EXISTS measurement_values (
 			time 		TIMESTAMPTZ NOT NULL,
 			corr_id		UUID NOT NULL,
 			row_id		SMALLINT NOT NULL,
@@ -128,14 +130,14 @@ func (i *impl) createTables(ctx context.Context) error {
 	err = tx.QueryRow(ctx, `
 		SELECT COUNT(*) n
 		FROM timescaledb_information.hypertables
-		WHERE hypertable_name = 'measurements_values';`).Scan(&n)
+		WHERE hypertable_name = 'measurement_values';`).Scan(&n)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
 
 	if n == 0 {
-		_, err := tx.Exec(ctx, `SELECT create_hypertable('measurements_values', 'time');`)
+		_, err := tx.Exec(ctx, `SELECT create_hypertable('measurement_values', 'time');`)
 		if err != nil {
 			tx.Rollback(ctx)
 			return err
@@ -150,10 +152,10 @@ func (i *impl) createTables(ctx context.Context) error {
 	return nil
 }
 
-func (i *impl) Add(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error {
-	insert := `INSERT INTO measurements("time", corr_id, device_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING;`
+func (i *impl) Add(ctx context.Context, id, tenant string, pack senml.Pack, timestamp time.Time) error {
+	insert := `INSERT INTO measurements("time", corr_id, device_id, tenant) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`
 
-	insertValue := `INSERT INTO measurements_values("time", corr_id, row_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s)
+	insertValue := `INSERT INTO measurement_values("time", corr_id, row_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s)
 			   		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
 
 	err := pack.Validate()
@@ -170,7 +172,7 @@ func (i *impl) Add(ctx context.Context, id string, pack senml.Pack, timestamp ti
 
 	corrId := uuid.New()
 
-	_, err = tx.Exec(ctx, insert, timestamp, corrId, id)
+	_, err = tx.Exec(ctx, insert, timestamp, corrId, id, tenant)
 	if err != nil {
 		return err
 	}
@@ -192,11 +194,24 @@ func (i *impl) Add(ctx context.Context, id string, pack senml.Pack, timestamp ti
 	return tx.Commit(ctx)
 }
 
-func (i *impl) GetMeasurements(ctx context.Context, id, temprel string, t, et time.Time, lastN int) ([]Measurement, error) {
+func (i *impl) AddMany(ctx context.Context, id, tenant string, packs []senml.Pack, timestamp time.Time) error {
+	errs := make([]error, 0)
+	for _, p := range packs {
+		err := i.Add(ctx, id, tenant, p, timestamp)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (i *impl) GetMeasurements(ctx context.Context, id string, tenants []string, temprel string, t, et time.Time, lastN int) ([]Measurement, error) {
+	// TODO: add tenant to WHERE
+	
 	rows, err := i.db.Query(ctx, `
 		SELECT m."time", m.corr_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s
 		FROM measurements m
-		LEFT JOIN measurements_values mv ON m.corr_id = mv.corr_id
+		LEFT JOIN measurement_values mv ON m.corr_id = mv.corr_id
 		WHERE m.corr_id IN (
 			SELECT corr_id 
 			FROM measurements 
@@ -266,20 +281,10 @@ func measurements(val map[uuid.UUID]senml.Pack, ts map[uuid.UUID]time.Time) []Me
 	for k, v := range val {
 		m[i] = Measurement{
 			Timestamp: ts[k],
-			Pack: v,
+			Pack:      v,
 		}
 		i++
 	}
 
 	return m
-}
-
-func values(m map[uuid.UUID]senml.Pack) []senml.Pack {
-	p := make([]senml.Pack, len(m))
-	i := 0
-	for _, v := range m {
-		p[i] = v
-		i++
-	}
-	return p
 }
