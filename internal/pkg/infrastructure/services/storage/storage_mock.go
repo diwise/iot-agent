@@ -23,7 +23,7 @@ var _ Storage = &StorageMock{}
 //			AddFunc: func(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error {
 //				panic("mock out the Add method")
 //			},
-//			GetMeasurementsFunc: func(ctx context.Context, id string) ([]senml.Pack, error) {
+//			GetMeasurementsFunc: func(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error) {
 //				panic("mock out the GetMeasurements method")
 //			},
 //			InitializeFunc: func(contextMoqParam context.Context) error {
@@ -40,7 +40,7 @@ type StorageMock struct {
 	AddFunc func(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error
 
 	// GetMeasurementsFunc mocks the GetMeasurements method.
-	GetMeasurementsFunc func(ctx context.Context, id string) ([]senml.Pack, error)
+	GetMeasurementsFunc func(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error)
 
 	// InitializeFunc mocks the Initialize method.
 	InitializeFunc func(contextMoqParam context.Context) error
@@ -64,6 +64,14 @@ type StorageMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID string
+			// Temprel is the temprel argument value.
+			Temprel string
+			// T is the t argument value.
+			T time.Time
+			// Et is the et argument value.
+			Et time.Time
+			// LastN is the lastN argument value.
+			LastN int
 		}
 		// Initialize holds details about calls to the Initialize method.
 		Initialize []struct {
@@ -121,21 +129,29 @@ func (mock *StorageMock) AddCalls() []struct {
 }
 
 // GetMeasurements calls GetMeasurementsFunc.
-func (mock *StorageMock) GetMeasurements(ctx context.Context, id string) ([]senml.Pack, error) {
+func (mock *StorageMock) GetMeasurements(ctx context.Context, id string, temprel string, t time.Time, et time.Time, lastN int) ([]senml.Pack, error) {
 	if mock.GetMeasurementsFunc == nil {
 		panic("StorageMock.GetMeasurementsFunc: method is nil but Storage.GetMeasurements was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		ID  string
+		Ctx     context.Context
+		ID      string
+		Temprel string
+		T       time.Time
+		Et      time.Time
+		LastN   int
 	}{
-		Ctx: ctx,
-		ID:  id,
+		Ctx:     ctx,
+		ID:      id,
+		Temprel: temprel,
+		T:       t,
+		Et:      et,
+		LastN:   lastN,
 	}
 	mock.lockGetMeasurements.Lock()
 	mock.calls.GetMeasurements = append(mock.calls.GetMeasurements, callInfo)
 	mock.lockGetMeasurements.Unlock()
-	return mock.GetMeasurementsFunc(ctx, id)
+	return mock.GetMeasurementsFunc(ctx, id, temprel, t, et, lastN)
 }
 
 // GetMeasurementsCalls gets all the calls that were made to GetMeasurements.
@@ -143,12 +159,20 @@ func (mock *StorageMock) GetMeasurements(ctx context.Context, id string) ([]senm
 //
 //	len(mockedStorage.GetMeasurementsCalls())
 func (mock *StorageMock) GetMeasurementsCalls() []struct {
-	Ctx context.Context
-	ID  string
+	Ctx     context.Context
+	ID      string
+	Temprel string
+	T       time.Time
+	Et      time.Time
+	LastN   int
 } {
 	var calls []struct {
-		Ctx context.Context
-		ID  string
+		Ctx     context.Context
+		ID      string
+		Temprel string
+		T       time.Time
+		Et      time.Time
+		LastN   int
 	}
 	mock.lockGetMeasurements.RLock()
 	calls = mock.calls.GetMeasurements

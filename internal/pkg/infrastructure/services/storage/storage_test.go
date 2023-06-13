@@ -44,7 +44,7 @@ func TestSQL(t *testing.T) {
 		t.Error(err)
 	}
 
-	packs, err := s.GetMeasurements(ctx, "devID")
+	packs, err := s.GetMeasurements(ctx, "devID", "", time.Unix(0, 0), time.Now(), 1000)
 	if err != nil {
 		t.Error(err)
 	}

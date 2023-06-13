@@ -25,7 +25,7 @@ import (
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
-	GetMeasurements(ctx context.Context, deviceID string) ([]senml.Pack, error)
+	GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]senml.Pack, error)
 }
 
 type app struct {
@@ -123,8 +123,17 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	return a.handleSensorMeasurementList(ctx, deviceID, pack)
 }
 
-func (a *app) GetMeasurements(ctx context.Context, deviceID string) ([]senml.Pack, error) {
-	return a.storage.GetMeasurements(ctx, deviceID)
+func (a *app) GetMeasurements(ctx context.Context, deviceID, temprel string, t, et time.Time, lastN int) ([]senml.Pack, error) {
+	if temprel == "before" {
+		et = t
+		t = time.Unix(0, 0)
+	}
+
+	if temprel == "after" {
+		et = time.Now().UTC()
+	}
+
+	return a.storage.GetMeasurements(ctx, deviceID, temprel, t, et, lastN)
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {

@@ -8,6 +8,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
@@ -174,7 +177,44 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		packs, err := a.app.GetMeasurements(ctx, deviceID)
+		temprel := strings.ToLower(r.URL.Query().Get("temprel")) // before, after, between
+		startTime := r.URL.Query().Get("time")                   // 2017-12-13T14:20:00
+		endTime := r.URL.Query().Get("endTime")                  // 2018-01-13T14:20:00
+
+		t := time.Unix(0, 0)
+		et := time.Now().UTC()
+
+		if temprel == "before" || temprel == "after" || temprel == "between" {
+			t, err = time.Parse(time.RFC3339, startTime)
+			if err != nil {
+				log.Error().Err(err).Msg("invalid time parameter")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if temprel == "between" {
+				et, err = time.Parse(time.RFC3339, endTime)
+				if err != nil {
+					log.Error().Err(err).Msg("invalid endTime parameter")
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			}
+		} else {
+			temprel = ""
+		}
+
+		l := 1000
+
+		if lastN := r.URL.Query().Get("lastn"); len(lastN) > 0 {
+			l, err = strconv.Atoi(lastN)
+			if err != nil {
+				log.Error().Err(err).Msg("invalid lastN parameter")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+
+		packs, err := a.app.GetMeasurements(ctx, deviceID, temprel, t, et, l)
 		if err != nil || len(packs) == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			return

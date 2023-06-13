@@ -3,6 +3,7 @@ package iotagent
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
@@ -137,7 +138,11 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 		},
 	}
 
-	s := &storage.StorageMock{}
+	s := &storage.StorageMock{
+		AddFunc: func(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error {
+			return nil
+		},
+	}
 
 	return is, dmc, e, s
 }
