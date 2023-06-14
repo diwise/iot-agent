@@ -179,8 +179,8 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		}
 
 		temprel := strings.ToLower(r.URL.Query().Get("temprel")) // before, after, between
-		startTime := r.URL.Query().Get("time")                   // 2017-12-13T14:20:00
-		endTime := r.URL.Query().Get("endTime")                  // 2018-01-13T14:20:00
+		startTime := r.URL.Query().Get("time")                   // 2017-12-13T14:20:00Z
+		endTime := r.URL.Query().Get("endTime")                  // 2018-01-13T14:20:00Z
 
 		t := time.Unix(0, 0)
 		et := time.Now().UTC()
