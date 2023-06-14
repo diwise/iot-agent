@@ -6,12 +6,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"strings"
 
 	"fmt"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
@@ -56,6 +58,25 @@ func decodeQalcosonicPayload(ctx context.Context, ue application.SensorEvent, me
 	}
 
 	pp, _ := payload.New(ue.DevEui, ue.Timestamp, decorators...)
+
+	containsStatusMessage := func(pp payload.Payload, status string) bool {
+		if len(pp.Status().Messages) == 0 {
+			return false
+		}
+
+		for _, m := range pp.Status().Messages {
+			if strings.EqualFold(m, status) {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	if containsStatusMessage(pp, "Unknown") {
+		log := logging.GetFromContext(ctx)
+		log.Debug().Msgf("status Unknown - %v", ue)
+	}
 
 	return fn(ctx, pp)
 }
