@@ -84,9 +84,15 @@ func alarmPacketDecoder(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, erro
 		return nil, err
 	}
 
-	return append(decorators, payload.Status(statusCode, getStatusMessage(statusCode))), nil
+	var statusMessages []string
+	if statusMessages = getStatusMessageForAlarmPacket(statusCode); statusMessages == nil {
+		statusMessages = getStatusMessage(statusCode)
+	}
+
+	return append(decorators, payload.Status(statusCode, statusMessages)), nil
 }
 
+// Lora Payload (24 hours) “Enhanced”
 func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
@@ -250,6 +256,7 @@ func deltaVolumes(buf *bytes.Reader, lastLogValue uint32, logDateTime time.Time)
 	return decorators, true
 }
 
+// Lora Payload (Long) “Extended”
 func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var err error
 
@@ -346,42 +353,106 @@ func deltaVolumesH(buf *bytes.Reader, currentVolume float64, logTime time.Time) 
 }
 
 func getStatusMessage(code uint8) []string {
-	var statusMessages []string
+	const (
+		NoError        = 0x00
+		PowerLow       = 0x04
+		PermanentError = 0x08
+		TemporaryError = 0x10
+		EmptySpool     = 0x10 // same as Temporary Error
+		Leak           = 0x20
+		Burst          = 0xA0
+		Backflow       = 0x60 // negative flow
+		Freeze         = 0x80
+	)
 
-	if code == 0x00 {
-		statusMessages = append(statusMessages, "No error")
-	} else {
-		if code&0x04 == 0x04 {
-			statusMessages = append(statusMessages, "Power low")
-		}
-		if code&0x08 == 0x08 {
-			statusMessages = append(statusMessages, "Permanent error")
-		}
-		if code&0x10 == 0x10 {
-			statusMessages = append(statusMessages, "Temporary error")
-		}
-		if code&0x10 == 0x10 && code&0x20 != 0x20 && code&0xA0 != 0xA0 && code&0x60 != 0x60 && code&0x80 != 0x80 {
-			statusMessages = append(statusMessages, "Empty spool")
-		}
-		if code&0x60 == 0x60 {
-			statusMessages = append(statusMessages, "Backflow")
-		}
-		if code&0xA0 == 0xA0 {
-			statusMessages = append(statusMessages, "Burst")
-		}
-		if code&0x20 == 0x20 && code&0x40 != 0x40 && code&0x80 != 0x80 {
-			statusMessages = append(statusMessages, "Leak")
-		}
-		if code&0x80 == 0x80 && code&0x20 != 0x20 {
-			statusMessages = append(statusMessages, "Freeze")
-		}
+	msg := make([]string, 0)
+
+	if code == NoError {
+		msg = append(msg, "No error")
 	}
 
-	if len(statusMessages) == 0 {
-		statusMessages = append(statusMessages, "Unknown")
+	if code&PowerLow == PowerLow {
+		msg = append(msg, "Power low")
 	}
 
-	return statusMessages
+	if code&PermanentError == PermanentError {
+		msg = append(msg, "Permanent error")
+	}
+
+	if code&TemporaryError == TemporaryError {
+		msg = append(msg, "Temporary error")
+	}
+
+	// If status only shows temporary error, it is empty spool.
+	if code&EmptySpool == EmptySpool && code&Freeze != Freeze && code&Leak != Leak && code&Burst != Burst && code&Backflow != Backflow {
+		msg = append(msg, "Empty spool")
+	}
+
+	// priority: freeze; leakage; burst; negative flow
+	if code&Freeze == Freeze && code&Leak != Leak && code&Burst != Burst && code&Backflow != Backflow {
+		msg = append(msg, "Freeze")
+	}
+
+	if code&Leak == Leak && code&Freeze != Freeze && code&Burst != Burst && code&Backflow != Backflow {
+		msg = append(msg, "Leak")
+	}
+
+	if code&Burst == Burst {
+		msg = append(msg, "Burst")
+	}
+
+	if code&Backflow == Backflow {
+		msg = append(msg, "Backflow")
+	}
+
+	if len(msg) == 0 {
+		msg = append(msg, "Unknown")
+	}
+
+	return msg
+}
+
+func getStatusMessageForAlarmPacket(code uint8) []string {
+	const (
+		NoError        = 0x00
+		Leakage        = 0x01
+		Burst          = 0x02
+		LowTemperature = 0x04
+		Tamper         = 0x08
+		//NoConsumption  = 0x10
+		NegativeFlow = 0x20
+	)
+
+	if code == NoError {
+		return []string{"No error"}
+	}
+
+	if code == Leakage {
+		return []string{"Leak"}
+	}
+
+	if code == Burst {
+		return []string{"Burst"}
+	}
+
+	if code == LowTemperature {
+		return []string{"Low temperature"}
+	}
+
+	if code == Tamper {
+		return []string{"Tamper"}
+	}
+
+	// off by default
+	//if code == NoConsumption {
+	//	return []string{"No consumption"}
+	//}
+
+	if code == NegativeFlow {
+		return []string{"Backflow"}
+	}
+
+	return nil
 }
 
 func tooFarOff(t time.Time) bool {
