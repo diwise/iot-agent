@@ -103,8 +103,8 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	log := logging.GetFromContext(ctx)
-	
-	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID) 
+
+	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn().Str("device_id", deviceID).Msg("blacklisted")

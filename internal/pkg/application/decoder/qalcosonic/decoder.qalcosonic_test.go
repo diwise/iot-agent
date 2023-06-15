@@ -111,9 +111,8 @@ func TestQalcosonicAlarmMessage(t *testing.T) {
 	is.NoErr(err)
 	timestamp, _ := payload.Get[time.Time](r, payload.TimestampProperty)
 	is.Equal(timestamp, toT("2019-07-19T12:02:11Z")) // time for reading
-	is.Equal(r.Status().Code, 48)
-	is.Equal(r.Status().Messages[0], "Temporary error")
-	is.Equal(r.Status().Messages[1], "Leak")
+	is.Equal(r.Status().Code, 136)
+	is.Equal(r.Status().Messages[0], "Permanent error")
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
@@ -158,6 +157,9 @@ func TestQalcosonicStatusCodes(t *testing.T) {
 	is.Equal("Permanent error", getStatusMessage(0xBC)[1])
 	is.Equal("Temporary error", getStatusMessage(0xBC)[2])
 	is.Equal("Burst", getStatusMessage(0xBC)[3])
+
+	is.Equal("Permanent error", getStatusMessage(0x88)[0])
+	is.Equal("Freeze", getStatusMessage(0x88)[1])
 
 	is.Equal("Unknown", getStatusMessage(0x02)[0])
 }
@@ -286,7 +288,7 @@ const qalcosonicAlarmPacket string = `
   "sensorType": "qalcosonic_w1t",
   "messageType": "payload.Payload",
   "timestamp": "2022-08-25T07:35:21.834484Z",
-  "Payload": "43b1315d30",
+  "Payload": "43b1315d88",
   "fCntUp": 1490,
   "toa": null,
   "freq": 867900000,
