@@ -21,6 +21,7 @@ flowchart LR
         decoder-->converter
     end 
 ```
+
 Iot-Agent gets sensor uplink messages on subscribed mqtt-topics exposed by application servers. Messages are handled and POSTed to `/api/v0/messages`, which is an local http endpoint. 
 Metadata about the sensor is fetched from iot-device-mgmt, this metadata contains information about which decoder to use to decode the message payload. The metadata also contains information about the converters to use for measurements. 
 
