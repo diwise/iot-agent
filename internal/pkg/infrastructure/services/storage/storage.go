@@ -17,9 +17,9 @@ import (
 
 type Storage interface {
 	Initialize(context.Context) error
-	Add(ctx context.Context, id, tenant string, pack senml.Pack, timestamp time.Time) error
-	AddMany(ctx context.Context, id, tenant string, packs []senml.Pack, timestamp time.Time) error
-	GetMeasurements(ctx context.Context, id string, tenants []string, temprel string, t, et time.Time, lastN int) ([]Measurement, error)
+	Add(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error
+	AddMany(ctx context.Context, id string, packs []senml.Pack, timestamp time.Time) error
+	GetMeasurements(ctx context.Context, id string, temprel string, t, et time.Time, lastN int) ([]Measurement, error)
 }
 
 type impl struct {
@@ -83,7 +83,6 @@ func (i *impl) createTables(ctx context.Context) error {
 			time 		TIMESTAMPTZ NOT NULL,
 			corr_id		UUID NOT NULL,			
 			device_id 	TEXT NOT NULL,
-			tenant 		TEXT NOT NULL,
 			PRIMARY KEY (corr_id)
 		);
 
@@ -152,8 +151,8 @@ func (i *impl) createTables(ctx context.Context) error {
 	return nil
 }
 
-func (i *impl) Add(ctx context.Context, id, tenant string, pack senml.Pack, timestamp time.Time) error {
-	insert := `INSERT INTO measurements("time", corr_id, device_id, tenant) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`
+func (i *impl) Add(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error {
+	insert := `INSERT INTO measurements("time", corr_id, device_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING;`
 
 	insertValue := `INSERT INTO measurement_values("time", corr_id, row_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s)
 			   		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
@@ -172,7 +171,7 @@ func (i *impl) Add(ctx context.Context, id, tenant string, pack senml.Pack, time
 
 	corrId := uuid.New()
 
-	_, err = tx.Exec(ctx, insert, timestamp, corrId, id, tenant)
+	_, err = tx.Exec(ctx, insert, timestamp, corrId, id)
 	if err != nil {
 		return err
 	}
@@ -194,10 +193,10 @@ func (i *impl) Add(ctx context.Context, id, tenant string, pack senml.Pack, time
 	return tx.Commit(ctx)
 }
 
-func (i *impl) AddMany(ctx context.Context, id, tenant string, packs []senml.Pack, timestamp time.Time) error {
+func (i *impl) AddMany(ctx context.Context, id string, packs []senml.Pack, timestamp time.Time) error {
 	errs := make([]error, 0)
 	for _, p := range packs {
-		err := i.Add(ctx, id, tenant, p, timestamp)
+		err := i.Add(ctx, id, p, timestamp)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -205,9 +204,8 @@ func (i *impl) AddMany(ctx context.Context, id, tenant string, packs []senml.Pac
 	return errors.Join(errs...)
 }
 
-func (i *impl) GetMeasurements(ctx context.Context, id string, tenants []string, temprel string, t, et time.Time, lastN int) ([]Measurement, error) {
-	// TODO: add tenant to WHERE
-	
+func (i *impl) GetMeasurements(ctx context.Context, id string, temprel string, t, et time.Time, lastN int) ([]Measurement, error) {
+
 	rows, err := i.db.Query(ctx, `
 		SELECT m."time", m.corr_id, bn, bt, bu, bver, bv, bs, n, u, t, ut, v, vs, vd, vb, s
 		FROM measurements m

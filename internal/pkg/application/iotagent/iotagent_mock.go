@@ -6,6 +6,7 @@ package iotagent
 import (
 	"context"
 	"github.com/diwise/iot-agent/internal/pkg/application"
+	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/farshidtz/senml/v2"
 	"sync"
 	"time"
@@ -21,7 +22,10 @@ var _ App = &AppMock{}
 //
 //		// make and configure a mocked App
 //		mockedApp := &AppMock{
-//			GetMeasurementsFunc: func(ctx context.Context, deviceID string, tenants []string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error) {
+//			GetDeviceFunc: func(ctx context.Context, deviceID string) (dmc.Device, error) {
+//				panic("mock out the GetDevice method")
+//			},
+//			GetMeasurementsFunc: func(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error) {
 //				panic("mock out the GetMeasurements method")
 //			},
 //			HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
@@ -37,8 +41,11 @@ var _ App = &AppMock{}
 //
 //	}
 type AppMock struct {
+	// GetDeviceFunc mocks the GetDevice method.
+	GetDeviceFunc func(ctx context.Context, deviceID string) (dmc.Device, error)
+
 	// GetMeasurementsFunc mocks the GetMeasurements method.
-	GetMeasurementsFunc func(ctx context.Context, deviceID string, tenants []string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error)
+	GetMeasurementsFunc func(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error)
 
 	// HandleSensorEventFunc mocks the HandleSensorEvent method.
 	HandleSensorEventFunc func(ctx context.Context, se application.SensorEvent) error
@@ -48,14 +55,19 @@ type AppMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetDevice holds details about calls to the GetDevice method.
+		GetDevice []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DeviceID is the deviceID argument value.
+			DeviceID string
+		}
 		// GetMeasurements holds details about calls to the GetMeasurements method.
 		GetMeasurements []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// DeviceID is the deviceID argument value.
 			DeviceID string
-			// Tenants is the tenants argument value.
-			Tenants []string
 			// Temprel is the temprel argument value.
 			Temprel string
 			// T is the t argument value.
@@ -82,20 +94,56 @@ type AppMock struct {
 			Pack senml.Pack
 		}
 	}
+	lockGetDevice                   sync.RWMutex
 	lockGetMeasurements             sync.RWMutex
 	lockHandleSensorEvent           sync.RWMutex
 	lockHandleSensorMeasurementList sync.RWMutex
 }
 
+// GetDevice calls GetDeviceFunc.
+func (mock *AppMock) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
+	if mock.GetDeviceFunc == nil {
+		panic("AppMock.GetDeviceFunc: method is nil but App.GetDevice was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		DeviceID string
+	}{
+		Ctx:      ctx,
+		DeviceID: deviceID,
+	}
+	mock.lockGetDevice.Lock()
+	mock.calls.GetDevice = append(mock.calls.GetDevice, callInfo)
+	mock.lockGetDevice.Unlock()
+	return mock.GetDeviceFunc(ctx, deviceID)
+}
+
+// GetDeviceCalls gets all the calls that were made to GetDevice.
+// Check the length with:
+//
+//	len(mockedApp.GetDeviceCalls())
+func (mock *AppMock) GetDeviceCalls() []struct {
+	Ctx      context.Context
+	DeviceID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		DeviceID string
+	}
+	mock.lockGetDevice.RLock()
+	calls = mock.calls.GetDevice
+	mock.lockGetDevice.RUnlock()
+	return calls
+}
+
 // GetMeasurements calls GetMeasurementsFunc.
-func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string, tenants []string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error) {
+func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string, temprel string, t time.Time, et time.Time, lastN int) ([]application.Measurement, error) {
 	if mock.GetMeasurementsFunc == nil {
 		panic("AppMock.GetMeasurementsFunc: method is nil but App.GetMeasurements was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
 		DeviceID string
-		Tenants  []string
 		Temprel  string
 		T        time.Time
 		Et       time.Time
@@ -103,7 +151,6 @@ func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string, tenan
 	}{
 		Ctx:      ctx,
 		DeviceID: deviceID,
-		Tenants:  tenants,
 		Temprel:  temprel,
 		T:        t,
 		Et:       et,
@@ -112,7 +159,7 @@ func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string, tenan
 	mock.lockGetMeasurements.Lock()
 	mock.calls.GetMeasurements = append(mock.calls.GetMeasurements, callInfo)
 	mock.lockGetMeasurements.Unlock()
-	return mock.GetMeasurementsFunc(ctx, deviceID, tenants, temprel, t, et, lastN)
+	return mock.GetMeasurementsFunc(ctx, deviceID, temprel, t, et, lastN)
 }
 
 // GetMeasurementsCalls gets all the calls that were made to GetMeasurements.
@@ -122,7 +169,6 @@ func (mock *AppMock) GetMeasurements(ctx context.Context, deviceID string, tenan
 func (mock *AppMock) GetMeasurementsCalls() []struct {
 	Ctx      context.Context
 	DeviceID string
-	Tenants  []string
 	Temprel  string
 	T        time.Time
 	Et       time.Time
@@ -131,7 +177,6 @@ func (mock *AppMock) GetMeasurementsCalls() []struct {
 	var calls []struct {
 		Ctx      context.Context
 		DeviceID string
-		Tenants  []string
 		Temprel  string
 		T        time.Time
 		Et       time.Time

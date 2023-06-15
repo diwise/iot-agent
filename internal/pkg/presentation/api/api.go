@@ -15,6 +15,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -38,12 +39,13 @@ type api struct {
 	forwardingEndpoint string
 }
 
-func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App) API {
-	return newAPI(ctx, r, facade, forwardingEndpoint, app)
+func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) API {
+	return newAPI(ctx, r, facade, forwardingEndpoint, app, policies)
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App) *api {
-
+func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) *api {
+	log := logging.GetFromContext(ctx)
+	
 	a := &api{
 		r:                  r,
 		app:                app,
@@ -61,12 +63,22 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
 
 	r.Get("/health", a.health)
-	r.Get("/api/v0/measurements/{id}", a.getMeasurementsHandler(ctx))
 
 	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade))
 	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
 	r.Post("/api/v0/messages/schneider", a.incomingSchneiderMessageHandler(ctx))
 
+	r.Route("/api/v0/measurements", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			authenticator, err := auth.NewAuthenticator(context.Background(), log, policies)
+			if err != nil {
+				log.Fatal().Err(err).Msg("failed to create api authenticator")
+			}
+			r.Use(authenticator)
+			r.Get("/{id}", a.getMeasurementsHandler(ctx))
+		})
+	})
+	
 	return a
 }
 
@@ -178,6 +190,20 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
+		device, err := a.app.GetDevice(ctx, deviceID)
+		if err != nil {
+			log.Error().Err(err).Msg("could not get device information")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		allowedTenants := auth.GetAllowedTenantsFromContext(r.Context())
+
+		if !contains(allowedTenants, device.Tenant()) {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
 		temprel := strings.ToLower(r.URL.Query().Get("temprel")) // before, after, between
 		startTime := r.URL.Query().Get("time")                   // 2017-12-13T14:20:00Z
 		endTime := r.URL.Query().Get("endTime")                  // 2018-01-13T14:20:00Z
@@ -200,8 +226,10 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 					return
 				}
 			}
-		} else {
-			temprel = ""
+		} else if len(temprel) > 0 {
+			log.Error().Msgf("invalid temprel parameter - %s != before || after || between", temprel)
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
 		l := 1000
@@ -215,8 +243,7 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 			}
 		}
 
-		// TODO: Introduce an authenticator to manage tenant access
-		measurements, err := a.app.GetMeasurements(ctx, deviceID, []string{"default"}, temprel, t, et, l)
+		measurements, err := a.app.GetMeasurements(ctx, deviceID, temprel, t, et, l)
 		if err != nil || len(measurements) == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -237,4 +264,13 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
 	}
+}
+
+func contains(arr []string, s string) bool {
+	for _, str := range arr {
+		if strings.EqualFold(s, str) {
+			return true
+		}
+	}
+	return false
 }

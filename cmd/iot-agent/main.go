@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net/http"
+	"os"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
@@ -19,12 +21,16 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+var opaFilePath string
 const serviceName string = "iot-agent"
 
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
+
+	flag.StringVar(&opaFilePath, "policies", "/opt/diwise/config/authz.rego", "An authorization policy file")
+	flag.Parse()
 
 	forwardingEndpoint := env.GetVariableOrDie(logger, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
 
@@ -110,14 +116,21 @@ func createStorageOrDie(ctx context.Context) storage.Storage {
 }
 
 func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error), storage storage.Storage) (api.API, error) {
-
+	logger := logging.GetFromContext(ctx)
+	
 	sender := events.NewSender(ctx, initMsgCtx)
 	sender.Start()
+
+	policies, err := os.Open(opaFilePath)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("unable to open opa policy file")
+	}
+	defer policies.Close()
 
 	app := iotagent.New(dmc, sender, storage)
 
 	r := chi.NewRouter()
-	a := api.New(ctx, r, facade, forwardingEndpoint, app)
+	a := api.New(ctx, r, facade, forwardingEndpoint, app, policies)
 
 	metrics.AddHandlers(r)
 

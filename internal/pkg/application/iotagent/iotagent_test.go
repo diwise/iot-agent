@@ -139,8 +139,8 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 	}
 
 	s := &storage.StorageMock{
-		AddFunc: func(ctx context.Context, id, tenant string, pack senml.Pack, timestamp time.Time) error { return nil },
-		AddManyFunc: func(ctx context.Context, id, tenant string, packs []senml.Pack, timestamp time.Time) error {
+		AddFunc: func(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error { return nil },
+		AddManyFunc: func(ctx context.Context, id string, packs []senml.Pack, timestamp time.Time) error {
 			return nil
 		},
 	}

@@ -25,7 +25,8 @@ import (
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
-	GetMeasurements(ctx context.Context, deviceID string, tenants []string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error)
+	GetMeasurements(ctx context.Context, deviceID string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error)
+	GetDevice(ctx context.Context, deviceID string) (dmc.Device, error)
 }
 
 type app struct {
@@ -87,7 +88,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 			return fmt.Errorf("failed to process message (%w)", err)
 		}
 
-		err = a.storage.AddMany(ctx, device.ID(), device.Tenant(), packs, time.Now().UTC())
+		err = a.storage.AddMany(ctx, device.ID(), packs, time.Now().UTC())
 		if err != nil {
 			log.Error().Err(err).Msg("could not store measurements")
 			return err
@@ -124,7 +125,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		return err
 	}
 
-	err = a.storage.Add(ctx, device.ID(), device.Tenant(), pack, time.Now().UTC())
+	err = a.storage.Add(ctx, device.ID(), pack, time.Now().UTC())
 	if err != nil {
 		log.Error().Err(err).Msg("could not store measurement")
 		return err
@@ -135,7 +136,11 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	return a.handleSensorMeasurementList(ctx, deviceID, pack)
 }
 
-func (a *app) GetMeasurements(ctx context.Context, deviceID string, tenants []string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error) {
+func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
+	return a.deviceManagementClient.FindDeviceFromInternalID(ctx, deviceID)
+}
+
+func (a *app) GetMeasurements(ctx context.Context, deviceID string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error) {
 	if temprel == "before" {
 		et = t
 		t = time.Unix(0, 0)
@@ -145,7 +150,7 @@ func (a *app) GetMeasurements(ctx context.Context, deviceID string, tenants []st
 		et = time.Now().UTC()
 	}
 
-	rows, err := a.storage.GetMeasurements(ctx, deviceID, tenants, temprel, t, et, lastN)
+	rows, err := a.storage.GetMeasurements(ctx, deviceID, temprel, t, et, lastN)
 	if err != nil {
 		return []application.Measurement{}, err
 	}
