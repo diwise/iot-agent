@@ -45,7 +45,7 @@ func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, a
 
 func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) *api {
 	log := logging.GetFromContext(ctx)
-	
+
 	a := &api{
 		r:                  r,
 		app:                app,
@@ -78,7 +78,7 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 			r.Get("/{id}", a.getMeasurementsHandler(ctx))
 		})
 	})
-	
+
 	return a
 }
 
@@ -244,14 +244,14 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		}
 
 		measurements, err := a.app.GetMeasurements(ctx, deviceID, temprel, t, et, l)
-		if err != nil || len(measurements) == 0 {
-			w.WriteHeader(http.StatusNotFound)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		sortOrder := strings.ToLower(r.URL.Query().Get("sort"))
 
-		sort.Slice(measurements, func(i, j int) bool {
+		sort.SliceStable(measurements, func(i, j int) bool {
 			if sortOrder == "desc" {
 				return measurements[i].Timestamp.After(measurements[j].Timestamp)
 			} else {
