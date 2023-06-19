@@ -3,6 +3,8 @@ package application
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/farshidtz/senml/v2"
 )
 
 type RXInfo struct {
@@ -37,4 +39,9 @@ type SensorEvent struct {
 
 func (s *SensorEvent) HasError() bool {
 	return s.Error.Type != "" && s.Error.Message != ""
+}
+
+type Measurement struct {
+	Timestamp time.Time  `json:"timestamp"`
+	Pack      senml.Pack `json:"pack"`
 }

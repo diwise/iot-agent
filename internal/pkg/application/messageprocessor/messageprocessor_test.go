@@ -61,3 +61,4 @@ func (d device) Types() []string     { return []string{""} }
 func (d device) SensorType() string  { return "" }
 func (d device) IsActive() bool      { return true }
 func (d device) Tenant() string      { return "" }
+func (d device) Source() string      { return "" }
