@@ -21,6 +21,7 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal
 WORKDIR /opt/diwise
 
 COPY --from=builder --chown=1001 /app/cmd/iot-agent/iot-agent /opt/diwise
+COPY --chown=1001 assets/config/authz.rego /opt/diwise/config/authz.rego
 
 RUN chown 1001 /opt/diwise
 RUN chmod 700 /opt/diwise

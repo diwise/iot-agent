@@ -74,7 +74,7 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 		},
 	}
 
-	a := newAPI(context.Background(), r, "chirpstack", "", app)
+	a := newAPI(context.Background(), r, "chirpstack", "", app, bytes.NewBufferString(opaModule))
 
 	return is, a, app
 }
@@ -136,3 +136,35 @@ const schneiderData string = `[{
 	"unit":"°C",
 	"description":"Tilloppstemperatur Varmvatten"
 	}]`
+
+const opaModule string = `
+	#
+	# Use https://play.openpolicyagent.org for easier editing/validation of this policy file
+	#
+	
+	package example.authz
+	
+	default allow := false
+	
+	allow = response {
+		is_valid_token
+	
+		input.method == "GET"
+		pathstart := array.slice(input.path, 0, 3)
+		pathstart == ["api", "v0", "measurements"]
+	
+		token.payload.azp == "diwise-frontend"
+	
+		response := {
+			"tenants": token.payload.tenants
+		}
+	}
+	
+	is_valid_token {
+		1 == 1
+	}
+	
+	token := {"payload": payload} {
+		[_, payload, _] := io.jwt.decode(input.token)
+	}
+	`
