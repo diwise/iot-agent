@@ -33,9 +33,11 @@ Metadata about the sensor is fetched from iot-device-mgmt, this metadata contain
 Since application servers such as [Chirpstack](https://www.chirpstack.io/application-server/) has different uplink payloads a facade is used to transform the specific payload into an internal format.
 
 ### Chirpstack
+
 Support for Chirpstack v3 payloads.
 
 ### Netmore
+
 Support for payloads from [netmore](https://netmoregroup.com/iot-network/)
 
 # Decoders
