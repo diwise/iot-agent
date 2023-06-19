@@ -70,7 +70,7 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 
 	r.Route("/api/v0/measurements", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			authenticator, err := auth.NewAuthenticator(context.Background(), log, policies)
+			authenticator, err := auth.NewAuthenticator(ctx, log, policies)
 			if err != nil {
 				log.Fatal().Err(err).Msg("failed to create api authenticator")
 			}
@@ -193,7 +193,7 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		device, err := a.app.GetDevice(ctx, deviceID)
 		if err != nil {
 			log.Error().Err(err).Msg("could not get device information")
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
