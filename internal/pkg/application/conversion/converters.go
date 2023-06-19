@@ -228,12 +228,12 @@ func Conductivity(ctx context.Context, deviceID string, p payload.Payload, fn fu
 }
 
 func Humidity(ctx context.Context, deviceID string, p payload.Payload, fn func(p senml.Pack) error) error {
-	SensorValue := func(v int) SenMLDecoratorFunc {
+	SensorValue := func(v float32) SenMLDecoratorFunc {
 		f := float64(v)
 		return Rec("5700", &f, nil, "", nil, senml.UnitRelativeHumidity, nil)
 	}
 
-	if h, ok := payload.Get[int](p, payload.HumidityProperty); ok {
+	if h, ok := payload.Get[float32](p, payload.HumidityProperty); ok {
 		return fn(NewSenMLPack(deviceID, HumidityURN, p.Timestamp(), SensorValue(h)))
 	} else {
 		return errors.New("no humidity value in payload")

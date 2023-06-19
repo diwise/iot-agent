@@ -12,19 +12,17 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
 )
 
-var meter = global.MeterProvider().Meter("iot-agent/mqtt")
 var tracer = otel.Tracer("iot-agent/mqtt/message-handler")
 
 func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
 
-	messageCounter, err := meter.Int64Counter(
+	messageCounter, err := otel.Meter("iot-agent/mqtt").Int64Counter(
 		"diwise.mqtt.messages.total",
-		instrument.WithUnit("1"),
-		instrument.WithDescription("Total number of received mqtt messages"),
+		metric.WithUnit("1"),
+		metric.WithDescription("Total number of received mqtt messages"),
 	)
 
 	if err != nil {

@@ -15,7 +15,7 @@ func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Co
 		ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
 		Vdd                 *int     `json:"vdd,omitempty"`
 		CO2                 *int     `json:"co2,omitempty"`
-		Humidity            *int     `json:"humidity,omitempty"`
+		Humidity            *float32 `json:"humidity,omitempty"`
 		Light               *int     `json:"light,omitempty"`
 		Motion              *int     `json:"motion,omitempty"`
 		Occupancy           *int     `json:"occupancy,omitempty"`

@@ -13,7 +13,7 @@ func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Co
 	obj := struct {
 		Payload struct {
 			Battery      *int     `json:"battery,omitempty"`
-			Humidity     *int     `json:"humidity,omitempty"`
+			Humidity     *float32 `json:"humidity,omitempty"`
 			SensorStatus int      `json:"sensorStatus"`
 			SnowHeight   *int     `json:"snowHeight,omitempty"`
 			Temperature  *float32 `json:"temperature,omitempty"`
