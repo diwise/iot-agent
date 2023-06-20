@@ -106,12 +106,16 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix strin
 func createStorageOrDie(ctx context.Context) storage.Storage {
 	log := logging.GetFromContext(ctx)
 	cfg := storage.LoadConfiguration(ctx)
+
 	s, err := storage.Connect(ctx, cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not connect to database")
 	}
 
-	s.Initialize(ctx)
+	err = s.Initialize(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to initialize database")
+	}
 
 	return s
 }
