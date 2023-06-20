@@ -35,7 +35,7 @@ func TestSchneiderHandler(t *testing.T) {
 	api.forwardingEndpoint = server.URL + "/api/v0/messages"
 
 	resp, _ := testRequest(is, http.MethodPost, api.forwardingEndpoint+"/schneider", bytes.NewBuffer([]byte(schneiderData)))
-	is.Equal(resp.StatusCode, http.StatusOK)                 // status code should be 200
+	is.Equal(resp.StatusCode, http.StatusCreated)            // status code should be 201
 	is.Equal(len(app.HandleSensorMeasurementListCalls()), 9) // should be 9 - once for each object in schneider data
 }
 
