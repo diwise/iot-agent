@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/farshidtz/senml/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog"
 )
 
 //go:generate moq -rm -out storage_mock.go . Storage
@@ -40,7 +40,9 @@ type Measurement struct {
 	Pack      senml.Pack `json:"pack"`
 }
 
-func LoadConfiguration(log zerolog.Logger) Config {
+func LoadConfiguration(ctx context.Context) Config {
+	log := logging.GetFromContext(ctx)
+
 	return Config{
 		host:     env.GetVariableOrDefault(log, "POSTGRES_HOST", ""),
 		user:     env.GetVariableOrDefault(log, "POSTGRES_USER", ""),
@@ -55,7 +57,7 @@ func (c Config) ConnStr() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", c.user, c.password, c.host, c.port, c.dbname, c.sslmode)
 }
 
-func Connect(ctx context.Context, log zerolog.Logger, cfg Config) (Storage, error) {
+func Connect(ctx context.Context, cfg Config) (Storage, error) {
 	conn, err := pgxpool.New(ctx, cfg.ConnStr())
 	if err != nil {
 		return nil, err
@@ -66,6 +68,7 @@ func Connect(ctx context.Context, log zerolog.Logger, cfg Config) (Storage, erro
 		return nil, err
 	}
 
+	log := logging.GetFromContext(ctx)
 	log.Debug().Msgf("connected to %s...", cfg.host)
 
 	return &impl{

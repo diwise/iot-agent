@@ -10,7 +10,6 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/qalcosonic"
 	"github.com/farshidtz/senml/v2"
-	"github.com/rs/zerolog"
 )
 
 func TestSQL(t *testing.T) {
@@ -66,7 +65,7 @@ func testSetup() (Storage, context.Context, error) {
 
 	ctx := context.Background()
 
-	s, err := Connect(ctx, zerolog.Logger{}, cfg)
+	s, err := Connect(ctx, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
