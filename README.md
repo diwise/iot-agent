@@ -64,6 +64,7 @@ Decoder for Ambiductor Qalcosonic w1 water meters (w1e, w1t, w1h).
  - DigitalInputCounter 
 
 Depends on the [Generic Javascript decoder](https://www.elsys.se/en/elsys-payload/)
+
 ### Enviot
  - Battery     
  - Humidity    
