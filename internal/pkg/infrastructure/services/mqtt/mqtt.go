@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
@@ -36,6 +37,8 @@ func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Cl
 
 	options.SetClientID("diwise/iot-agent/" + uuid.NewString())
 	options.SetDefaultPublishHandler(NewMessageHandler(logger, forwardingEndpoint))
+
+	options.SetKeepAlive(time.Duration(cfg.keepAlive) * time.Second)
 
 	log := logger.With().Str("mqtt-host", cfg.host).Logger()
 
