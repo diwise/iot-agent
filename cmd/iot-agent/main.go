@@ -22,6 +22,7 @@ import (
 )
 
 var opaFilePath string
+
 const serviceName string = "iot-agent"
 
 func main() {
@@ -104,20 +105,24 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix strin
 
 func createStorageOrDie(ctx context.Context) storage.Storage {
 	log := logging.GetFromContext(ctx)
-	cfg := storage.LoadConfiguration(log)
-	s, err := storage.Connect(ctx, log, cfg)
+	cfg := storage.LoadConfiguration(ctx)
+
+	s, err := storage.Connect(ctx, cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("could not connect to database")
 	}
 
-	s.Initialize(ctx)
+	err = s.Initialize(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to initialize database")
+	}
 
 	return s
 }
 
 func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error), storage storage.Storage) (api.API, error) {
 	logger := logging.GetFromContext(ctx)
-	
+
 	sender := events.NewSender(ctx, initMsgCtx)
 	sender.Start()
 
