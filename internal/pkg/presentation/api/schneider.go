@@ -106,7 +106,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			}
 		}
 
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusCreated)
 	}
 }
 

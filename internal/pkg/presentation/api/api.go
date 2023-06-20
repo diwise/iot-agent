@@ -114,6 +114,9 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 		sensorEvent, err := facade(msg)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to decode sensor event using facade")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
 		}
 
 		err = a.app.HandleSensorEvent(ctx, sensorEvent)
