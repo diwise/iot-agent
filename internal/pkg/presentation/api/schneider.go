@@ -98,10 +98,10 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			}
 
 			if resp.StatusCode != http.StatusCreated {
-				log.Error().Err(err).Msgf("request failed, expected status code %d but got status code %d ", http.StatusCreated, resp.StatusCode)
+				log.Error().Msgf("request failed, expected status code %d but got status code %d ", http.StatusCreated, resp.StatusCode)
 
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				w.Write([]byte("request failed"))
 				return
 			}
 		}
