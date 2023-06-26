@@ -77,6 +77,8 @@ github.com/diwise/iot-device-mgmt v0.0.0-20230613122611-08cce5b3d85a h1:fJ7TiBed
 github.com/diwise/iot-device-mgmt v0.0.0-20230613122611-08cce5b3d85a/go.mod h1:B5EqqRPJbljuvKq/YfBb+CB4xSBpj4EFyJbJakFRU+s=
 github.com/diwise/iot-device-mgmt v0.0.0-20230626094828-4e08d2a1d1bd h1:lu4FyzIO6EjDlZvnu8ulTbOCzF8DcIQTLqZHONd8o/k=
 github.com/diwise/iot-device-mgmt v0.0.0-20230626094828-4e08d2a1d1bd/go.mod h1:ya4s5Mv6xBekqYbN+0X84rDqkD7bQpw5wlqLrIRSUxg=
+github.com/diwise/iot-device-mgmt v0.0.0-20230626150114-7090461ba350 h1:G3GKSm/i55egjXbiLCw2vg1eppIhBn5LdP60ozws3pY=
+github.com/diwise/iot-device-mgmt v0.0.0-20230626150114-7090461ba350/go.mod h1:ya4s5Mv6xBekqYbN+0X84rDqkD7bQpw5wlqLrIRSUxg=
 github.com/diwise/messaging-golang v0.0.0-20230112181152-6d313f5f9451 h1:GhzzE21xAqakeo2GcSsPtON54p4jlVLhTnXczZZ3BKM=
 github.com/diwise/messaging-golang v0.0.0-20230112181152-6d313f5f9451/go.mod h1:pHvhFWcSLMct965DpgubvuxdKjdF1fm/Y6rFkz4dHtg=
 github.com/diwise/service-chassis v0.0.0-20230605073644-f9cf02dc000d h1:a+WfVK5DHlNlHtql2lGjx8KnQQd9lCBhhV9BBPEPg+4=
