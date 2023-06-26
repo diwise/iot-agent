@@ -80,6 +80,7 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 		})
 	})
 
+	r.Get("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
 	r.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
 
 	return a
