@@ -96,6 +96,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 				w.Write([]byte(err.Error()))
 				return
 			}
+			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusCreated {
 				log.Error().Msgf("request failed, expected status code %d but got status code %d ", http.StatusCreated, resp.StatusCode)

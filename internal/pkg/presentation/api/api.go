@@ -91,6 +91,7 @@ func (a *api) Router() chi.Router {
 }
 
 func (a *api) health(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -126,10 +127,8 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 		err = a.app.HandleSensorEvent(ctx, sensorEvent)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to handle message")
-
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
-
 			return
 		}
 
@@ -184,6 +183,8 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
+		defer r.Body.Close()
+
 		ctx, span := tracer.Start(r.Context(), "retrieve-measurements")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
