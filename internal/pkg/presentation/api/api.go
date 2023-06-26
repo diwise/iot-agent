@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"sort"
 	"strconv"
@@ -78,6 +79,8 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 			r.Get("/{id}", a.getMeasurementsHandler(ctx))
 		})
 	})
+
+	r.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
 
 	return a
 }

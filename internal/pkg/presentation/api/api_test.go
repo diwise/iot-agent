@@ -26,6 +26,16 @@ func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
 	is.Equal(resp.StatusCode, http.StatusNoContent)
 }
 
+func TestDebugPprofHeapEndpointReturns200OK(t *testing.T) {
+	is, a, _ := testSetup(t)
+
+	server := httptest.NewServer(a.r)
+	defer server.Close()
+
+	resp, _ := testRequest(is, http.MethodGet, server.URL+"/debug/pprof/heap", nil)
+	is.Equal(resp.StatusCode, http.StatusOK)
+}
+
 func TestSchneiderHandler(t *testing.T) {
 	is, api, app := testSetup(t)
 
