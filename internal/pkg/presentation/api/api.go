@@ -145,7 +145,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 		ctx, span := tracer.Start(r.Context(), "incoming-lwm2m-message")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
