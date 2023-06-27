@@ -36,6 +36,8 @@ func main() {
 	forwardingEndpoint := env.GetVariableOrDie(logger, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
 
 	dmClient := createDeviceManagementClientOrDie(ctx)
+	defer dmClient.Close(ctx)
+
 	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
 	storage := createStorageOrDie(ctx)
 
