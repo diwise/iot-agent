@@ -133,7 +133,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
 
-	return a.handleSensorMeasurementList(ctx, deviceID, pack)
+	return a.handleSensorMeasurementList(ctx, device.ID(), pack)
 }
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
