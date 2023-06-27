@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,10 +57,11 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store stor
 }
 
 func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent) error {
-	log := logging.GetFromContext(ctx).With().Str("devEui", se.DevEui).Logger()
+	devEUI := strings.ToLower(se.DevEui)
+	log := logging.GetFromContext(ctx).With().Str("devEui", devEUI).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	device, err := a.findDevice(ctx, se.DevEui, a.deviceManagementClient.FindDeviceFromDevEUI)
+	device, err := a.findDevice(ctx, devEUI, a.deviceManagementClient.FindDeviceFromDevEUI)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn().Str("deviceName", se.DeviceName).Msg("blacklisted")
@@ -113,12 +115,14 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
-	log := logging.GetFromContext(ctx)
+	deviceID = strings.ToLower(deviceID)
+	log := logging.GetFromContext(ctx).With().Str("device_id", deviceID).Logger()
+	ctx = logging.NewContextWithLogger(ctx, log)
 
 	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
-			log.Warn().Str("device_id", deviceID).Msg("blacklisted")
+			log.Warn().Msg("blacklisted")
 			return nil
 		}
 
