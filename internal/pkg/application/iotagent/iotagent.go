@@ -39,6 +39,9 @@ type app struct {
 
 	notFoundDevices   map[string]time.Time
 	notFoundDevicesMu sync.Mutex
+
+	statusMessages   map[string]events.StatusMessage
+	statusMessagesMu sync.Mutex
 }
 
 func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage) App {
@@ -53,6 +56,7 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store stor
 		eventSender:            eventPub,
 		storage:                store,
 		notFoundDevices:        make(map[string]time.Time),
+		statusMessages:         make(map[string]events.StatusMessage),
 	}
 }
 
@@ -241,13 +245,27 @@ func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p 
 		decorators = append(decorators, events.WithBatteryLevel(bat))
 	}
 
-	statusMsg := events.NewStatusMessage(deviceID, decorators...)
+	msg := events.NewStatusMessage(deviceID, decorators...)
 
-	if statusMsg.Tenant == "" {
+	if msg.Tenant == "" {
 		logger.Warn().Msg("tenant information is missing")
 	}
 
-	err := a.eventSender.Publish(ctx, statusMsg)
+	a.statusMessagesMu.Lock()
+	defer a.statusMessagesMu.Unlock()
+
+	var err error
+	s, ok := a.statusMessages[msg.DeviceID]
+	if ok {
+		if msg.BatteryLevel != s.BatteryLevel || msg.Code != s.Code || strings.Join(msg.Messages, "") != strings.Join(s.Messages, "") {
+			a.statusMessages[msg.DeviceID] = *msg
+			err = a.eventSender.Publish(ctx, msg)
+		}
+	} else {
+		a.statusMessages[msg.DeviceID] = *msg
+		err = a.eventSender.Publish(ctx, msg)
+	}
+
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to publish status message")
 	}
