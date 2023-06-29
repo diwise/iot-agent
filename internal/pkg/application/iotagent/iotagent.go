@@ -75,8 +75,9 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		return err
 	}
 
-	log = log.With().Str("device", device.ID()).Logger().
-		With().Str("type", device.SensorType()).Logger()
+	log = log.With().
+		Str("device_id", device.ID()).
+		Str("type", device.SensorType()).Logger()
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	log.Debug().Msg("message received")
@@ -226,10 +227,7 @@ func (a *app) ignoreDeviceFor(ctx context.Context, id string, period time.Durati
 }
 
 func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p payload.Payload) {
-	logger := logging.GetFromContext(ctx).
-		With().Str("device_id", deviceID).Logger().
-		With().Str("func", "sendStatusMessage").
-		Logger()
+	logger := logging.GetFromContext(ctx).With().Str("func", "sendStatusMessage").Logger()
 
 	var decorators []func(*events.StatusMessage)
 

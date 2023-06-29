@@ -198,6 +198,9 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
+		log = log.With().Str("device_id", deviceID).Logger()
+		ctx = logging.NewContextWithLogger(ctx, log)
+
 		device, err := a.app.GetDevice(ctx, deviceID)
 		if err != nil {
 			log.Error().Err(err).Msg("could not get device information")
@@ -208,7 +211,8 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		allowedTenants := auth.GetAllowedTenantsFromContext(r.Context())
 
 		if !contains(allowedTenants, device.Tenant()) {
-			w.WriteHeader(http.StatusForbidden)
+			log.Warn().Msg("unauthorized request for device information")
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
