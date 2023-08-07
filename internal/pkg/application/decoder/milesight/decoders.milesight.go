@@ -11,6 +11,7 @@ import (
 
 func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	d := struct {
+		Distance    *int     `json:"distance,omitempty"`
 		Temperature *float32 `json:"temperature,omitempty"`
 		Humidity    *float32 `json:"humidity,omitempty"`
 		CO2         *int     `json:"co2,omitempty"`
@@ -23,6 +24,10 @@ func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Co
 	}
 
 	var decorators []payload.PayloadDecoratorFunc
+
+	if d.Distance != nil {
+		decorators = append(decorators, payload.Distance(float64(*d.Distance)/1000.0))
+	}
 
 	if d.Temperature != nil {
 		decorators = append(decorators, payload.Temperature(float64(*d.Temperature)))
