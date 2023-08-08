@@ -10,11 +10,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func TestMilesightDecoder(t *testing.T) {
+func TestMilesightAM100Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	var r payload.Payload
-	ue, _ := application.ChirpStack([]byte(data))
+	ue, _ := application.ChirpStack([]byte(data_am100))
 	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
@@ -22,6 +22,40 @@ func TestMilesightDecoder(t *testing.T) {
 
 	is.NoErr(err)
 	is.Equal(r.DevEui(), "24e124725c140542")
+
+	blvl, ok := payload.Get[int](r, payload.BatteryLevelProperty)
+	is.True(ok)
+	is.Equal(blvl, 89)
+
+	co2, ok := payload.Get[int](r, payload.CO2Property)
+	is.True(ok)
+	is.Equal(co2, 886)
+
+	hlvl, ok := payload.Get[float32](r, payload.HumidityProperty)
+	is.True(ok)
+	is.Equal(hlvl, float32(29))
+
+	templvl, ok := payload.Get[float64](r, payload.TemperatureProperty)
+	is.True(ok)
+	is.Equal(templvl, float64(22.3))
+}
+
+func TestMilesightEM500Decoder(t *testing.T) {
+	is, _ := testSetup(t)
+
+	var r payload.Payload
+	ue, _ := application.ChirpStack([]byte(data_em500))
+	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+		r = p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(r.DevEui(), "24e124126d154397")
+
+	distance, ok := payload.Get[float64](r, payload.DistanceProperty)
+	is.True(ok)
+	is.Equal(distance, float64(5000))
 }
 
 func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
@@ -29,7 +63,7 @@ func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
 	return is, zerolog.Logger{}
 }
 
-const data string = `{
+const data_am100 string = `{
 	"applicationID":"71",
 	"applicationName":"ncksalnckls",
 	"deviceName":"AM103_1",
@@ -51,10 +85,27 @@ const data string = `{
 		"co2":886,
 		"humidity":29,
 		"temperature":22.3
-	},
-	"tags":
+	}
+}`
+
+const data_em500 string = `{
+	"applicationID":"71",
+	"applicationName":"ncksalnckls",
+	"deviceName":"EM500_UDL_1",
+	"deviceProfileName":"Milesight EM500",
+	"deviceProfileID":"f865a295-3d90-424e-967c-133c35d5594c",
+	"devEUI":"24e124126d154397",
+	"txInfo":
 	{
-		"location":"599A",
-		"mount":"wall"
+		"frequency":868100000,
+		"dr":5
+	},
+	"adr":true,
+	"fCnt":10901,
+	"fPort":5,
+	"data":"A4KIEw==",
+	"object":
+	{
+		"distance":5000
 	}
 }`

@@ -2,7 +2,8 @@ package milesight
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -10,44 +11,83 @@ import (
 )
 
 func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	d := struct {
-		Distance    *int     `json:"distance,omitempty"`
-		Temperature *float32 `json:"temperature,omitempty"`
-		Humidity    *float32 `json:"humidity,omitempty"`
-		CO2         *int     `json:"co2,omitempty"`
-		Battery     *int     `json:"battery,omitempty"`
-	}{}
-
-	err := json.Unmarshal(ue.Object, &d)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal milesight payload: %s", err.Error())
-	}
 
 	var decorators []payload.PayloadDecoratorFunc
 
-	if d.Distance != nil {
-		decorators = append(decorators, payload.Distance(float64(*d.Distance)/1000.0))
+	decoratorAppender := func(m payload.PayloadDecoratorFunc) {
+		decorators = append(decorators, m)
 	}
 
-	if d.Temperature != nil {
-		decorators = append(decorators, payload.Temperature(float64(*d.Temperature)))
-	}
-
-	if d.Humidity != nil {
-		decorators = append(decorators, payload.Humidity(*d.Humidity))
-	}
-
-	if d.CO2 != nil {
-		decorators = append(decorators, payload.CO2(*d.CO2))
-	}
-
-	if d.Battery != nil {
-		decorators = append(decorators, payload.BatteryLevel(*d.Battery))
-	}
-
-	if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
-		return fn(ctx, p)
-	} else {
+	if err := decodeMilesightMeasurements(ue.Data, decoratorAppender); err != nil {
 		return err
 	}
+
+	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
+	if err != nil {
+		return err
+	}
+
+	return fn(ctx, p)
+}
+
+func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecoratorFunc)) error {
+	numberOfBytes := len(b)
+
+	const (
+		Battery     uint16 = 373  // 0x0175
+		CO2         uint16 = 1917 // 0x077D
+		Distance    uint16 = 898  // 0x0382
+		Humidity    uint16 = 1128 // 0x0468
+		Temperature uint16 = 871  // 0x0367
+	)
+
+	data_length := map[uint16]int{
+		Battery: 1, CO2: 2, Distance: 2, Humidity: 1, Temperature: 2,
+	}
+
+	rangeCheck := func(atPos, numBytes int) bool {
+		return (atPos + numBytes - 1) < numberOfBytes
+	}
+
+	pos := 0
+	size := 0
+
+	for pos < numberOfBytes {
+
+		const HeaderSize int = 2
+		if !rangeCheck(pos, HeaderSize) {
+			return errors.New("range check failed before trying to read channel header")
+		}
+
+		channel_header := binary.BigEndian.Uint16(b[pos : pos+HeaderSize])
+		pos = pos + HeaderSize
+
+		var ok bool
+		if size, ok = data_length[channel_header]; !ok {
+			return fmt.Errorf("unknown channel header %X", channel_header)
+		}
+
+		if !rangeCheck(pos, size) {
+			return errors.New("range check failed before trying to read channel value")
+		}
+
+		switch channel_header {
+		case Battery:
+			callback(payload.BatteryLevel(int(b[pos])))
+		case CO2:
+			callback(payload.CO2(int(binary.LittleEndian.Uint16(b[pos : pos+2]))))
+		case Distance:
+			callback(payload.Distance(float64(binary.LittleEndian.Uint16(b[pos : pos+2]))))
+		case Humidity:
+			callback(payload.Humidity(float32(b[pos]) / 2.0))
+		case Temperature:
+			callback(payload.Temperature(float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0))
+		default:
+			return fmt.Errorf("unknown channel header %X", channel_header)
+		}
+
+		pos = pos + size
+	}
+
+	return nil
 }
