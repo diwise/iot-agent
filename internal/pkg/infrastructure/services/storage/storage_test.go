@@ -23,7 +23,7 @@ func TestSQL(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	qalcosonic.W1Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	qalcosonic.Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})

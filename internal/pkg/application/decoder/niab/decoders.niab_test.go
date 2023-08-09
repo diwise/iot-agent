@@ -15,7 +15,7 @@ func TestNIAB(t *testing.T) {
 	evt := sensorEventFromTestData([]byte{0xcc, 0x0f, 0x03, 0xc5})
 	callBackCount := 0
 
-	FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
+	Decoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
 		battery, ok := payload.Get[int](p, payload.BatteryLevelProperty)
 		is.True(ok)
 		is.Equal(battery, 80)
@@ -42,7 +42,7 @@ func TestNIABCanReportMinusTemperatures(t *testing.T) {
 	evt := sensorEventFromTestData([]byte{0xcc, 0xF0, 0x03, 0xc5})
 	callBackCount := 0
 
-	FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
+	Decoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
 
 		temperature, ok := payload.Get[float64](p, payload.TemperatureProperty)
 		is.True(ok)
@@ -62,7 +62,7 @@ func TestNIABIgnoresReadErrors(t *testing.T) {
 	evt := sensorEventFromTestData([]byte{0xcc, 0x0f, 0xff, 0xff})
 	callBackCount := 1
 
-	FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
+	Decoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
 		_, ok := payload.Get[int](p, payload.DistanceProperty)
 		is.True(!ok)
 
@@ -80,7 +80,7 @@ func TestNIABIgnoresTruncatedData(t *testing.T) {
 	evt := sensorEventFromTestData([]byte{0xcc, 0x0f})
 	callBackCount := 0
 
-	err := FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
+	err := Decoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
 		callBackCount = 1
 		return nil
 	})
@@ -96,7 +96,7 @@ func TestNIABIgnoresTooLongData(t *testing.T) {
 	evt := sensorEventFromTestData([]byte{0xcc, 0x0f, 0xff, 0xff, 0xff, 0xff})
 	callBackCount := 0
 
-	err := FillLevelSensorDecoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
+	err := Decoder(context.Background(), evt, func(ctx context.Context, p payload.Payload) error {
 		callBackCount = 1
 		return nil
 	})

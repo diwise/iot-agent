@@ -16,7 +16,7 @@ type sensorData struct {
 	Temperature  float64
 }
 
-func BasicDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 
 	var d sensorData
 

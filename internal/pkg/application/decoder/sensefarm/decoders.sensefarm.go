@@ -20,7 +20,7 @@ type payloadSensefarm struct {
 	Temperature        float32 // °C
 }
 
-func BasicDecoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
+func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
 	var psf payloadSensefarm
 
 	// At minimum we must receive 2 bytes, one for header type and one for value

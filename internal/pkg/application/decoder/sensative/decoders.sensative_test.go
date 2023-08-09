@@ -16,7 +16,7 @@ func TestPresenceSensorReading(t *testing.T) {
 	ue, _ := application.ChirpStack([]byte(livboj))
 
 	var resultPayload payload.Payload
-	err := PresenceDecoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		resultPayload = p
 		return nil
 	})
@@ -33,7 +33,7 @@ func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	is.NoErr(err)
 
 	var r payload.Payload
-	err = PresenceDecoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
+	err = Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})

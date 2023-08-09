@@ -75,7 +75,7 @@ func TestThatWatermeterConvertsW1hValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-	qalcosonic.W1Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	qalcosonic.Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -97,7 +97,7 @@ func TestThatWatermeterConvertsW1eValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
-	qalcosonic.W1Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	qalcosonic.Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -119,7 +119,7 @@ func TestThatWatermeterConvertsW1tValuesCorrectly(t *testing.T) {
 
 	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	qalcosonic.W1Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+	qalcosonic.Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
 		p = pp
 		return nil
 	})
@@ -143,7 +143,7 @@ func TestThatSensefarmConvertsPressureAndConductivity(t *testing.T) {
 
 	var r payload.Payload
 	ue, _ := application.Netmore([]byte(sensefarm_data))
-	sensefarm.BasicDecoder(ctx, ue, func(ctx context.Context, p payload.Payload) error {
+	sensefarm.Decoder(ctx, ue, func(ctx context.Context, p payload.Payload) error {
 		r = p
 		return nil
 	})
