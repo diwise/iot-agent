@@ -4,14 +4,14 @@ go 1.20
 
 require (
 	github.com/diwise/messaging-golang v0.0.0-20230112181152-6d313f5f9451
-	github.com/diwise/service-chassis v0.0.0-20230605073644-f9cf02dc000d
+	github.com/diwise/service-chassis v0.0.0-20230811101511-c5a26dbbde2b
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/farshidtz/senml/v2 v2.0.0
-	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-chi/chi/v5 v5.0.10
 	github.com/matryer/is v1.4.1
 	github.com/riandyrn/otelchi v0.5.1
 	github.com/rs/cors v1.9.0
-	github.com/rs/zerolog v1.29.1
+	github.com/rs/zerolog v1.30.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0
 	go.opentelemetry.io/otel v1.16.0
 )
@@ -39,7 +39,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/prometheus/client_golang v1.15.1 // indirect
+	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
