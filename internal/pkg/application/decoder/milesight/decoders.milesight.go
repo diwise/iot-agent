@@ -77,7 +77,9 @@ func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecora
 		case CO2:
 			callback(payload.CO2(int(binary.LittleEndian.Uint16(b[pos : pos+2]))))
 		case Distance:
-			callback(payload.Distance(float64(binary.LittleEndian.Uint16(b[pos : pos+2]))))
+			millimeters := float64(binary.LittleEndian.Uint16(b[pos : pos+2]))
+			// convert distance to meters
+			callback(payload.Distance(millimeters / 1000.0))
 		case Humidity:
 			callback(payload.Humidity(float32(b[pos]) / 2.0))
 		case Temperature:
