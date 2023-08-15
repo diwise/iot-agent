@@ -55,7 +55,7 @@ func TestMilesightEM500Decoder(t *testing.T) {
 
 	distance, ok := payload.Get[float64](r, payload.DistanceProperty)
 	is.True(ok)
-	is.Equal(distance, float64(5000))
+	is.Equal(distance, float64(5.0))
 }
 
 func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
