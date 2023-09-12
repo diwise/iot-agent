@@ -125,11 +125,6 @@ func trimName(name string) (string, error) {
 
 	name = parts[numberOfParts-2]
 
-	hyphenIndex := strings.Index(name, "-")
-	if hyphenIndex > 0 {
-		name = name[0:hyphenIndex]
-	}
-
 	name = strings.ReplaceAll(name, "_", "-")
 	name = strings.ReplaceAll(name, "Å", "A")
 	name = strings.ToLower(name)
