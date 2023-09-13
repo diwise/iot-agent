@@ -21,6 +21,8 @@ import (
 func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
+	replacer := strings.NewReplacer("_", "-", "å", "a", "ä", "a", "ö", "o")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
@@ -46,7 +48,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 		}
 
 		for _, object := range dataList {
-			name, err := trimName(object.Name)
+			name, err := trimNameAndReplaceChars(replacer, object.Name)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to trim name")
 
@@ -111,7 +113,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 	}
 }
 
-func trimName(name string) (string, error) {
+func trimNameAndReplaceChars(replacer *strings.Replacer, name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("name cannot be empty")
 	}
@@ -123,16 +125,11 @@ func trimName(name string) (string, error) {
 		return "", fmt.Errorf("name is too short or does not have a trailing \"Value\" component")
 	}
 
-	name = parts[numberOfParts-2]
-
-	hyphenIndex := strings.Index(name, "-")
-	if hyphenIndex > 0 {
-		name = name[0:hyphenIndex]
-	}
-
-	name = strings.ReplaceAll(name, "_", "-")
-	name = strings.ReplaceAll(name, "Å", "A")
-	name = strings.ToLower(name)
+	name = replacer.Replace(
+		strings.ToLower(
+			parts[numberOfParts-2],
+		),
+	)
 
 	return name, nil
 }
