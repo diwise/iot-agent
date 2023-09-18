@@ -48,7 +48,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 		}
 
 		for _, object := range dataList {
-			name, err := trimNameAndReplaceChars(replacer, object.Name)
+			id, err := trimNameAndReplaceChars(replacer, object.ID)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to trim name")
 
@@ -85,7 +85,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 				conversion.ValueWithUnit("5700", unit, value),
 			}
 
-			pack := conversion.NewSenMLPack(name, basename, time.Now().UTC(), decorators...)
+			pack := conversion.NewSenMLPack(id, basename, time.Now().UTC(), decorators...)
 			b, _ := json.Marshal(pack)
 
 			url := a.forwardingEndpoint + "/lwm2m"
@@ -118,23 +118,15 @@ func trimNameAndReplaceChars(replacer *strings.Replacer, name string) (string, e
 		return "", fmt.Errorf("name cannot be empty")
 	}
 
-	parts := strings.Split(name, "/")
-	numberOfParts := len(parts)
-
-	if numberOfParts < 2 || parts[numberOfParts-1] != "Value" {
-		return "", fmt.Errorf("name is too short or does not have a trailing \"Value\" component")
+	if i := strings.LastIndex(name, "/Value"); i > 0 {
+		return replacer.Replace(name[:i]), nil
 	}
 
-	name = replacer.Replace(
-		strings.ToLower(
-			parts[numberOfParts-2],
-		),
-	)
-
-	return name, nil
+	return replacer.Replace(name), nil
 }
 
 type Data struct {
+	ID    string `json:"pointID"`
 	Name  string `json:"name"`
 	Value string `json:"value"`
 	Unit  string `json:"unit"`
