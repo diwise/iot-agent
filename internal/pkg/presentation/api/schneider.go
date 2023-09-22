@@ -3,10 +3,13 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +19,14 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/farshidtz/senml/v2"
+	"github.com/google/uuid"
 )
+
+var devices map[string]Data
+
+func init() {
+	devices = make(map[string]Data, 0)
+}
 
 func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
@@ -48,7 +58,9 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 		}
 
 		for _, object := range dataList {
-			id, err := trimNameAndReplaceChars(replacer, object.ID)
+			id := deterministicGUID(object.ID)
+
+			object.Name, err = trimNameAndReplaceChars(replacer, object.Name)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to trim name")
 
@@ -56,6 +68,10 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 				w.Write([]byte(err.Error()))
 				return
 			}
+
+			log.Debug().Msg(strings.Join(getDeviceConfigString(id, object), ";"))
+
+			devices[id] = object
 
 			value, err := strconv.ParseFloat(object.Value, 64)
 			if err != nil {
@@ -113,21 +129,71 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 	}
 }
 
+func getDeviceConfigString(id string, v Data) []string {
+	t := make([]string, 0)
+
+	if v.Unit == "°C" {
+		t = append(t, conversion.TemperatureURN)
+	}
+	if v.Unit == "Wh" {
+		t = append(t, conversion.EnergyURN)
+	}
+	if v.Unit == "W" {
+		t = append(t, conversion.PowerURN)
+	}
+
+	r := []string{
+		v.ID,
+		id,
+		"0",
+		"0",
+		"",
+		strings.Join(t, ","),
+		"virtual",
+		v.Name,
+		v.Description,
+		"true",
+		"default",
+		"3600",
+		"Schneider",
+	}
+
+	return r
+}
+
 func trimNameAndReplaceChars(replacer *strings.Replacer, name string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("name cannot be empty")
 	}
 
-	if i := strings.LastIndex(name, "/Value"); i > 0 {
-		return replacer.Replace(name[:i]), nil
+	parts := strings.Split(name, "/")
+	slices.Reverse(parts)
+	for _, n := range parts {
+		if strings.ToLower(n) != "value" {
+			return replacer.Replace(n), nil
+		}
 	}
 
 	return replacer.Replace(name), nil
 }
 
 type Data struct {
-	ID    string `json:"pointID"`
-	Name  string `json:"name"`
-	Value string `json:"value"`
-	Unit  string `json:"unit"`
+	ID          string `json:"pointID"`
+	Name        string `json:"name"`
+	Value       string `json:"value"`
+	Unit        string `json:"unit"`
+	Description string `json:"description"`
+}
+
+func deterministicGUID(str string) string {
+	md5hash := md5.New()
+	md5hash.Write([]byte(str))
+	md5string := hex.EncodeToString(md5hash.Sum(nil))
+
+	unique, err := uuid.FromBytes([]byte(md5string[0:16]))
+	if err != nil {
+		return uuid.New().String()
+	}
+
+	return unique.String()
 }

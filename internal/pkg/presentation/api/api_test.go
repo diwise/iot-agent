@@ -46,7 +46,7 @@ func TestSchneiderHandler(t *testing.T) {
 
 	resp, _ := testRequest(is, http.MethodPost, api.forwardingEndpoint+"/schneider", bytes.NewBuffer([]byte(schneiderDataPointId)))
 	is.Equal(resp.StatusCode, http.StatusCreated)            // status code should be 201
-	is.Equal(len(app.HandleSensorMeasurementListCalls()), 5) // should be 5 - once for each object in schneider data
+	is.Equal(len(app.HandleSensorMeasurementListCalls()), 6) // should be 6 - once for each object in schneider data
 }
 
 func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T) {
@@ -142,7 +142,7 @@ const schneiderDataPointId = `
         "pointID": "nspg:xxyyzz.7ofmFSyvPEvCxiyquQ/Value"
     },
     {
-        "name": "/MQTT-klient/!UC_Testvägen 17C/UC_Testvägen_17C_VS2_EM01-ENERGY/Value",
+        "name": "/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Testvägen/UC_Testvägen_EM01-ENERGY/Value",
         "value": "448000000",
         "unit": "Wh",
         "description": "Mätarställning VS2",
@@ -168,5 +168,12 @@ const schneiderDataPointId = `
         "unit": "l/s",
         "description": "Flöde frånluft",
         "pointID": "nspg:xxyyzz.oV7vQTCB8oVvXiUe5w/Value"
-    }
+    },
+	{
+		"name":"/MQTT-klient/!UC_Test/UC_TEST_VP1_EM01-T2/Value",
+		"value":"41",
+		"unit":"°C",
+		"description":"Returtemperatur Värme Primär",
+		"pointID":"nspg:xxyyzz.3TKO9xncT5Q8F9w/Value"
+	}
 ]`
