@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/golang:1.20 AS builder
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.21 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -25,7 +25,6 @@ COPY --from=builder --chown=1001 /app/cmd/iot-agent/iot-agent /opt/diwise
 COPY --chown=1001 assets/config/authz.rego /opt/diwise/config/authz.rego
 
 RUN chown 1001 /opt/diwise
-RUN chmod 700 /opt/diwise
 
 EXPOSE 8080
 USER 1001
