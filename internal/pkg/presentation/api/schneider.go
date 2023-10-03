@@ -44,13 +44,13 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 
-		log.Debug().Str("body", string(msg)).Msg("starting to process message")
+		log.Debug("starting to process message", "body", string(msg))
 
 		dataList := []Data{}
 
 		err = json.Unmarshal(msg, &dataList)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to handle message")
+			log.Error("failed to handle message", "err", err.Error())
 
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
@@ -62,20 +62,20 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 
 			object.Name, err = trimNameAndReplaceChars(replacer, object.Name)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to trim name")
+				log.Error("failed to trim name", "err", err.Error())
 
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
 			}
 
-			log.Debug().Msg(strings.Join(getDeviceConfigString(id, object), ";"))
+			log.Debug(strings.Join(getDeviceConfigString(id, object), ";"))
 
 			devices[id] = object
 
 			value, err := strconv.ParseFloat(object.Value, 64)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to parse value")
+				log.Error("failed to parse value", "err", err.Error())
 
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
@@ -108,7 +108,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 
 			resp, err := http.Post(url, "application/json", bytes.NewBuffer(b))
 			if err != nil {
-				log.Error().Err(err).Msg("failed to post senml pack")
+				log.Error("failed to post senml pack", "err", err.Error())
 
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
@@ -117,7 +117,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusCreated {
-				log.Error().Msgf("request failed, expected status code %d but got status code %d ", http.StatusCreated, resp.StatusCode)
+				log.Error(fmt.Sprintf("request failed, expected status code %d but got status code %d ", http.StatusCreated, resp.StatusCode))
 
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("request failed"))

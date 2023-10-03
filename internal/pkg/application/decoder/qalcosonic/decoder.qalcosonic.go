@@ -75,7 +75,7 @@ func decodeQalcosonicPayload(ctx context.Context, ue application.SensorEvent, me
 
 	if containsStatusMessage(pp, "Unknown") {
 		log := logging.GetFromContext(ctx)
-		log.Debug().Msgf("status Unknown - %v", ue)
+		log.Debug(fmt.Sprintf("status Unknown - %v", ue))
 	}
 
 	return fn(ctx, pp)

@@ -2,13 +2,14 @@ package sensefarm
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestSensefarmBasicDecoder(t *testing.T) {
@@ -36,9 +37,9 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 	is.Equal(ohm[0].Resistance, int32(815))
 }
 
-func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
+func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
-	return is, zerolog.Logger{}
+	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 const sensefarm string = `[

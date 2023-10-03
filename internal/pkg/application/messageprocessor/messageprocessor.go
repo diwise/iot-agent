@@ -30,7 +30,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload, d
 	log := logging.GetFromContext(ctx)
 
 	if p.Status().Code == payload.PayloadError {
-		log.Info().Msg("ignoring payload due to device error")
+		log.Info("ignoring payload due to device error")
 		return []senml.Pack{}, nil
 	}
 
@@ -60,7 +60,7 @@ func (mp *msgProcessor) ProcessMessage(ctx context.Context, p payload.Payload, d
 	}
 
 	if len(conversionErrors) > 0 {
-		log.Warn().Msgf("%d out of %d converters failed: %v", len(conversionErrors), len(messageConverters), conversionErrors)
+		log.Warn(fmt.Sprintf("%d out of %d converters failed: %v", len(conversionErrors), len(messageConverters), conversionErrors))
 	}
 
 	return conversionResults, nil

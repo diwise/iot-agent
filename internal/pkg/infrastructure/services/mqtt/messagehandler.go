@@ -7,9 +7,9 @@ import (
 	"net/http"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
@@ -17,7 +17,7 @@ import (
 
 var tracer = otel.Tracer("iot-agent/mqtt/message-handler")
 
-func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
+func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
 
 	messageCounter, err := otel.Meter("iot-agent/mqtt").Int64Counter(
 		"diwise.mqtt.messages.total",
@@ -25,8 +25,10 @@ func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mq
 		metric.WithDescription("Total number of received mqtt messages"),
 	)
 
+	logger := logging.GetFromContext(ctx)
+
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to create otel message counter")
+		logger.Error("failed to create otel message counter", "err", err.Error())
 	}
 
 	return func(client mqtt.Client, msg mqtt.Message) {
@@ -46,23 +48,23 @@ func NewMessageHandler(logger zerolog.Logger, forwardingEndpoint string) func(mq
 
 			messageCounter.Add(ctx, 1)
 
-			log.Debug().Str("topic", msg.Topic()).Msgf("received payload %s", string(payload))
+			log.Debug("received payload", "payload", string(payload), "topic", msg.Topic())
 
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(payload))
 			if err != nil {
-				log.Error().Err(err).Msg("failed to create http request")
+				log.Error("failed to create http request", "err", err.Error())
 				return
 			}
 
-			log.Debug().Msgf("forwarding received payload to %s", forwardingEndpoint)
+			log.Debug("forwarding received payload", "endpoint", forwardingEndpoint)
 
 			req.Header.Add("Content-Type", "application/json")
 			resp, err := httpClient.Do(req)
 			if err != nil {
-				log.Error().Err(err).Msg("forwarding request failed")
+				log.Error("forwarding request failed", "err", err.Error())
 			} else if resp.StatusCode != http.StatusCreated {
 				err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
-				log.Error().Err(err).Msg("failed to forward message")
+				log.Error("failed to forward message", "err", err.Error())
 			}
 
 			msg.Ack()

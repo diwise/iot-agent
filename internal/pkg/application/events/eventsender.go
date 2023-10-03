@@ -37,11 +37,11 @@ func (e *eventSender) Send(ctx context.Context, m messaging.CommandMessage) erro
 
 	if !e.started {
 		err := errors.New("attempt to send before start")
-		log.Error().Err(err).Msg("send failed")
+		log.Error("send failed", "err", err.Error())
 		return err
 	}
 
-	log.Info().Msg("sending command to iot-core queue")
+	log.Info("sending command to iot-core queue")
 	return e.rmqMessenger.SendCommandTo(ctx, m, "iot-core")
 }
 
@@ -50,11 +50,11 @@ func (e *eventSender) Publish(ctx context.Context, m messaging.TopicMessage) err
 
 	if !e.started {
 		err := errors.New("attempt to publish before start")
-		log.Error().Err(err).Msg("publish failed")
+		log.Error("publish failed", "err", err.Error())
 		return err
 	}
 
-	log.Info().Str("topic", m.TopicName()).Msg("publishing event")
+	log.Info("publishing event", "topic", m.TopicName())
 
 	return e.rmqMessenger.PublishOnTopic(ctx, m)
 }

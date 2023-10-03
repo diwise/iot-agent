@@ -2,13 +2,14 @@ package senlabt
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestSenlabTBasicDecoder(t *testing.T) {
@@ -53,9 +54,9 @@ func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is.True(err != nil)
 }
 
-func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
+func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
-	return is, zerolog.Logger{}
+	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 const senlabT string = `[{

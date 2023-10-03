@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -58,25 +59,26 @@ func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store stor
 
 func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent) error {
 	devEUI := strings.ToLower(se.DevEui)
-	log := logging.GetFromContext(ctx).With().Str("devEui", devEUI).Logger()
+	log := logging.GetFromContext(ctx).With(slog.String("devEui", devEUI))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	device, err := a.findDevice(ctx, devEUI, a.deviceManagementClient.FindDeviceFromDevEUI)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
-			log.Warn().Str("deviceName", se.DeviceName).Msg("blacklisted")
+			log.Warn("blacklisted", "deviceName", se.DeviceName)
 			return nil
 		}
 
 		return err
 	}
 
-	log = log.With().
-		Str("device_id", device.ID()).
-		Str("type", device.SensorType()).Logger()
+	log = log.With(
+		slog.String("device_id", device.ID()),
+		slog.String("type", device.SensorType()),
+	)
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	log.Debug().Msg("message received")
+	log.Debug("message received")
 
 	decodePayload := decoder.PayloadErrorDecoder
 	if !se.HasError() {
@@ -93,7 +95,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 
 		err = a.storage.AddMany(ctx, device.ID(), packs, time.Now().UTC())
 		if err != nil {
-			log.Error().Err(err).Msg("could not store measurements")
+			log.Error("could not store measurements", "err", err.Error())
 			return err
 		}
 
@@ -102,14 +104,14 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 				a.handleSensorMeasurementList(ctx, device.ID(), pack)
 			}
 		} else {
-			log.Warn().Msg("ignored message from inactive device")
+			log.Warn("ignored message from inactive device", "err", err.Error())
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed to handle received message")
+		log.Error("failed to handle received message", "err", err.Error())
 	}
 
 	return err
@@ -117,13 +119,13 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	deviceID = strings.ToLower(deviceID)
-	log := logging.GetFromContext(ctx).With().Str("device_id", deviceID).Logger()
+	log := logging.GetFromContext(ctx).With(slog.String("device_id", deviceID))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
-			log.Warn().Msg("blacklisted")
+			log.Warn("blacklisted")
 			return nil
 		}
 
@@ -132,7 +134,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 	err = a.storage.Add(ctx, device.ID(), pack, time.Now().UTC())
 	if err != nil {
-		log.Error().Err(err).Msg("could not store measurement")
+		log.Error("could not store measurement", "err", err.Error())
 		return err
 	}
 
@@ -223,7 +225,7 @@ func (a *app) ignoreDeviceFor(ctx context.Context, id string, period time.Durati
 }
 
 func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p payload.Payload) {
-	logger := logging.GetFromContext(ctx).With().Str("func", "sendStatusMessage").Logger()
+	logger := logging.GetFromContext(ctx).With(slog.String("func", "sendStatusMessage"))
 
 	var decorators []func(*events.StatusMessage)
 
@@ -242,11 +244,11 @@ func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p 
 	msg := events.NewStatusMessage(deviceID, decorators...)
 
 	if msg.Tenant == "" {
-		logger.Warn().Msg("tenant information is missing")
+		logger.Warn("tenant information is missing")
 	}
 
 	err := a.eventSender.Publish(ctx, msg)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to publish status message")
+		logger.Error("failed to publish status message", "err", err.Error())
 	}
 }

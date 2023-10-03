@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
@@ -40,11 +41,11 @@ type api struct {
 	forwardingEndpoint string
 }
 
-func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) API {
+func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) (API, error) {
 	return newAPI(ctx, r, facade, forwardingEndpoint, app, policies)
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) *api {
+func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) (*api, error) {
 	log := logging.GetFromContext(ctx)
 
 	a := &api{
@@ -69,12 +70,14 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
 	r.Post("/api/v0/messages/schneider", a.incomingSchneiderMessageHandler(ctx))
 
+	// Handle valid / invalid tokens.
+	authenticator, err := auth.NewAuthenticator(ctx, log, policies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create api authenticator: %w", err)
+	}
+
 	r.Route("/api/v0/measurements", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			authenticator, err := auth.NewAuthenticator(ctx, log, policies)
-			if err != nil {
-				log.Fatal().Err(err).Msg("failed to create api authenticator")
-			}
 			r.Use(authenticator)
 			r.Get("/{id}", a.getMeasurementsHandler(ctx))
 		})
@@ -83,7 +86,7 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 	r.Get("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
 	r.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
 
-	return a
+	return a, nil
 }
 
 func (a *api) Router() chi.Router {
@@ -110,7 +113,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 
-		log.Debug().Str("body", string(msg)).Msg("starting to process message")
+		log.Debug("starting to process message", "body", string(msg))
 
 		if r.URL.Query().Has("facade") {
 			facade = application.GetFacade(r.URL.Query().Get("facade"))
@@ -118,7 +121,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 
 		sensorEvent, err := facade(msg)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to decode sensor event using facade")
+			log.Error("failed to decode sensor event using facade", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -126,7 +129,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 
 		err = a.app.HandleSensorEvent(ctx, sensorEvent)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to handle message")
+			log.Error("failed to handle message", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -150,7 +153,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 
-		log.Debug().Str("body", string(msg)).Msg("starting to process message")
+		log.Debug("starting to process message", "body", string(msg))
 
 		pack := senml.Pack{}
 		err = json.Unmarshal(msg, &pack)
@@ -160,7 +163,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 		}
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to decode incoming senML pack")
+			log.Error("failed to decode incoming senML pack", "err", err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -169,7 +172,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 		err = a.app.HandleSensorMeasurementList(ctx, deviceID, pack)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to handle measurement list")
+			log.Error("failed to handle measurement list", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -193,17 +196,17 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		deviceID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if deviceID == "" {
 			err = fmt.Errorf("no device id is supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", "err", err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		log = log.With().Str("device_id", deviceID).Logger()
+		log = log.With(slog.String("device_id", deviceID))
 		ctx = logging.NewContextWithLogger(ctx, log)
 
 		device, err := a.app.GetDevice(ctx, deviceID)
 		if err != nil {
-			log.Error().Err(err).Msg("could not get device information")
+			log.Error("could not get device information", "err", err.Error())
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -211,7 +214,7 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		allowedTenants := auth.GetAllowedTenantsFromContext(r.Context())
 
 		if !contains(allowedTenants, device.Tenant()) {
-			log.Warn().Msg("unauthorized request for device information")
+			log.Warn("unauthorized request for device information")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -226,20 +229,20 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		if temprel == "before" || temprel == "after" || temprel == "between" {
 			t, err = time.Parse(time.RFC3339, startTime)
 			if err != nil {
-				log.Error().Err(err).Msg("invalid time parameter")
+				log.Error("invalid time parameter", "err", err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			if temprel == "between" {
 				et, err = time.Parse(time.RFC3339, endTime)
 				if err != nil {
-					log.Error().Err(err).Msg("invalid endTime parameter")
+					log.Error("invalid endTime parameter", "err", err.Error())
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
 			}
 		} else if len(temprel) > 0 {
-			log.Error().Msgf("invalid temprel parameter - %s != before || after || between", temprel)
+			log.Error(fmt.Sprintf("invalid temprel parameter - %s != before || after || between", temprel))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -249,7 +252,7 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 		if lastN := r.URL.Query().Get("lastn"); len(lastN) > 0 {
 			l, err = strconv.Atoi(lastN)
 			if err != nil {
-				log.Error().Err(err).Msg("invalid lastN parameter")
+				log.Error("invalid lastN parameter", "err", err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}

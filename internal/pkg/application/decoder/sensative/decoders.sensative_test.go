@@ -3,12 +3,13 @@ package sensative
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestPresenceSensorReading(t *testing.T) {
@@ -41,9 +42,9 @@ func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	is.True(r != nil)
 }
 
-func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
+func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
-	return is, zerolog.Logger{}
+	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 const livboj string = `

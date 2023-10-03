@@ -2,13 +2,14 @@ package decoder
 
 import (
 	"context"
+	"io"
 
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 
 	. "github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 )
@@ -39,9 +40,9 @@ func TestGetSlice(t *testing.T) {
 	is.Equal(1, m2[0].S)
 }
 
-func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
+func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
-	return is, zerolog.Logger{}
+	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 const data string = `{

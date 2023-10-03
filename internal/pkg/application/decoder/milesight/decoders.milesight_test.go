@@ -2,12 +2,13 @@ package milesight
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestMilesightAM100Decoder(t *testing.T) {
@@ -58,9 +59,9 @@ func TestMilesightEM500Decoder(t *testing.T) {
 	is.Equal(distance, float64(5.0))
 }
 
-func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
+func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
-	return is, zerolog.Logger{}
+	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 const data_am100 string = `{
