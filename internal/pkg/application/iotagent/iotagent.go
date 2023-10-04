@@ -104,7 +104,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 				a.handleSensorMeasurementList(ctx, device.ID(), pack)
 			}
 		} else {
-			log.Warn("ignored message from inactive device", "err", err.Error())
+			log.Warn("ignored message from inactive device")
 		}
 
 		return nil
