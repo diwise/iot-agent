@@ -14,6 +14,7 @@ WORKDIR /app/cmd/iot-agent
 
 ARG TARGETARCH
 ARG TARGETOS
+
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 
 
@@ -29,3 +30,4 @@ EXPOSE 8080
 USER 1001
 
 ENTRYPOINT ["/opt/diwise/iot-agent"]
+
