@@ -3,8 +3,8 @@ module github.com/diwise/iot-agent
 go 1.21
 
 require (
-	github.com/diwise/messaging-golang v0.0.0-20230907151254-8928403cf42d
-	github.com/diwise/service-chassis v0.0.0-20231003093159-33c02f91595f
+	github.com/diwise/messaging-golang v0.0.0-20231004082357-60ba8013c5b8
+	github.com/diwise/service-chassis v0.0.0-20231004081412-c07949c1b076
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/farshidtz/senml/v2 v2.0.0
 	github.com/go-chi/chi/v5 v5.0.10
@@ -16,8 +16,8 @@ require (
 )
 
 require (
-	github.com/diwise/iot-core v0.0.0-20231003122726-9d67727ea9ce
-	github.com/diwise/iot-device-mgmt v0.0.0-20231003100302-06da8a3b9b74
+	github.com/diwise/iot-core v0.0.0-20231004112753-89ecfec9253c
+	github.com/diwise/iot-device-mgmt v0.0.0-20231004084956-25222ac40f26
 	github.com/google/uuid v1.3.1
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/open-policy-agent/opa v0.57.0
