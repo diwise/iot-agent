@@ -1,22 +1,23 @@
 package mqtt
 
 import (
+	"log/slog"
+	"os"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/rs/zerolog"
 )
 
 type mqttClient struct {
 	cfg     Config
-	log     zerolog.Logger
+	log     *slog.Logger
 	options *mqtt.ClientOptions
 }
 
 func (c *mqttClient) Start() error {
 
 	if !c.cfg.enabled {
-		c.log.Warn().Msg("mqtt has been explicitly disabled with MQTT_DISABLED=true and will therefore not start")
+		c.log.Warn("mqtt has been explicitly disabled with MQTT_DISABLED=true and will therefore not start")
 		return nil
 	}
 
@@ -32,7 +33,8 @@ func (c *mqttClient) run() {
 
 	client := mqtt.NewClient(c.options)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		c.log.Fatal().Err(token.Error()).Msg("connection error")
+		c.log.Error("connection error", "err", token.Error())
+		os.Exit(1)
 	}
 
 	for keepRunning {

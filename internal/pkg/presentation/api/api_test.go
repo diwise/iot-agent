@@ -84,7 +84,7 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 		},
 	}
 
-	a := newAPI(context.Background(), r, "chirpstack", "", app, bytes.NewBufferString(opaModule))
+	a, _ := newAPI(context.Background(), r, "chirpstack", "", app, bytes.NewBufferString(opaModule))
 
 	return is, a, app
 }

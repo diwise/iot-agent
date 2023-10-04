@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
 
@@ -22,7 +22,7 @@ var allowedTenantsCtxKey = &tenantsContextKey{"allowed-tenants"}
 
 var tracer = otel.Tracer("iot-agent/authz")
 
-func NewAuthenticator(ctx context.Context, logger zerolog.Logger, policies io.Reader) (func(http.Handler) http.Handler, error) {
+func NewAuthenticator(ctx context.Context, logger *slog.Logger, policies io.Reader) (func(http.Handler) http.Handler, error) {
 
 	module, err := io.ReadAll(policies)
 	if err != nil {
@@ -49,7 +49,7 @@ func NewAuthenticator(ctx context.Context, logger zerolog.Logger, policies io.Re
 
 			if token == "" || !strings.HasPrefix(token, "Bearer ") {
 				err = errors.New("authorization header missing")
-				logger.Info().Msg(err.Error())
+				logger.Warn(err.Error())
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
@@ -64,14 +64,14 @@ func NewAuthenticator(ctx context.Context, logger zerolog.Logger, policies io.Re
 
 			results, err := query.Eval(r.Context(), rego.EvalInput(input))
 			if err != nil {
-				logger.Error().Err(err).Msg("opa eval failed")
+				logger.Error("opa eval failed", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			if len(results) == 0 {
 				err = errors.New("opa query could not be satisfied")
-				logger.Error().Err(err).Msg("auth failed")
+				logger.Error("auth failed", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			} else {
@@ -82,7 +82,7 @@ func NewAuthenticator(ctx context.Context, logger zerolog.Logger, policies io.Re
 				allowed, ok := binding.(bool)
 				if ok && !allowed {
 					err = errors.New("authorization failed")
-					logger.Warn().Msg(err.Error())
+					logger.Warn(err.Error())
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
@@ -92,7 +92,7 @@ func NewAuthenticator(ctx context.Context, logger zerolog.Logger, policies io.Re
 
 				if !ok {
 					err = errors.New("unexpected result type")
-					logger.Error().Err(err).Msg("opa error")
+					logger.Error("opa error", "err", err.Error())
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -102,7 +102,7 @@ func NewAuthenticator(ctx context.Context, logger zerolog.Logger, policies io.Re
 
 				if !ok1 || !ok2 {
 					err = errors.New("bad response from authz policy engine")
-					logger.Error().Err(err).Msg("opa error")
+					logger.Error("opa error", "err", err.Error())
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}

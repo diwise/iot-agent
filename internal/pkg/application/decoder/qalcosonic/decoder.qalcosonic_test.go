@@ -3,13 +3,14 @@ package qalcosonic
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestQalcosonic_w1t(t *testing.T) {
@@ -164,9 +165,9 @@ func TestQalcosonicStatusCodes(t *testing.T) {
 	is.Equal("Unknown", getStatusMessage(0x02)[0])
 }
 
-func testSetup(t *testing.T) (*is.I, zerolog.Logger) {
+func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
-	return is, zerolog.Logger{}
+	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func toT(s any) time.Time {

@@ -1,15 +1,17 @@
 package mqtt
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 )
 
 type Client interface {
@@ -26,7 +28,7 @@ type Config struct {
 	topics    []string
 }
 
-func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Client, error) {
+func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Client, error) {
 	options := mqtt.NewClientOptions()
 
 	connectionString := fmt.Sprintf("ssl://%s:8883", cfg.host)
@@ -36,23 +38,24 @@ func NewClient(logger zerolog.Logger, cfg Config, forwardingEndpoint string) (Cl
 	options.SetPassword(cfg.password)
 
 	options.SetClientID("diwise/iot-agent/" + uuid.NewString())
-	options.SetDefaultPublishHandler(NewMessageHandler(logger, forwardingEndpoint))
+	options.SetDefaultPublishHandler(NewMessageHandler(ctx, forwardingEndpoint))
 
 	options.SetKeepAlive(time.Duration(cfg.keepAlive) * time.Second)
 
-	log := logger.With().Str("mqtt-host", cfg.host).Logger()
+	log := logging.GetFromContext(ctx).With(slog.String("mqtt-host", cfg.host))
 
 	options.OnConnect = func(mc mqtt.Client) {
-		log.Info().Msg("connected")
+		log.Info("connected")
 		for _, topic := range cfg.topics {
-			log.Info().Msgf("subscribing to %s", topic)
+			log.Info("subscribing to topic", "topic", topic)
 			token := mc.Subscribe(topic, 0, nil)
 			token.Wait()
 		}
 	}
 
 	options.OnConnectionLost = func(mc mqtt.Client, err error) {
-		log.Fatal().Err(err).Msg("connection lost")
+		log.Error("connection lost", "err", err.Error())
+		os.Exit(1)
 	}
 
 	options.TLSConfig = &tls.Config{
