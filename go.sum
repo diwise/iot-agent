@@ -29,8 +29,8 @@ github.com/diwise/iot-device-mgmt v0.0.0-20231004084956-25222ac40f26 h1:zkIzr2nj
 github.com/diwise/iot-device-mgmt v0.0.0-20231004084956-25222ac40f26/go.mod h1:jGrqVjEcP3ly+n4c5WYd0VO8M6B8lxV82VfEl98CyBI=
 github.com/diwise/messaging-golang v0.0.0-20231004082357-60ba8013c5b8 h1:/Tkp4ZB38E740YzIqVUYyD7JtTGJcbCoDl34Z7R5+ew=
 github.com/diwise/messaging-golang v0.0.0-20231004082357-60ba8013c5b8/go.mod h1:VUmBPfDlJHQbpgjjbjT60NRFd8h/jg2y9hn5WFNy/Ys=
-github.com/diwise/service-chassis v0.0.0-20231004081412-c07949c1b076 h1:TaMdi4x7wYVke9KBFqiaJKT1l40Cj+XpwP5zlBEV0xs=
-github.com/diwise/service-chassis v0.0.0-20231004081412-c07949c1b076/go.mod h1:VzYl/6Pmt5YgstS6NEanMI0pKkmpw6ciXN71jNhjCzM=
+github.com/diwise/service-chassis v0.0.0-20231006081622-7159b774f71b h1:NwKVwXKQMU7Ujz97VXmrri70qoTQzCCXzoY9X8tIj5s=
+github.com/diwise/service-chassis v0.0.0-20231006081622-7159b774f71b/go.mod h1:VzYl/6Pmt5YgstS6NEanMI0pKkmpw6ciXN71jNhjCzM=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/eclipse/paho.mqtt.golang v1.4.2 h1:66wOzfUHSSI1zamx7jR6yMEI5EuHnT1G6rNA5PM12m4=

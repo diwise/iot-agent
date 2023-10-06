@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/diwise/messaging-golang v0.0.0-20231004082357-60ba8013c5b8
-	github.com/diwise/service-chassis v0.0.0-20231004081412-c07949c1b076
+	github.com/diwise/service-chassis v0.0.0-20231006081622-7159b774f71b
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/farshidtz/senml/v2 v2.0.0
 	github.com/go-chi/chi/v5 v5.0.10
