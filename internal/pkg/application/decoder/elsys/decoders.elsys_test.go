@@ -39,10 +39,26 @@ func TestElsysTemperatureDecoder(t *testing.T) {
 	is.Equal(r.DevEui(), "xxxxxxxxxxxxxx")
 }
 
+func TestElsysPumpbrunnarDecoder(t *testing.T) {
+	is, _ := testSetup(t)
+
+	var r payload.Payload
+	ue, _ := application.Netmore([]byte(elt2hp))
+	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+		r = m
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(r.DevEui(), "xxxxxxxxxx")
+}
+
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
 	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
+
+const elt2hp string = `{"devEui":"xxxxxxxxxx","sensorType":"elt_2_hp","timestamp":"2023-10-30T13:57:37.868543Z","payload":"01006f0245070e270d0014000f3d221a00","spreadingFactor":"12","dr":0,"rssi":"-117","snr":"-17","gatewayIdentifier":"881","fPort":"5"}`
 
 const elsysTemp string = `{
 	"applicationID": "8",
