@@ -43,8 +43,9 @@ func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	var r payload.Payload
-	ue, _ := application.Netmore([]byte(elt2hp))
-	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
+	ue, err := application.Netmore([]byte(elt2hp))
+	is.NoErr(err)
+	err = Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
 		r = m
 		return nil
 	})
@@ -58,7 +59,21 @@ func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-const elt2hp string = `{"devEui":"xxxxxxxxxx","sensorType":"elt_2_hp","timestamp":"2023-10-30T13:57:37.868543Z","payload":"01006f0245070e270d0014000f3d221a00","spreadingFactor":"12","dr":0,"rssi":"-117","snr":"-17","gatewayIdentifier":"881","fPort":"5"}`
+const elt2hp string = `{
+	"devEui":"a81758fffe09ec03",
+	"deviceName":"elt_2_hp",
+	"sensorType":"elt_2_hp",
+	"fPort":"5",
+	"data":"AQBvAkUHDicNABQADz0iGgA=",
+	"timestamp":"2023-10-30T13:57:37.868543Z",
+	"rxInfo":{
+		"gatewayId":"881",
+		"rssi":-117,
+		"snr":-17
+	},
+	"txInfo":{},
+	"error":{}
+}`
 
 const elsysTemp string = `{
 	"applicationID": "8",
