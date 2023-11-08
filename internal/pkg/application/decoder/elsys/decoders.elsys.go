@@ -77,3 +77,122 @@ func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Co
 		return err
 	}
 }
+
+const (
+	TYPE_TEMP          = 0x01 //temp 2 bytes -3276.8°C -->3276.7°C
+	TYPE_RH            = 0x02 //Humidity 1 byte  0-100%
+	TYPE_ACC           = 0x03 //acceleration 3 bytes X,Y,Z -128 --> 127 +/-63=1G
+	TYPE_LIGHT         = 0x04 //Light 2 bytes 0-->65535 Lux
+	TYPE_MOTION        = 0x05 //No of motion 1 byte  0-255
+	TYPE_CO2           = 0x06 //Co2 2 bytes 0-65535 ppm
+	TYPE_VDD           = 0x07 //VDD 2byte 0-65535mV
+	TYPE_ANALOG1       = 0x08 //VDD 2byte 0-65535mV
+	TYPE_GPS           = 0x09 //3bytes lat 3bytes long binary
+	TYPE_PULSE1        = 0x0A //2bytes relative pulse count
+	TYPE_PULSE1_ABS    = 0x0B //4bytes no 0->0xFFFFFFFF
+	TYPE_EXT_TEMP1     = 0x0C //2bytes -3276.5C-->3276.5C
+	TYPE_EXT_DIGITAL   = 0x0D //1bytes value 1 or 0
+	TYPE_EXT_DISTANCE  = 0x0E //2bytes distance in mm
+	TYPE_ACC_MOTION    = 0x0F //1byte number of vibration/motion
+	TYPE_IR_TEMP       = 0x10 //2bytes internal temp 2bytes external temp -3276.5C-->3276.5C
+	TYPE_OCCUPANCY     = 0x11 //1byte data
+	TYPE_WATERLEAK     = 0x12 //1byte data 0-255
+	TYPE_GRIDEYE       = 0x13 //65byte temperature data 1byte ref+64byte external temp
+	TYPE_PRESSURE      = 0x14 //4byte pressure data (hPa)
+	TYPE_SOUND         = 0x15 //2byte sound data (peak/avg)
+	TYPE_PULSE2        = 0x16 //2bytes 0-->0xFFFF
+	TYPE_PULSE2_ABS    = 0x17 //4bytes no 0->0xFFFFFFFF
+	TYPE_ANALOG2       = 0x18 //2bytes voltage in mV
+	TYPE_EXT_TEMP2     = 0x19 //2bytes -3276.5C-->3276.5C
+	TYPE_EXT_DIGITAL2  = 0x1A // 1bytes value 1 or 0
+	TYPE_EXT_ANALOG_UV = 0x1B // 4 bytes signed int (uV)
+	TYPE_TVOC          = 0x1C // 2 bytes (ppb)
+	TYPE_DEBUG         = 0x3D // 4bytes debug
+)
+
+type ElsysPayload struct {
+	Temperature         float32 `json:"temperature"`
+	ExternalTemperature float32 `json:"externalTemperature"`
+	Humidity            int8    `json:"humidity"`
+	Acceleration        struct {
+		X int8 `json:"x"`
+		Y int8 `json:"y"`
+		Z int8 `json:"z"`
+	} `json:"acceleration"`
+	Light   uint16 `json:"light"`
+	Motion  uint8  `json:"motion"`
+	CO2     uint16 `json:"co2"`
+	VDD     uint16 `json:"vdd"`
+	Analog1 uint16 `json:"analog1"`
+	GPS     struct {
+		Lat float32 `json:"lat"`
+		Lon float32 `json:"lon"`
+	} `json:"gps"`
+	Pulse         uint16  `json:"pulse"`
+	PulseAbs      uint32  `json:"pulseAbs"`
+	Pressure      float32 `json:"pressure"`
+	Occupancy     uint8   `json:"occupancy"`
+	DigitalInput  bool    `json:"digitalInput"`
+	DigitalInput2 bool    `json:"digitalInput2"`
+}
+
+func DecodeElsysPayload(data []byte) ElsysPayload {
+
+	p := ElsysPayload{}
+
+	for i := 0; i < len(data); i++ {
+		switch data[i] {
+		case TYPE_TEMP:
+			p.Temperature = float32(int(data[i+1])<<8|int(data[i+2])) / 10
+			i += 2
+		case TYPE_RH:
+			p.Humidity = int8(int(data[i+1]))
+			i += 1
+		case TYPE_ACC:
+			p.Acceleration.X = int8(int(data[i+1]))
+			p.Acceleration.Y = int8(int(data[i+2]))
+			p.Acceleration.Z = int8(int(data[i+3]))
+			i += 3
+		case TYPE_LIGHT:
+			p.Light = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			i += 2
+		case TYPE_MOTION:
+			p.Motion = uint8(int(data[i+1]))
+			i += 1
+		case TYPE_CO2:
+			p.CO2 = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			i += 2
+		case TYPE_VDD:
+			p.VDD = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			i += 2
+		case TYPE_ANALOG1:
+			p.Analog1 = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			i += 2
+		case TYPE_GPS:
+			i += 6
+		case TYPE_PULSE1:
+			p.Pulse = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			i += 2
+		case TYPE_PULSE1_ABS:
+			p.PulseAbs = uint32(int(data[i+1])<<24 | int(data[i+2])<<16 | int(data[i+3])<<8 | int(data[i+4]))
+			i += 4
+		case TYPE_EXT_TEMP1:
+			p.ExternalTemperature = float32(int(data[i+1])<<8|int(data[i+2])) / 10
+			i += 2
+		case TYPE_PRESSURE:
+			p.Pressure = float32(int(data[i+1])<<24|int(data[i+2])<<16|int(data[i+3])<<8|int(data[i+4])) / 1000
+			i += 4
+		case TYPE_OCCUPANCY:
+			p.Occupancy = uint8(int(data[i+1]))
+			i += 1
+		case TYPE_EXT_DIGITAL:
+			p.DigitalInput = data[i+1] == 1
+			i += 1
+		case TYPE_EXT_DIGITAL2:
+			p.DigitalInput2 = data[i+1] == 1
+			i += 1
+		}
+	}
+
+	return p
+}
