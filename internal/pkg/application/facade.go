@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -135,9 +134,6 @@ func Netmore(uplinkPayload []byte) (SensorEvent, error) {
 
 	var bytes []byte
 	bytes, err = hex.DecodeString(m[0].Data)
-
-	strBytes := string(bytes)
-	fmt.Printf("bytes to string: %s", strBytes)
 
 	if err != nil {
 		return SensorEvent{}, err
