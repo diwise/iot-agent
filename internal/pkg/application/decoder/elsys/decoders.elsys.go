@@ -23,6 +23,56 @@ func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Co
 		DigitalInputCounter *int64   `json:"pulseAbs"`
 	}{}
 
+	if ue.Object == nil {
+		elsysPayload := DecodeElsysPayload(ue.Data)
+
+		var decorators []payload.PayloadDecoratorFunc
+
+		if d.Temperature != nil {
+			decorators = append(decorators, payload.Temperature(float64(elsysPayload.Temperature)))
+		}
+
+		if d.ExternalTemperature != nil {
+			decorators = append(decorators, payload.Temperature(float64(elsysPayload.ExternalTemperature)))
+		}
+
+		if d.CO2 != nil {
+			decorators = append(decorators, payload.CO2(int(elsysPayload.CO2)))
+		}
+
+		if d.Humidity != nil {
+			decorators = append(decorators, payload.Humidity(float32(elsysPayload.Humidity)))
+		}
+
+		if d.Light != nil {
+			decorators = append(decorators, payload.Light(int(elsysPayload.Light)))
+		}
+
+		if d.Motion != nil {
+			decorators = append(decorators, payload.Motion(int(elsysPayload.Motion)))
+		}
+
+		if d.Vdd != nil {
+			decorators = append(decorators, payload.BatteryLevel(int(elsysPayload.VDD)))
+		}
+
+		if d.Occupancy != nil {
+			// 0 = Unoccupied / 1 = Pending (Entering or leaving) / 2 = Occupied
+			decorators = append(decorators, payload.Presence(elsysPayload.Occupancy == 2))
+		}
+
+		if d.DigitalInput != nil {
+			decorators = append(decorators, payload.DigitalInputState(elsysPayload.DigitalInput))
+		}
+
+		if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
+			return fn(ctx, p)
+		} else {
+			return err
+		}
+
+	}
+
 	err := json.Unmarshal(ue.Object, &d)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal elsys payload: %s", err.Error())

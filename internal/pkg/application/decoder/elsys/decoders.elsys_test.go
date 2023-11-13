@@ -51,7 +51,7 @@ func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	})
 
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "xxxxxxxxxx")
+	is.Equal(r.DevEui(), "a81758fffe09ec03")
 }
 
 func TestDecodeElsysPayload(t *testing.T) {
