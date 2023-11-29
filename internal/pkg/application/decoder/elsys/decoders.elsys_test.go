@@ -66,6 +66,12 @@ func TestDecodeElsysPayload(t *testing.T) {
 	is.Equal(x.DigitalInput, false)
 	is.Equal(x.Pressure, float32(1006.57))
 	is.Equal(x.DigitalInput2, false)
+
+	
+	ue, _ = application.Netmore([]byte(elt2hp_negTemp))
+	x = DecodeElsysPayload(ue.Data)
+
+	is.Equal(x.Temperature, float32(-6.7))
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
@@ -79,6 +85,22 @@ const elt2hp string = `[{
 	"sensorType":"elt_2_hp",
 	"fPort":"5",
 	"payload":"01004b0254070e3a0d0014000f5bea1a00",
+	"timestamp":"2023-10-30T13:57:37.868543Z",
+	"rxInfo":{
+		"gatewayId":"881",
+		"rssi":-117,
+		"snr":-17
+	},
+	"txInfo":{},
+	"error":{}
+}]`
+
+const elt2hp_negTemp string = `[{
+	"devEui":"a81758fffe09ec03",
+	"deviceName":"elt_2_hp",
+	"sensorType":"elt_2_hp",
+	"fPort":"5",
+	"payload":"01ffbd0253070e1d0d0014000f63491a00",
 	"timestamp":"2023-10-30T13:57:37.868543Z",
 	"rxInfo":{
 		"gatewayId":"881",

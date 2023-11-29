@@ -190,18 +190,33 @@ func DecodeElsysPayload(data []byte) ElsysPayload {
 
 	p := ElsysPayload{}
 
+	neg16 := func(v int) int {
+		if v > 0x7FFF {
+			return -(0x010000 - v)
+		}
+		return v
+	}
+
+	neg8 := func(v int8) int8 {
+		if v > 0x7F {
+			return int8(-(0x0100 - int16(v)))
+		}
+		return int8(v)
+	}
+
 	for i := 0; i < len(data); i++ {
 		switch data[i] {
 		case TYPE_TEMP:
-			p.Temperature = float32(int(data[i+1])<<8|int(data[i+2])) / 10
+			t := (int(data[i+1])<<8) | (int(data[i+2]))
+			p.Temperature = float32(neg16(t)) / 10
 			i += 2
 		case TYPE_RH:
 			p.Humidity = int8(int(data[i+1]))
 			i += 1
 		case TYPE_ACC:
-			p.Acceleration.X = int8(int(data[i+1]))
-			p.Acceleration.Y = int8(int(data[i+2]))
-			p.Acceleration.Z = int8(int(data[i+3]))
+			p.Acceleration.X = neg8(int8(int(data[i+1])))
+			p.Acceleration.Y = neg8(int8(int(data[i+2])))
+			p.Acceleration.Z = neg8(int8(int(data[i+3])))
 			i += 3
 		case TYPE_LIGHT:
 			p.Light = uint16(int(data[i+1])<<8 | int(data[i+2]))
@@ -227,7 +242,7 @@ func DecodeElsysPayload(data []byte) ElsysPayload {
 			p.PulseAbs = uint32(int(data[i+1])<<24 | int(data[i+2])<<16 | int(data[i+3])<<8 | int(data[i+4]))
 			i += 4
 		case TYPE_EXT_TEMP1:
-			p.ExternalTemperature = float32(int(data[i+1])<<8|int(data[i+2])) / 10
+			p.ExternalTemperature = float32(neg16(int(data[i+1])<<8|int(data[i+2]))) / 10
 			i += 2
 		case TYPE_PRESSURE:
 			p.Pressure = float32(int(data[i+1])<<24|int(data[i+2])<<16|int(data[i+3])<<8|int(data[i+4])) / 1000
