@@ -164,26 +164,29 @@ type ElsysPayload struct {
 	Temperature         float32 `json:"temperature"`
 	ExternalTemperature float32 `json:"externalTemperature"`
 	Humidity            int8    `json:"humidity"`
-	Acceleration        struct {
-		X int8 `json:"x"`
-		Y int8 `json:"y"`
-		Z int8 `json:"z"`
-	} `json:"acceleration"`
+
+	//Acceleration
+	X int8 `json:"x"`
+	Y int8 `json:"y"`
+	Z int8 `json:"z"`
+
 	Light   uint16 `json:"light"`
 	Motion  uint8  `json:"motion"`
 	CO2     uint16 `json:"co2"`
 	VDD     uint16 `json:"vdd"`
 	Analog1 uint16 `json:"analog1"`
-	GPS     struct {
-		Lat float32 `json:"lat"`
-		Lon float32 `json:"lon"`
-	} `json:"gps"`
-	Pulse         uint16  `json:"pulse"`
+
+	//GPS
+	Lat float32 `json:"lat"`
+	Lon float32 `json:"long"`
+
+	Pulse         uint16  `json:"pulse1"`
 	PulseAbs      uint32  `json:"pulseAbs"`
 	Pressure      float32 `json:"pressure"`
 	Occupancy     uint8   `json:"occupancy"`
-	DigitalInput  bool    `json:"digitalInput"`
-	DigitalInput2 bool    `json:"digitalInput2"`
+	DigitalInput  bool    `json:"digital"`
+	DigitalInput2 bool    `json:"digital2"`
+	Waterleak     uint8   `json:"waterleak"`
 }
 
 func DecodeElsysPayload(data []byte) ElsysPayload {
@@ -207,16 +210,16 @@ func DecodeElsysPayload(data []byte) ElsysPayload {
 	for i := 0; i < len(data); i++ {
 		switch data[i] {
 		case TYPE_TEMP:
-			t := (int(data[i+1])<<8) | (int(data[i+2]))
+			t := (int(data[i+1]) << 8) | (int(data[i+2]))
 			p.Temperature = float32(neg16(t)) / 10
 			i += 2
 		case TYPE_RH:
 			p.Humidity = int8(int(data[i+1]))
 			i += 1
 		case TYPE_ACC:
-			p.Acceleration.X = neg8(int8(int(data[i+1])))
-			p.Acceleration.Y = neg8(int8(int(data[i+2])))
-			p.Acceleration.Z = neg8(int8(int(data[i+3])))
+			p.X = neg8(int8(int(data[i+1])))
+			p.Y = neg8(int8(int(data[i+2])))
+			p.Z = neg8(int8(int(data[i+3])))
 			i += 3
 		case TYPE_LIGHT:
 			p.Light = uint16(int(data[i+1])<<8 | int(data[i+2]))
@@ -249,6 +252,9 @@ func DecodeElsysPayload(data []byte) ElsysPayload {
 			i += 4
 		case TYPE_OCCUPANCY:
 			p.Occupancy = uint8(int(data[i+1]))
+			i += 1
+		case TYPE_WATERLEAK:
+			p.Waterleak = uint8(int(data[i+1]))
 			i += 1
 		case TYPE_EXT_DIGITAL:
 			p.DigitalInput = data[i+1] == 1
