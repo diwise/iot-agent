@@ -28,41 +28,45 @@ func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Co
 
 		var decorators []payload.PayloadDecoratorFunc
 
-		if d.Temperature != nil {
-			decorators = append(decorators, payload.Temperature(float64(elsysPayload.Temperature)))
+		if elsysPayload.Temperature != nil {
+			decorators = append(decorators, payload.Temperature(float64(*elsysPayload.Temperature)))
 		}
 
-		if d.ExternalTemperature != nil {
-			decorators = append(decorators, payload.Temperature(float64(elsysPayload.ExternalTemperature)))
+		if elsysPayload.ExternalTemperature != nil {
+			decorators = append(decorators, payload.Temperature(float64(*elsysPayload.ExternalTemperature)))
 		}
 
-		if d.CO2 != nil {
-			decorators = append(decorators, payload.CO2(int(elsysPayload.CO2)))
+		if elsysPayload.CO2 != nil {
+			decorators = append(decorators, payload.CO2(int(*elsysPayload.CO2)))
 		}
 
-		if d.Humidity != nil {
-			decorators = append(decorators, payload.Humidity(float32(elsysPayload.Humidity)))
+		if elsysPayload.Humidity != nil {
+			decorators = append(decorators, payload.Humidity(float32(*elsysPayload.Humidity)))
 		}
 
-		if d.Light != nil {
-			decorators = append(decorators, payload.Light(int(elsysPayload.Light)))
+		if elsysPayload.Light != nil {
+			decorators = append(decorators, payload.Light(int(*elsysPayload.Light)))
 		}
 
-		if d.Motion != nil {
-			decorators = append(decorators, payload.Motion(int(elsysPayload.Motion)))
+		if elsysPayload.Motion != nil {
+			decorators = append(decorators, payload.Motion(int(*elsysPayload.Motion)))
 		}
 
-		if d.Vdd != nil {
-			decorators = append(decorators, payload.BatteryLevel(int(elsysPayload.VDD)))
+		if elsysPayload.VDD != nil {
+			decorators = append(decorators, payload.BatteryLevel(int(*elsysPayload.VDD)))
 		}
 
-		if d.Occupancy != nil {
+		if elsysPayload.Occupancy != nil {
 			// 0 = Unoccupied / 1 = Pending (Entering or leaving) / 2 = Occupied
-			decorators = append(decorators, payload.Presence(elsysPayload.Occupancy == 2))
+			decorators = append(decorators, payload.Presence(*elsysPayload.Occupancy == 2))
 		}
 
-		if d.DigitalInput != nil {
-			decorators = append(decorators, payload.DigitalInputState(elsysPayload.DigitalInput))
+		if elsysPayload.DigitalInput != nil {
+			decorators = append(decorators, payload.DigitalInputState(*elsysPayload.DigitalInput))
+		}
+
+		if elsysPayload.DigitalInput2 != nil {
+			decorators = append(decorators, payload.DigitalInputState(*elsysPayload.DigitalInput2))
 		}
 
 		if p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...); err == nil {
@@ -161,32 +165,32 @@ const (
 )
 
 type ElsysPayload struct {
-	Temperature         float32 `json:"temperature"`
-	ExternalTemperature float32 `json:"externalTemperature"`
-	Humidity            int8    `json:"humidity"`
+	Temperature         *float32 `json:"temperature,omitempty"`
+	ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
+	Humidity            *int8    `json:"humidity,omitempty"`
 
 	//Acceleration
-	X int8 `json:"x"`
-	Y int8 `json:"y"`
-	Z int8 `json:"z"`
+	X int8 `json:"x,omitempty"`
+	Y int8 `json:"y,omitempty"`
+	Z int8 `json:"z,omitempty"`
 
-	Light   uint16 `json:"light"`
-	Motion  uint8  `json:"motion"`
-	CO2     uint16 `json:"co2"`
-	VDD     uint16 `json:"vdd"`
-	Analog1 uint16 `json:"analog1"`
+	Light   *uint16 `json:"light,omitempty"`
+	Motion  *uint8  `json:"motion,omitempty"`
+	CO2     *uint16 `json:"co2,omitempty"`
+	VDD     *uint16 `json:"vdd,omitempty"`
+	Analog1 uint16  `json:"analog1,omitempty"`
 
 	//GPS
-	Lat float32 `json:"lat"`
-	Lon float32 `json:"long"`
+	Lat float32 `json:"lat,omitempty"`
+	Lon float32 `json:"long,omitempty"`
 
-	Pulse         uint16  `json:"pulse1"`
-	PulseAbs      uint32  `json:"pulseAbs"`
-	Pressure      float32 `json:"pressure"`
-	Occupancy     uint8   `json:"occupancy"`
-	DigitalInput  bool    `json:"digital"`
-	DigitalInput2 bool    `json:"digital2"`
-	Waterleak     uint8   `json:"waterleak"`
+	Pulse         uint16  `json:"pulse1,omitempty"`
+	PulseAbs      uint32  `json:"pulseAbs,omitempty"`
+	Pressure      float32 `json:"pressure,omitempty"`
+	Occupancy     *uint8  `json:"occupancy,omitempty"`
+	DigitalInput  *bool   `json:"digital,omitempty"`
+	DigitalInput2 *bool   `json:"digital2,omitempty"`
+	Waterleak     uint8   `json:"waterleak,omitempty"`
 }
 
 func DecodeElsysPayload(data []byte) ElsysPayload {
@@ -211,10 +215,12 @@ func DecodeElsysPayload(data []byte) ElsysPayload {
 		switch data[i] {
 		case TYPE_TEMP:
 			t := (int(data[i+1]) << 8) | (int(data[i+2]))
-			p.Temperature = float32(neg16(t)) / 10
+			result := float32(neg16(t)) / 10
+			p.Temperature = &result
 			i += 2
 		case TYPE_RH:
-			p.Humidity = int8(int(data[i+1]))
+			result := int8(int(data[i+1]))
+			p.Humidity = &result
 			i += 1
 		case TYPE_ACC:
 			p.X = neg8(int8(int(data[i+1])))
@@ -222,16 +228,20 @@ func DecodeElsysPayload(data []byte) ElsysPayload {
 			p.Z = neg8(int8(int(data[i+3])))
 			i += 3
 		case TYPE_LIGHT:
-			p.Light = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			result := uint16(int(data[i+1])<<8 | int(data[i+2]))
+			p.Light = &result
 			i += 2
 		case TYPE_MOTION:
-			p.Motion = uint8(int(data[i+1]))
+			result := uint8(int(data[i+1]))
+			p.Motion = &result
 			i += 1
 		case TYPE_CO2:
-			p.CO2 = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			result := uint16(int(data[i+1])<<8 | int(data[i+2]))
+			p.CO2 = &result
 			i += 2
 		case TYPE_VDD:
-			p.VDD = uint16(int(data[i+1])<<8 | int(data[i+2]))
+			result := uint16(int(data[i+1])<<8 | int(data[i+2]))
+			p.VDD = &result
 			i += 2
 		case TYPE_ANALOG1:
 			p.Analog1 = uint16(int(data[i+1])<<8 | int(data[i+2]))
@@ -245,22 +255,26 @@ func DecodeElsysPayload(data []byte) ElsysPayload {
 			p.PulseAbs = uint32(int(data[i+1])<<24 | int(data[i+2])<<16 | int(data[i+3])<<8 | int(data[i+4]))
 			i += 4
 		case TYPE_EXT_TEMP1:
-			p.ExternalTemperature = float32(neg16(int(data[i+1])<<8|int(data[i+2]))) / 10
+			result := float32(neg16(int(data[i+1])<<8|int(data[i+2]))) / 10
+			p.ExternalTemperature = &result
 			i += 2
 		case TYPE_PRESSURE:
 			p.Pressure = float32(int(data[i+1])<<24|int(data[i+2])<<16|int(data[i+3])<<8|int(data[i+4])) / 1000
 			i += 4
 		case TYPE_OCCUPANCY:
-			p.Occupancy = uint8(int(data[i+1]))
+			result := uint8(int(data[i+1]))
+			p.Occupancy = &result
 			i += 1
 		case TYPE_WATERLEAK:
 			p.Waterleak = uint8(int(data[i+1]))
 			i += 1
 		case TYPE_EXT_DIGITAL:
-			p.DigitalInput = data[i+1] == 1
+			result := data[i+1] == 1
+			p.DigitalInput = &result
 			i += 1
 		case TYPE_EXT_DIGITAL2:
-			p.DigitalInput2 = data[i+1] == 1
+			result := data[i+1] == 1
+			p.DigitalInput2 = &result
 			i += 1
 		}
 	}

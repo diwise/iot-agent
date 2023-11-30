@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/elsys"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/qalcosonic"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/sensefarm"
@@ -192,6 +193,27 @@ func TestThatHumidityConvertsValueCorrectly(t *testing.T) {
 	is.Equal(float64(22), *msg[1].Value)
 }
 
+func TestThatDigitalInputCreatesDecoratorsCorrectly(t *testing.T) {
+	is, ctx := mcmTestSetup(t)
+
+	var p payload.Payload
+	ue, _ := application.Netmore([]byte(elt2hp))
+	elsys.Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
+		p = pp
+		return nil
+	})
+
+	var msg senml.Pack
+	err := DigitalInput(ctx, "deviceID", p, func(p senml.Pack) error {
+		msg = p
+		return nil
+	})
+
+	is.NoErr(err)
+	is.Equal(DigitalInputURN, msg[0].BaseName)
+	is.Equal(false, *msg[1].BoolValue)
+}
+
 func mcmTestSetup(t *testing.T) (*is.I, context.Context) {
 	ctx, _ := logging.NewLogger(context.Background(), "test", "")
 	return is.New(t), ctx
@@ -204,6 +226,22 @@ func toT(s string) time.Time {
 		panic(err)
 	}
 }
+
+const elt2hp string = `[{
+	"devEui":"a81758fffe09ec03",
+	"deviceName":"elt_2_hp",
+	"sensorType":"elt_2_hp",
+	"fPort":"5",
+	"payload":"01004b0254070e3a0d0014000f5bea1a00",
+	"timestamp":"2023-10-30T13:57:37.868543Z",
+	"rxInfo":{
+		"gatewayId":"881",
+		"rssi":-117,
+		"snr":-17
+	},
+	"txInfo":{},
+	"error":{}
+}]`
 
 const qalcosonic_w1h string = `
 [{
