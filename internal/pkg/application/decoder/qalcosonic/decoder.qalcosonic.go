@@ -12,109 +12,159 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
 )
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 
-func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	var err error
-
-	buf := bytes.NewReader(ue.Data)
-
-	var m measurementDecoder
-
-	if buf.Len() == 5 {
-		m = alarmPacketDecoder
-	} else if buf.Len() < 42 {
-		return errors.New("decoder not implemented or payload to short")
-	} else if buf.Len() == 51 || buf.Len() == 52 {
-		m = w1h
-	} else if buf.Len() <= 47 {
-		m = w1e
-	}
-
-	err = decodeQalcosonicPayload(ctx, ue, m, fn)
-	if err != nil && errors.Is(err, ErrTimeTooFarOff) {
-		err = decodeQalcosonicPayload(ctx, ue, w1t, fn)
-	}
-
-	return err
+type QalcosonicPayload struct {
+	CurrentVolume float64
+	Deltas        []QalcosonicDeltaVolume
+	FrameVersion  uint8
+	Messages      []string
+	StatusCode    uint8
+	Temperature   *uint16
+	Timestamp     time.Time
+	Type          string
 }
 
-func decodeQalcosonicPayload(ctx context.Context, ue application.SensorEvent, measurementDecoder measurementDecoder, fn func(context.Context, payload.Payload) error) error {
-	if !(ue.FPort == 100 || ue.FPort == 103) {
-		return fmt.Errorf("fPort %d not implemented", ue.FPort)
+type QalcosonicDeltaVolume struct {
+	CumulatedVolume float64
+	DeltaVolume     float64
+	Timestamp       time.Time
+}
+
+func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+	p, _, err := decodePayload(ctx, e)
+	if err != nil {
+		return nil, err
 	}
 
-	var decorators []payload.PayloadDecoratorFunc
+	objects := []lwm2m.Lwm2mObject{}
 
-	buf := bytes.NewReader(ue.Data)
-	if d, err := measurementDecoder(buf); err == nil {
-		decorators = append(decorators, d...)
-	} else {
-		return fmt.Errorf("unable to decode measurements, %w", err)
-	}
-
-	pp, _ := payload.New(ue.DevEui, ue.Timestamp, decorators...)
-
-	containsStatusMessage := func(pp payload.Payload, status string) bool {
-		if len(pp.Status().Messages) == 0 {
-			return false
-		}
-
-		for _, m := range pp.Status().Messages {
-			if strings.EqualFold(m, status) {
-				return true
+	contains := func(strs []string, s string) *bool {
+		for _, v := range strs {
+			if strings.EqualFold(v, s) {
+				b := true
+				return &b
 			}
 		}
-
-		return false
+		return nil
 	}
 
-	if containsStatusMessage(pp, "Unknown") {
-		log := logging.GetFromContext(ctx)
-		log.Debug(fmt.Sprintf("status Unknown - %v", ue))
+	if p != nil {
+		for _, d := range p.Deltas {
+			objects = append(objects, lwm2m.WaterMeter{
+				ID_:                  deviceID,
+				Timestamp_:           d.Timestamp,
+				TypeOfMeter:          &p.Type,
+				CumulatedWaterVolume: d.CumulatedVolume,
+				LeakDetected:         contains(p.Messages, "Leak"),
+				BackFlowDetected:     contains(p.Messages, "Backflow"),
+			})
+		}
+
+		objects = append(objects, lwm2m.WaterMeter{
+			ID_:                  deviceID,
+			Timestamp_:           p.Timestamp,
+			TypeOfMeter:          &p.Type,
+			CumulatedWaterVolume: p.CurrentVolume,
+			LeakDetected:         contains(p.Messages, "Leak"),
+			BackFlowDetected:     contains(p.Messages, "Backflow"),
+		})
+
+		if p.Temperature != nil {
+			objects = append(objects, lwm2m.Temperature{
+				ID_:         deviceID,
+				Timestamp_:  p.Timestamp,
+				SensorValue: lwm2m.Round(float64(*p.Temperature) / 10),
+			})
+		}
+
+		//TODO: create error objects
 	}
 
-	return fn(ctx, pp)
+	/*
+		if ap != nil {
+			objects = append(objects, lwm2m.Alarm{
+				ID_:        deviceID,
+				Timestamp_: e.Timestamp,
+				AlarmCode:  ap.StatusCode,
+				AlarmText:  ap.Messages,
+			})
+		}
+	*/
+	return objects, nil
 }
 
-type measurementDecoder = func(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error)
-
-func alarmPacketDecoder(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
+func decodePayload(ctx context.Context, ue application.SensorEvent) (*QalcosonicPayload, *AlarmPacketPayload, error) {
 	var err error
 
+	buf := bytes.NewReader(ue.Data)
+
+	if buf.Len() < 5 && buf.Len() < 42 {
+		return nil, nil, errors.New("decoder not implemented or payload to short")
+	}
+
+	var p QalcosonicPayload
+
+	switch buf.Len() {
+	case 5:
+		ap, err := alarmPacketDecoder(buf)
+		if err != nil {
+			return nil, nil, err
+		}
+		return nil, &ap, nil
+	case 51, 52:
+		p, err = w1h(buf)
+	case 43, 44, 45, 46, 47:
+		p, err = w1e(buf)
+	}
+
+	if err != nil && errors.Is(err, ErrTimeTooFarOff) {
+		p, err = w1t(buf)
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &p, nil, err
+}
+
+type AlarmPacketPayload struct {
+	Timestamp  time.Time
+	StatusCode uint8
+	Messages   []string
+}
+
+func alarmPacketDecoder(buf *bytes.Reader) (AlarmPacketPayload, error) {
+	var err error
 	var epoch uint32
 	var statusCode uint8
 
-	var decorators []payload.PayloadDecoratorFunc
+	p := AlarmPacketPayload{}
 
-	var sensorTime time.Time
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
 
-	sensorTime = time.Unix(int64(epoch), 0).UTC()
-	decorators = append(decorators, payload.Timestamp(sensorTime))
+	p.Timestamp = time.Unix(int64(epoch), 0).UTC()
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
 
-	var statusMessages []string
-	if statusMessages = getStatusMessageForAlarmPacket(statusCode); statusMessages == nil {
-		statusMessages = getStatusMessage(statusCode)
-	}
+	p.StatusCode = statusCode
+	p.Messages = getStatusMessageForAlarmPacket(statusCode)
 
-	return append(decorators, payload.Status(statusCode, statusMessages)), nil
+	return p, nil
 }
 
 // Lora Payload (24 hours) “Enhanced”
-func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
+func w1e(buf *bytes.Reader) (QalcosonicPayload, error) {
 	var err error
 
 	var epoch uint32
@@ -122,39 +172,44 @@ func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var currentVolume uint32
 	var logDateTime uint32
 	var volumeAtLogDateTime uint32
-
-	var decorators []payload.PayloadDecoratorFunc
-
 	var sensorTime time.Time
+
+	p := QalcosonicPayload{
+		Deltas: make([]QalcosonicDeltaVolume, 0),
+	}
+
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
 		sensorTime = time.Unix(int64(epoch), 0).UTC()
 		if tooFarOff(sensorTime) {
-			return nil, ErrTimeTooFarOff
+			return p, ErrTimeTooFarOff
 		}
-		decorators = append(decorators, payload.Timestamp(sensorTime))
+		p.Timestamp = sensorTime
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
-		decorators = append(decorators, payload.Status(statusCode, getStatusMessage(statusCode)))
+		p.StatusCode = statusCode
+		p.Messages = getStatusMessage(statusCode)
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &currentVolume)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
+
+	p.CurrentVolume = float64(currentVolume)
 
 	var ldt time.Time
 	err = binary.Read(buf, binary.LittleEndian, &logDateTime)
 	if err == nil {
 		dt := time.Unix(int64(logDateTime), 0).UTC()
 		if tooFarOff(dt) {
-			return nil, ErrTimeTooFarOff
+			return p, ErrTimeTooFarOff
 		}
 
 		// Log values are always equal to beginning of an hour or a day
@@ -165,23 +220,25 @@ func w1e(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 
 	err = binary.Read(buf, binary.LittleEndian, &volumeAtLogDateTime)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
 
-	decorators = append(decorators, payload.Volume(0, float64(volumeAtLogDateTime), ldt))
+	p.Deltas = append(p.Deltas, QalcosonicDeltaVolume{
+		Timestamp:       ldt,
+		CumulatedVolume: float64(volumeAtLogDateTime),
+		DeltaVolume:     0.0,
+	})
 
 	if d, ok := deltaVolumes(buf, volumeAtLogDateTime, ldt); ok {
-		decorators = append(decorators, d...)
+		p.Deltas = append(p.Deltas, d...)
 	}
 
-	decorators = append(decorators, payload.Volume(0, float64(currentVolume), sensorTime))
+	p.Type = "w1e"
 
-	decorators = append(decorators, payload.Type("w1e"))
-
-	return decorators, nil
+	return p, nil
 }
 
-func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
+func w1t(buf *bytes.Reader) (QalcosonicPayload, error) {
 	var err error
 
 	var epoch uint32
@@ -191,36 +248,45 @@ func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var logDateTime uint32
 	var volumeAtLogDateTime uint32
 
-	var decorators []payload.PayloadDecoratorFunc
+	p := QalcosonicPayload{
+		Deltas: make([]QalcosonicDeltaVolume, 0),
+	}
+
+	buf.Seek(0, io.SeekStart)
 
 	var sensorTime time.Time
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err == nil {
 		sensorTime = time.Unix(int64(epoch), 0).UTC()
 		if tooFarOff(sensorTime) {
-			return nil, ErrTimeTooFarOff
+			return p, ErrTimeTooFarOff
 		}
-		decorators = append(decorators, payload.Timestamp(sensorTime))
+		p.Timestamp = sensorTime
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
-		decorators = append(decorators, payload.Status(statusCode, getStatusMessage(statusCode)))
+		p.StatusCode = statusCode
+		p.Messages = getStatusMessage(statusCode)
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &currentVolume)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
+
+	p.CurrentVolume = float64(currentVolume)
 
 	err = binary.Read(buf, binary.LittleEndian, &temperature)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
+
+	p.Temperature = &temperature
 
 	var ldt time.Time
 	err = binary.Read(buf, binary.LittleEndian, &logDateTime)
@@ -231,31 +297,32 @@ func w1t(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 		y, m, d := dt.Date()
 		ldt = time.Date(y, m, d, hh, 0, 0, 0, time.UTC)
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &volumeAtLogDateTime)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
 
-	decorators = append(decorators, payload.Volume(0, float64(volumeAtLogDateTime), ldt))
+	p.Deltas = append(p.Deltas, QalcosonicDeltaVolume{
+		Timestamp:       ldt,
+		CumulatedVolume: float64(volumeAtLogDateTime),
+		DeltaVolume:     0.0,
+	})
 
 	if d, ok := deltaVolumes(buf, volumeAtLogDateTime, ldt); ok {
-		decorators = append(decorators, d...)
+		p.Deltas = append(p.Deltas, d...)
 	}
 
-	decorators = append(decorators, payload.Volume(0, float64(currentVolume), sensorTime))
+	p.Type = "w1t"
 
-	decorators = append(decorators, payload.Temperature(float64(temperature)))
-	decorators = append(decorators, payload.Type("w1t"))
-
-	return decorators, nil
+	return p, nil
 }
 
-func deltaVolumes(buf *bytes.Reader, lastLogValue uint32, logDateTime time.Time) ([]payload.PayloadDecoratorFunc, bool) {
+func deltaVolumes(buf *bytes.Reader, lastLogValue uint32, logDateTime time.Time) ([]QalcosonicDeltaVolume, bool) {
 	var deltaVolume uint16
-	var decorators []payload.PayloadDecoratorFunc
+	deltas := make([]QalcosonicDeltaVolume, 0)
 
 	t := logDateTime
 	v := lastLogValue
@@ -268,17 +335,21 @@ func deltaVolumes(buf *bytes.Reader, lastLogValue uint32, logDateTime time.Time)
 			return nil, false
 		}
 
-		decorators = append(decorators, payload.Volume(float64(deltaVolume), float64(v+uint32(deltaVolume)), t.Add(time.Hour)))
+		deltas = append(deltas, QalcosonicDeltaVolume{
+			Timestamp:       t.Add(time.Hour),
+			CumulatedVolume: float64(v + uint32(deltaVolume)),
+			DeltaVolume:     float64(deltaVolume),
+		})
 
 		t = t.Add(time.Hour)
 		v = v + uint32(deltaVolume)
 	}
 
-	return decorators, true
+	return deltas, true
 }
 
 // Lora Payload (Long) “Extended”
-func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
+func w1h(buf *bytes.Reader) (QalcosonicPayload, error) {
 	var err error
 
 	var frameVersion uint8
@@ -286,13 +357,15 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	var statusCode uint8
 	var logVolumeAtOne uint32
 
-	var decorators []payload.PayloadDecoratorFunc
+	p := QalcosonicPayload{
+		Deltas: make([]QalcosonicDeltaVolume, 0),
+	}
 
 	err = binary.Read(buf, binary.LittleEndian, &frameVersion)
 	if err == nil {
-		decorators = append(decorators, payload.FrameVersion(frameVersion))
+		p.FrameVersion = frameVersion
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	var sensorTime time.Time
@@ -301,46 +374,62 @@ func w1h(buf *bytes.Reader) ([]payload.PayloadDecoratorFunc, error) {
 	if err == nil {
 		sensorTime = time.Unix(int64(epoch), 0).UTC()
 		if tooFarOff(sensorTime) {
-			return nil, ErrTimeTooFarOff
+			return p, ErrTimeTooFarOff
 		}
 		// First full value is logged at 01:00 time. Other 23 values are differences (increments).
 		// All values are logged and always equal to beginning of an hour or a day
 		y, m, d := sensorTime.Date()
 		logDateTime = time.Date(y, m, d-1, 1, 0, 0, 0, time.UTC)
-		decorators = append(decorators, payload.Timestamp(sensorTime))
+
+		p.Timestamp = sensorTime
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &statusCode)
 	if err == nil {
-		decorators = append(decorators, payload.Status(statusCode, getStatusMessage(statusCode)))
+		p.StatusCode = statusCode
+		p.Messages = getStatusMessage(statusCode)
 	} else {
-		return nil, err
+		return p, err
 	}
 
 	var vol float64 = 0.0
 	err = binary.Read(buf, binary.LittleEndian, &logVolumeAtOne)
 	if err == nil {
 		vol = float64(logVolumeAtOne)
-
 	} else {
-		return nil, err
+		return p, err
 	}
 
-	decorators = append(decorators, payload.Volume(0, float64(vol), logDateTime))
+	p.Deltas = append(p.Deltas, QalcosonicDeltaVolume{
+		Timestamp:       logDateTime,
+		CumulatedVolume: vol,
+		DeltaVolume:     0.0,
+	})
 
 	if d, ok := deltaVolumesH(buf, vol, logDateTime); ok {
-		decorators = append(decorators, d...)
+		p.Deltas = append(p.Deltas, d...)
 	}
 
-	decorators = append(decorators, payload.Type("w1h"))
+	sum := func(v float64) float64 {
+		var sum float64 = v
+		for _, d := range p.Deltas {
+			sum += d.DeltaVolume
+		}
+		return sum
+	}
 
-	return decorators, nil
+	p.CurrentVolume = sum(vol)
+
+	p.Type = "w1h"
+
+	return p, nil
 }
 
-func deltaVolumesH(buf *bytes.Reader, currentVolume float64, logTime time.Time) ([]payload.PayloadDecoratorFunc, bool) {
-	var decorators []payload.PayloadDecoratorFunc
+func deltaVolumesH(buf *bytes.Reader, currentVolume float64, logTime time.Time) ([]QalcosonicDeltaVolume, bool) {
+	p := make([]QalcosonicDeltaVolume, 0)
+
 	data, _ := io.ReadAll(buf)
 	data = append(data, 0) // append 0 for last quad
 
@@ -367,10 +456,14 @@ func deltaVolumesH(buf *bytes.Reader, currentVolume float64, logTime time.Time) 
 	for i := 0; i < 23; i++ {
 		totalVol += float64(deltas[i])
 		deltaTime = deltaTime.Add(1 * time.Hour)
-		decorators = append(decorators, payload.Volume(float64(deltas[i]), float64(totalVol), deltaTime))
+		p = append(p, QalcosonicDeltaVolume{
+			Timestamp:       deltaTime,
+			CumulatedVolume: totalVol,
+			DeltaVolume:     float64(deltas[i]),
+		})
 	}
 
-	return decorators, len(decorators) > 0
+	return p, len(p) > 0
 }
 
 func getStatusMessage(code uint8) []string {

@@ -14,18 +14,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/farshidtz/senml/v2"
 	"github.com/google/uuid"
 )
 
-var devices map[string]Data
+var devices map[string]SchneiderPayload
 
 func init() {
-	devices = make(map[string]Data, 0)
+	devices = make(map[string]SchneiderPayload, 0)
 }
 
 func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerFunc {
@@ -46,7 +45,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 
 		log.Debug("starting to process message", "body", string(msg))
 
-		dataList := []Data{}
+		dataList := []SchneiderPayload{}
 
 		err = json.Unmarshal(msg, &dataList)
 		if err != nil {
@@ -57,10 +56,10 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			return
 		}
 
-		for _, object := range dataList {
-			id := deterministicGUID(object.ID)
+		for _, d := range dataList {
+			id := deterministicGUID(d.ID)
 
-			object.Name, err = trimNameAndReplaceChars(replacer, object.Name)
+			d.Name, err = trimNameAndReplaceChars(replacer, d.Name)
 			if err != nil {
 				log.Error("failed to trim name", "err", err.Error())
 
@@ -69,11 +68,11 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 				return
 			}
 
-			log.Debug(strings.Join(getDeviceConfigString(id, object), ";"))
+			log.Debug(strings.Join(getDeviceConfigString(id, d), ";"))
 
-			devices[id] = object
+			devices[id] = d
 
-			value, err := strconv.ParseFloat(object.Value, 64)
+			value, err := strconv.ParseFloat(d.Value, 64)
 			if err != nil {
 				log.Error("failed to parse value", "err", err.Error())
 
@@ -82,31 +81,32 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 				return
 			}
 
-			basename := ""
-			unit := ""
+			var object lwm2m.Lwm2mObject
 
-			if object.Unit == "°C" {
-				basename = conversion.TemperatureURN
-				unit = senml.UnitCelsius
-			} else if object.Unit == "Wh" {
-				basename = conversion.EnergyURN
-				unit = senml.UnitJoule
-				value = value * 3600
-			} else if object.Unit == "W" {
-				basename = conversion.PowerURN
-				unit = senml.UnitWatt
+			switch d.Unit {
+			case "°C":
+				object = lwm2m.Temperature{
+					ID_:         id,
+					SensorValue: value,
+					Timestamp_:  time.Now().UTC(),
+				}
+			case "Wh":
+				object = lwm2m.Energy{
+					ID_:         id,
+					SensorValue: value,
+					Timestamp_:  time.Now().UTC(),
+				}
+			case "W":
+				object = lwm2m.Power{
+					ID_:         id,
+					SensorValue: value,
+					Timestamp_:  time.Now().UTC(),
+				}
 			}
 
-			decorators := []conversion.SenMLDecoratorFunc{
-				conversion.ValueWithUnit("5700", unit, value),
-			}
+			b, _ := json.Marshal(object)
 
-			pack := conversion.NewSenMLPack(id, basename, time.Now().UTC(), decorators...)
-			b, _ := json.Marshal(pack)
-
-			url := a.forwardingEndpoint + "/lwm2m"
-
-			resp, err := http.Post(url, "application/json", bytes.NewBuffer(b))
+			resp, err := http.Post(fmt.Sprintf("%s/lwm2m", a.forwardingEndpoint), "application/json", bytes.NewBuffer(b))
 			if err != nil {
 				log.Error("failed to post senml pack", "err", err.Error())
 
@@ -129,17 +129,17 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 	}
 }
 
-func getDeviceConfigString(id string, v Data) []string {
+func getDeviceConfigString(id string, v SchneiderPayload) []string {
 	t := make([]string, 0)
 
 	if v.Unit == "°C" {
-		t = append(t, conversion.TemperatureURN)
+		t = append(t, lwm2m.Temperature{}.ObjectURN())
 	}
 	if v.Unit == "Wh" {
-		t = append(t, conversion.EnergyURN)
+		t = append(t, lwm2m.Energy{}.ObjectURN())
 	}
 	if v.Unit == "W" {
-		t = append(t, conversion.PowerURN)
+		t = append(t, lwm2m.Power{}.ObjectURN())
 	}
 
 	r := []string{
@@ -177,7 +177,7 @@ func trimNameAndReplaceChars(replacer *strings.Replacer, name string) (string, e
 	return replacer.Replace(name), nil
 }
 
-type Data struct {
+type SchneiderPayload struct {
 	ID          string `json:"pointID"`
 	Name        string `json:"name"`
 	Value       string `json:"value"`

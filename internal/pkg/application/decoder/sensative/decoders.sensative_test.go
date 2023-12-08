@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+
 	"github.com/matryer/is"
 )
 
@@ -16,15 +16,9 @@ func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := application.ChirpStack([]byte(livboj))
 
-	var resultPayload payload.Payload
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		resultPayload = p
-		return nil
-	})
+	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
-
-	_, ok := resultPayload.Get(payload.PresenceProperty)
-	is.True(ok)
+	is.Equal(objects[0].ID(), "devID")
 }
 
 func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
@@ -33,13 +27,9 @@ func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	err := json.Unmarshal([]byte(livboj_checkin), &ue)
 	is.NoErr(err)
 
-	var r payload.Payload
-	err = Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
+	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
-	is.True(r != nil)
+	is.Equal(objects[0].ID(), "devID")
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {

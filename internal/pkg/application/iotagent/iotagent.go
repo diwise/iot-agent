@@ -10,11 +10,9 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
 	"github.com/diwise/iot-agent/internal/pkg/application/events"
-	"github.com/diwise/iot-agent/internal/pkg/application/messageprocessor"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
@@ -32,7 +30,6 @@ type App interface {
 }
 
 type app struct {
-	messageProcessor       messageprocessor.MessageProcessor
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
 	eventSender            events.EventSender
@@ -43,12 +40,9 @@ type app struct {
 }
 
 func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage) App {
-	c := conversion.NewConverterRegistry()
 	d := decoder.NewDecoderRegistry()
-	m := messageprocessor.NewMessageReceivedProcessor(c)
 
 	return &app{
-		messageProcessor:       m,
 		decoderRegistry:        d,
 		deviceManagementClient: dmc,
 		eventSender:            eventPub,
@@ -78,43 +72,30 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	)
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	log.Debug("message received")
-
-	decodePayload := decoder.PayloadErrorDecoder
-	if !se.HasError() {
-		decodePayload = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
-	}
-
-	err = decodePayload(ctx, se, func(ctx context.Context, p payload.Payload) error {
-		a.sendStatusMessage(ctx, device.ID(), device.Tenant(), p)
-
-		packs, err := a.messageProcessor.ProcessMessage(ctx, p, device)
-		if err != nil {
-			return fmt.Errorf("failed to process message (%w)", err)
-		}
-
-		err = a.storage.AddMany(ctx, device.ID(), packs, time.Now().UTC())
-		if err != nil {
-			log.Error("could not store measurements", "err", err.Error())
-			return err
-		}
-
-		if device.IsActive() {
-			for _, pack := range packs {
-				a.handleSensorMeasurementList(ctx, device.ID(), pack)
-			}
-		} else {
-			log.Warn("ignored message from inactive device")
-		}
-
-		return nil
-	})
-
+	decoder := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
+	objects, err := decoder(ctx, device.ID(), se)
 	if err != nil {
-		log.Error("failed to handle received message", "err", err.Error())
+		log.Error("failed to decode message", "err", err.Error())
+		return err
 	}
 
-	return err
+	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
+
+	err = a.storage.AddMany(ctx, device.ID(), lwm2m.ToPacks(objects), time.Now().UTC())
+	if err != nil {
+		log.Error("could not store measurements", "err", err.Error())
+		return err
+	}
+
+	if device.IsActive() {
+		for _, obj := range objects {
+			a.handleSensorMeasurementList(ctx, device.ID(), lwm2m.ToPack(obj))
+		}
+	} else {
+		log.Warn("ignored message from inactive device")
+	}
+
+	return nil
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
@@ -224,31 +205,23 @@ func (a *app) ignoreDeviceFor(ctx context.Context, id string, period time.Durati
 	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p payload.Payload) {
-	logger := logging.GetFromContext(ctx).With(slog.String("func", "sendStatusMessage"))
+func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, l lwm2m.Lwm2mObject) {
+	log := logging.GetFromContext(ctx)
 
-	var decorators []func(*events.StatusMessage)
-
-	decorators = append(decorators, events.WithTenant(tenant))
-
-	if p != nil {
-		decorators = append(decorators, events.WithStatus(p.Status().Code, p.Status().Messages))
-	} else {
-		decorators = append(decorators, events.WithStatus(0, []string{}))
+	msg := &events.StatusMessage{
+		DeviceID:     deviceID,
+		Tenant: 	 tenant,
+		Timestamp:    time.Now().UTC(),
 	}
 
-	if bat, ok := payload.Get[int](p, payload.BatteryLevelProperty); ok {
-		decorators = append(decorators, events.WithBatteryLevel(bat))
-	}
-
-	msg := events.NewStatusMessage(deviceID, decorators...)
-
+	// TODO: status codes and messages?
+	
 	if msg.Tenant == "" {
-		logger.Warn("tenant information is missing")
+		log.Warn("tenant information is missing")
 	}
 
 	err := a.eventSender.Publish(ctx, msg)
 	if err != nil {
-		logger.Error("failed to publish status message", "err", err.Error())
+		log.Error("failed to publish status message", "err", err.Error())
 	}
 }

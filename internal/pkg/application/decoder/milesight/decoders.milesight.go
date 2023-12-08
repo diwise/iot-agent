@@ -7,30 +7,72 @@ import (
 	"fmt"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
 )
 
-func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-
-	var decorators []payload.PayloadDecoratorFunc
-
-	decoratorAppender := func(m payload.PayloadDecoratorFunc) {
-		decorators = append(decorators, m)
-	}
-
-	if err := decodeMilesightMeasurements(ue.Data, decoratorAppender); err != nil {
-		return err
-	}
-
-	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
-	if err != nil {
-		return err
-	}
-
-	return fn(ctx, p)
+type MilesightPayload struct {
+	Battery     *int
+	CO2         *int
+	Distance    *float64
+	Humidity    *float64
+	Temperature *float64
 }
 
-func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecoratorFunc)) error {
+func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+	p, err := decode(e.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []lwm2m.Lwm2mObject{}
+
+	if p.Battery != nil {
+		objects = append(objects, lwm2m.Battery{
+			ID_:          deviceID,
+			Timestamp_:   e.Timestamp,
+			BatteryLevel: *p.Battery,
+		})
+	}
+
+	if p.CO2 != nil {
+		co2 := float64(*p.CO2)
+		objects = append(objects, lwm2m.AirQuality{
+			ID_:        deviceID,
+			Timestamp_: e.Timestamp,
+			CO2:        &co2,
+		})
+	}
+
+	if p.Distance != nil {
+		objects = append(objects, lwm2m.Distance{
+			ID_:         deviceID,
+			Timestamp_:  e.Timestamp,
+			SensorValue: *p.Distance,
+		})
+	}
+
+	if p.Humidity != nil {
+		objects = append(objects, lwm2m.Humidity{
+			ID_:         deviceID,
+			Timestamp_:  e.Timestamp,
+			SensorValue: float64(*p.Humidity),
+		})
+	}
+
+	if p.Temperature != nil {
+		objects = append(objects, lwm2m.Temperature{
+			ID_:         deviceID,
+			Timestamp_:  e.Timestamp,
+			SensorValue: lwm2m.Round(*p.Temperature),
+		})
+	}
+
+	return objects, nil
+}
+
+func decode(b []byte) (MilesightPayload, error) {
+	p := MilesightPayload{}
+
 	numberOfBytes := len(b)
 
 	const (
@@ -51,12 +93,12 @@ func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecora
 
 	pos := 0
 	size := 0
+	const HeaderSize int = 2
 
 	for pos < numberOfBytes {
 
-		const HeaderSize int = 2
 		if !rangeCheck(pos, HeaderSize) {
-			return errors.New("range check failed before trying to read channel header")
+			return p, errors.New("range check failed before trying to read channel header")
 		}
 
 		channel_header := binary.BigEndian.Uint16(b[pos : pos+HeaderSize])
@@ -64,32 +106,37 @@ func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecora
 
 		var ok bool
 		if size, ok = data_length[channel_header]; !ok {
-			return fmt.Errorf("unknown channel header %X", channel_header)
+			return p, fmt.Errorf("unknown channel header %X", channel_header)
 		}
 
 		if !rangeCheck(pos, size) {
-			return errors.New("range check failed before trying to read channel value")
+			return p, errors.New("range check failed before trying to read channel value")
 		}
 
 		switch channel_header {
 		case Battery:
-			callback(payload.BatteryLevel(int(b[pos])))
+			b := int(b[pos])
+			p.Battery = &b
 		case CO2:
-			callback(payload.CO2(int(binary.LittleEndian.Uint16(b[pos : pos+2]))))
+			co2 := int(binary.LittleEndian.Uint16(b[pos : pos+2]))
+			p.CO2 = &co2
 		case Distance:
 			millimeters := float64(binary.LittleEndian.Uint16(b[pos : pos+2]))
+			meters := millimeters / 1000.0
 			// convert distance to meters
-			callback(payload.Distance(millimeters / 1000.0))
+			p.Distance = &meters
 		case Humidity:
-			callback(payload.Humidity(float32(b[pos]) / 2.0))
+			h := float64(b[pos]) / 2.0
+			p.Humidity = &h
 		case Temperature:
-			callback(payload.Temperature(float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0))
+			t := float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0
+			p.Temperature = &t
 		default:
-			return fmt.Errorf("unknown channel header %X", channel_header)
+			return p, fmt.Errorf("unknown channel header %X", channel_header)
 		}
 
 		pos = pos + size
 	}
 
-	return nil
+	return p, nil
 }
