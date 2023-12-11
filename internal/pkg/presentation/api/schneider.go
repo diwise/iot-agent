@@ -102,6 +102,18 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 					SensorValue: value,
 					Timestamp_:  time.Now().UTC(),
 				}
+			case "%":
+				object = lwm2m.Battery{
+					ID_:          id,
+					BatteryLevel: int(value),
+					Timestamp_:   time.Now().UTC(),
+				}
+			default:
+				log.Warn("unknown unit", "unit", d.Unit)
+			}
+
+			if object == nil {
+				continue
 			}
 
 			b, _ := json.Marshal(object)

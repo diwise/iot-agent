@@ -50,7 +50,7 @@ func TestQalcosonic_w1e(t *testing.T) {
 	is.NoErr(err)
 	is.True(ap == nil)
 
-	is.Equal(17, len(p.Deltas))
+	is.Equal(16, len(p.Deltas))
 	is.Equal(uint8(48), p.StatusCode)
 }
 

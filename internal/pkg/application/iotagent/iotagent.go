@@ -2,6 +2,7 @@ package iotagent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,10 +13,10 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
+	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/farshidtz/senml/v2"
 )
@@ -32,20 +33,20 @@ type App interface {
 type app struct {
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
-	eventSender            events.EventSender
+	msgCtx                 messaging.MsgContext
 	storage                storage.Storage
 
 	notFoundDevices   map[string]time.Time
 	notFoundDevicesMu sync.Mutex
 }
 
-func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage) App {
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store storage.Storage) App {
 	d := decoder.NewDecoderRegistry()
 
 	return &app{
 		decoderRegistry:        d,
 		deviceManagementClient: dmc,
-		eventSender:            eventPub,
+		msgCtx:                 msgCtx,
 		storage:                store,
 		notFoundDevices:        make(map[string]time.Time),
 	}
@@ -66,10 +67,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		return err
 	}
 
-	log = log.With(
-		slog.String("device_id", device.ID()),
-		slog.String("type", device.SensorType()),
-	)
+	log = log.With(slog.String("device_id", device.ID()),slog.String("type", device.SensorType()))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	decoder := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
@@ -90,6 +88,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	if device.IsActive() {
 		for _, obj := range objects {
 			a.handleSensorMeasurementList(ctx, device.ID(), lwm2m.ToPack(obj))
+			// TODO: handle error
 		}
 	} else {
 		log.Warn("ignored message from inactive device")
@@ -162,7 +161,7 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, 
 		Pack:      pack,
 	}
 
-	a.eventSender.Send(ctx, &m)
+	a.msgCtx.SendCommandTo(ctx, &m, "iot-core")
 
 	return nil
 }
@@ -208,20 +207,42 @@ func (a *app) ignoreDeviceFor(ctx context.Context, id string, period time.Durati
 func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, l lwm2m.Lwm2mObject) {
 	log := logging.GetFromContext(ctx)
 
-	msg := &events.StatusMessage{
-		DeviceID:     deviceID,
-		Tenant: 	 tenant,
-		Timestamp:    time.Now().UTC(),
+	msg := &StatusMessage{
+		DeviceID:  deviceID,
+		Tenant:    tenant,
+		Timestamp: time.Now().UTC(),
 	}
 
 	// TODO: status codes and messages?
-	
+
 	if msg.Tenant == "" {
 		log.Warn("tenant information is missing")
 	}
 
-	err := a.eventSender.Publish(ctx, msg)
+	err := a.msgCtx.PublishOnTopic(ctx, msg)
 	if err != nil {
 		log.Error("failed to publish status message", "err", err.Error())
 	}
+}
+
+type StatusMessage struct {
+	DeviceID     string    `json:"deviceID"`
+	BatteryLevel int       `json:"batteryLevel"`
+	Code         int       `json:"statusCode"`
+	Messages     []string  `json:"statusMessages,omitempty"`
+	Tenant       string    `json:"tenant"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
+func (m *StatusMessage) ContentType() string {
+	return "application/json"
+}
+
+func (m *StatusMessage) TopicName() string {
+	return "device-status"
+}
+
+func (m *StatusMessage) Body() []byte {
+	b, _ := json.Marshal(m)
+	return b
 }

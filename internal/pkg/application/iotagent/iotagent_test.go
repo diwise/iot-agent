@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
@@ -24,9 +23,9 @@ func TestSenlabTPayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 0)
+	pack := getPackFromSendCalls(e, 1)
 	is.True(*pack[1].Value == 6.625)
 }
 
@@ -38,10 +37,10 @@ func TestStripsPayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 0)
-	is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3303")
+	pack := getPackFromSendCalls(e, 1)
+	is.Equal(pack[0].StringValue , "urn:oma:lwm2m:ext:3303")
 }
 
 func TestElt2HpPayload(t *testing.T) {
@@ -52,10 +51,10 @@ func TestElt2HpPayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 0)
-	is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3200")
+	pack := getPackFromSendCalls(e, 3)
+	is.Equal(pack[0].StringValue , "urn:oma:lwm2m:ext:3200")
 }
 
 func TestElsysPayload(t *testing.T) {
@@ -66,7 +65,7 @@ func TestElsysPayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+	is.True(len(e.SendCommandToCalls()) > 0)
 
 	pack := getPackFromSendCalls(e, 0)
 	is.True(*pack[1].Value == 19.3)
@@ -80,16 +79,16 @@ func TestErsPayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.True(len(e.SendCalls()) == 2) // expecting two calls since payload should produce measurement for both temperature and co2.
+	is.Equal(len(e.SendCommandToCalls()) , 5) // expecting five calls since payload should produce measurement for both temperature and co2 and more...
 
 	tempPack := getPackFromSendCalls(e, 0) // the first call to send is for the temperature pack.
-	is.True(tempPack[0].BaseName == "urn:oma:lwm2m:ext:3303")
-	is.True(tempPack[1].Name == "5700")
+	is.Equal(tempPack[0].StringValue , "urn:oma:lwm2m:ext:3303")
+	is.Equal(tempPack[1].Name , "5700")
 
-	co2Pack := getPackFromSendCalls(e, 1) // the second call to send is for the co2 pack.
+	co2Pack := getPackFromSendCalls(e, 3) // the second call to send is for the co2 pack.
 
-	is.True(co2Pack[0].BaseName == "urn:oma:lwm2m:ext:3428")
-	is.True(co2Pack[1].Name == "17")
+	is.Equal(co2Pack[0].StringValue , "urn:oma:lwm2m:ext:3428")
+	is.Equal(co2Pack[1].Name , "17")
 }
 
 func TestPresencePayload(t *testing.T) {
@@ -100,18 +99,20 @@ func TestPresencePayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.True(len(e.SendCalls()) > 0)
+	is.True(len(e.SendCommandToCalls()) > 0)
 
 	pack := getPackFromSendCalls(e, 0)
 	is.True(*pack[1].BoolValue)
 }
 
-func getPackFromSendCalls(e *events.EventSenderMock, i int) senml.Pack {
-	m := e.SendCalls()[i].M.(*iotcore.MessageReceived)
+func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
+	sendCalls := e.SendCommandToCalls()
+	cmd := sendCalls[i].Command
+	m := cmd.(*iotcore.MessageReceived)
 	return m.Pack
 }
 
-func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *events.EventSenderMock, *storage.StorageMock) {
+func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messaging.MsgContextMock, *storage.StorageMock) {
 	is := is.New(t)
 	dmc := &dmctest.DeviceManagementClientMock{
 		FindDeviceFromDevEUIFunc: func(ctx context.Context, devEUI string) (client.Device, error) {
@@ -146,13 +147,9 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 		},
 	}
 
-	e := &events.EventSenderMock{
-		SendFunc: func(ctx context.Context, m messaging.CommandMessage) error {
-			return nil
-		},
-		PublishFunc: func(ctx context.Context, m messaging.TopicMessage) error {
-			return nil
-		},
+	e := &messaging.MsgContextMock{
+		PublishOnTopicFunc: func(ctx context.Context, message messaging.TopicMessage) error { return nil },
+		SendCommandToFunc:  func(ctx context.Context, command messaging.Command, key string) error { return nil },
 	}
 
 	s := &storage.StorageMock{

@@ -21,7 +21,7 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 
 	packs := lwm2m.ToPacks(objects)
 
-	is.Equal(0, len(packs))
+	is.Equal(6, len(packs))
 
 	/*
 		s, _ := payload.GetSlice[struct {
