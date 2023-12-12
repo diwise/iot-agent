@@ -85,29 +85,13 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 
 			switch d.Unit {
 			case "°C":
-				object = lwm2m.Temperature{
-					ID_:         id,
-					SensorValue: value,
-					Timestamp_:  time.Now().UTC(),
-				}
+				object = lwm2m.NewTemperature(id, value, time.Now().UTC())
 			case "Wh":
-				object = lwm2m.Energy{
-					ID_:         id,
-					SensorValue: value,
-					Timestamp_:  time.Now().UTC(),
-				}
+				object = lwm2m.NewEnergy(id, value, time.Now().UTC())
 			case "W":
-				object = lwm2m.Power{
-					ID_:         id,
-					SensorValue: value,
-					Timestamp_:  time.Now().UTC(),
-				}
+				object = lwm2m.NewPower(id, value, time.Now().UTC())
 			case "%":
-				object = lwm2m.Battery{
-					ID_:          id,
-					BatteryLevel: int(value),
-					Timestamp_:   time.Now().UTC(),
-				}
+				object = lwm2m.NewBattery(id, int(value), time.Now().UTC())
 			default:
 				log.Warn("unknown unit", "unit", d.Unit)
 			}

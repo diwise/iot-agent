@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -30,30 +31,42 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
+	objects := convertToLwm2mObjects(deviceID, p, e.Timestamp)
+
+	if len(objects) == 0 {
+		checkIn := struct {
+			BuildID struct {
+				ID       int  `json:"id"`
+				Modified bool `json:"modified"`
+			} `json:"buildId"`
+			HistorySeqNr   uint16 `json:"historySeqNr"`
+			PrevHistorySeq uint16 `json:"prevHistSeqNr"`
+		}{}
+
+		err = json.Unmarshal(e.Object, &checkIn)
+		if err != nil {
+			return nil, err
+		}
+
+		objects = append(objects, lwm2m.NewDevice(deviceID, e.Timestamp))
+	}
+
+	return objects, nil
+}
+
+func convertToLwm2mObjects(deviceID string, p SensativePayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
 	if p.BatteryLevel != nil {
-		objects = append(objects, lwm2m.Battery{
-			ID_:          deviceID,
-			BatteryLevel: *p.BatteryLevel,
-			Timestamp_:   e.Timestamp,
-		})
+		objects = append(objects, lwm2m.NewBattery(deviceID, *p.BatteryLevel, ts))
 	}
 
 	if p.Temperature != nil {
-		objects = append(objects, lwm2m.Temperature{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: lwm2m.Round(*p.Temperature),
-		})
+		objects = append(objects, lwm2m.NewTemperature(deviceID, *p.Temperature, ts))
 	}
 
 	if p.Humidity != nil {
-		objects = append(objects, lwm2m.Humidity{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: float64(*p.Humidity),
-		})
+		objects = append(objects, lwm2m.NewHumidity(deviceID, float64(*p.Humidity), ts))
 	}
 	/*
 		if p.DoorReport != nil {
@@ -73,35 +86,10 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		}
 	*/
 	if p.Presence != nil {
-		objects = append(objects, lwm2m.Presence{
-			ID_:               deviceID,
-			Timestamp_:        e.Timestamp,
-			DigitalInputState: *p.Presence,
-		})
+		objects = append(objects, lwm2m.NewPresence(deviceID, *p.Presence, ts))
 	}
 
-	if len(objects) == 0 {
-		checkIn := struct {
-			BuildID struct {
-				ID       int  `json:"id"`
-				Modified bool `json:"modified"`
-			} `json:"buildId"`
-			HistorySeqNr   uint16 `json:"historySeqNr"`
-			PrevHistorySeq uint16 `json:"prevHistSeqNr"`
-		}{}
-
-		err = json.Unmarshal(e.Object, &checkIn)
-		if err != nil {
-			return nil, err
-		}
-
-		objects = append(objects, lwm2m.Device{
-			ID_:        deviceID,
-			Timestamp_: e.Timestamp,
-		})
-	}
-
-	return objects, nil
+	return objects
 }
 
 func decodeSensativeMeasurements(b []byte) (SensativePayload, error) {

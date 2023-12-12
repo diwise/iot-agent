@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -33,38 +34,28 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
+	return convertToLwm2mObjects(deviceID, psf, e.Timestamp), nil
+}
+
+func convertToLwm2mObjects(deviceID string, psf SensefarmPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
-	objects = append(objects, lwm2m.Temperature{
-		ID_:         deviceID,
-		Timestamp_:  e.Timestamp,
-		SensorValue: lwm2m.Round(float64(psf.Temperature)),
-	})
+	objects = append(objects, lwm2m.NewTemperature(deviceID, float64(psf.Temperature), ts))
 
 	v := float64(psf.BatteryVoltage)
-	objects = append(objects, lwm2m.Battery{
-		ID_:            deviceID,
-		Timestamp_:     e.Timestamp,
-		BatteryVoltage: &v,
-	})
+	bat := lwm2m.NewBattery(deviceID, 0, ts)
+	bat.BatteryVoltage = &v
+	objects = append(objects, bat)
 
 	for _, r := range psf.Resistances {
-		objects = append(objects, lwm2m.Conductivity{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: 1 / float64(r),
-		})
+		objects = append(objects, lwm2m.NewConductivity(deviceID, 1/float64(r), ts))
 	}
 
 	for _, sm := range psf.SoilMoistures {
-		objects = append(objects, lwm2m.Pressure{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: float64(sm * 1000),
-		})
+		objects = append(objects, lwm2m.NewPressure(deviceID, float64(sm*1000), ts))
 	}
 
-	return objects, nil
+	return objects
 }
 
 func decodeSensefarmPayload(b []byte) (SensefarmPayload, error) {

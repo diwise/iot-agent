@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -27,41 +28,30 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
 	}
 
+	return convertToLwm2mObjects(deviceID, obj, e.Timestamp), nil
+}
+
+func convertToLwm2mObjects(deviceID string, p EnviotPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
-	if obj.Payload.Temperature != nil {
-		objects = append(objects, lwm2m.Temperature{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: lwm2m.Round(float64(*obj.Payload.Temperature)),
-		})
+	if p.Payload.Temperature != nil {
+		objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Payload.Temperature), ts))
 	}
 
-	if obj.Payload.Humidity != nil {
-		objects = append(objects, lwm2m.Humidity{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: float64(*obj.Payload.Humidity),
-		})
+	if p.Payload.Humidity != nil {
+		objects = append(objects, lwm2m.NewHumidity(deviceID, float64(*p.Payload.Humidity), ts))
 	}
 
-	if obj.Payload.Battery != nil {
-		objects = append(objects, lwm2m.Battery{
-			ID_:          deviceID,
-			Timestamp_:   e.Timestamp,
-			BatteryLevel: *obj.Payload.Battery,
-		})
+	if p.Payload.Battery != nil {
+		objects = append(objects, lwm2m.NewBattery(deviceID, int(*p.Payload.Battery), ts))
 	}
 
-	if obj.Payload.SensorStatus == 0 && obj.Payload.SnowHeight != nil {
+	if p.Payload.SensorStatus == 0 && p.Payload.SnowHeight != nil {
 		applicationType := "SnowHeight"
-		objects = append(objects, lwm2m.Distance{
-			ID_:             deviceID,
-			Timestamp_:      e.Timestamp,
-			SensorValue:     float64(*obj.Payload.SnowHeight),
-			ApplicationType: &applicationType,
-		})
+		d := lwm2m.NewDistance(deviceID, float64(*p.Payload.SnowHeight), ts)
+		d.ApplicationType = &applicationType
+		objects = append(objects, d)
 	}
 
-	return objects, nil
+	return objects
 }

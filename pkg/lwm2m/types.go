@@ -7,16 +7,30 @@ import (
 
 const prefix = "urn:oma:lwm2m:ext"
 
+type DeviceInfo struct {
+	ID_        string    `lwm2m:"-"`
+	Timestamp_ time.Time `lwm2m:"-"`
+}
+
+func NewTemperature(deviceID string, sensorValue float64, ts time.Time) Temperature {
+	return Temperature{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: Round(sensorValue),
+	}
+}
+
 type Temperature struct {
-	ID_              string    `lwm2m:"-"`
-	SensorValue      float64   `lwm2m:"5700,Cel"`
-	MinMeasuredValue *float64  `lwm2m:"5601,Cel"`
-	MaxMeasuredValue *float64  `lwm2m:"5602,Cel"`
-	MinRangeValue    *float64  `lwm2m:"5603,Cel"`
-	MaxRangeValue    *float64  `lwm2m:"5604,Cel"`
-	SensorUnits      *string   `lwm2m:"5701"`
-	ApplicationType  *string   `lwm2m:"5750"`
-	Timestamp_       time.Time `lwm2m:"-"`
+	DeviceInfo
+	SensorValue      float64  `lwm2m:"5700,Cel"`
+	MinMeasuredValue *float64 `lwm2m:"5601,Cel"`
+	MaxMeasuredValue *float64 `lwm2m:"5602,Cel"`
+	MinRangeValue    *float64 `lwm2m:"5603,Cel"`
+	MaxRangeValue    *float64 `lwm2m:"5604,Cel"`
+	SensorUnits      *string  `lwm2m:"5701"`
+	ApplicationType  *string  `lwm2m:"5750"`
 }
 
 func (t Temperature) ID() string {
@@ -35,10 +49,18 @@ func (t Temperature) MarshalJSON() ([]byte, error) {
 	return marshalJSON(t)
 }
 
+func NewHumidity(deviceID string, sensorValue float64, ts time.Time) Humidity {
+	return Humidity{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
 type Humidity struct {
-	ID_         string    `lwm2m:"-"`
+	DeviceInfo
 	SensorValue float64   `lwm2m:"5700,%RH"`
-	Timestamp_  time.Time `lwm2m:"-"`
 }
 
 func (h Humidity) ID() string {
@@ -57,10 +79,20 @@ func (h Humidity) MarshalJSON() ([]byte, error) {
 	return marshalJSON(h)
 }
 
+
+func NewIlluminance(deviceID string, sensorValue float64, ts time.Time) Illuminance {
+	return Illuminance{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
+
 type Illuminance struct {
-	ID_         string    `lwm2m:"-"`
+	DeviceInfo
 	SensorValue float64   `lwm2m:"5700,lux"`
-	Timestamp_  time.Time `lwm2m:"-"`
 }
 
 func (i Illuminance) ID() string {
@@ -79,10 +111,19 @@ func (i Illuminance) MarshalJSON() ([]byte, error) {
 	return marshalJSON(i)
 }
 
+func NewAirQuality(deviceID string, co2 float64, ts time.Time) AirQuality {
+	return AirQuality{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		CO2: &co2,
+	}
+}
+
 type AirQuality struct {
-	ID_        string    `lwm2m:"-"`
+	DeviceInfo
 	CO2        *float64  `lwm2m:"17,ppm"`
-	Timestamp_ time.Time `lwm2m:"-"`
 }
 
 func (aq AirQuality) ID() string {
@@ -101,8 +142,18 @@ func (aq AirQuality) MarshalJSON() ([]byte, error) {
 	return marshalJSON(aq)
 }
 
+func NewWaterMeter(deviceID string, cumulatedWaterVolume float64, ts time.Time) WaterMeter {
+	return WaterMeter{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		CumulatedWaterVolume: cumulatedWaterVolume,
+	}
+}
+
 type WaterMeter struct {
-	ID_                  string
+	DeviceInfo
 	CumulatedWaterVolume float64   `lwm2m:"1,m3"`
 	TypeOfMeter          *string   `lwm2m:"3"`
 	CumulatedPulseValue  *int      `lwm2m:"4"`
@@ -114,7 +165,6 @@ type WaterMeter struct {
 	BackFlowDetected     *bool     `lwm2m:"11"`
 	BlockedMeter         *bool     `lwm2m:"12"`
 	FraudDetected        *bool     `lwm2m:"13"`
-	Timestamp_           time.Time `lwm2m:"-"`
 }
 
 func (w WaterMeter) ID() string {
@@ -133,12 +183,21 @@ func (w WaterMeter) MarshalJSON() ([]byte, error) {
 	return marshalJSON(w)
 }
 
+
+func NewBattery(deviceID string, batteryLevel int, ts time.Time) Battery {
+	return Battery{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		BatteryLevel: batteryLevel,
+	}
+}
 type Battery struct {
-	ID_             string    `lwm2m:"-"`
+	DeviceInfo
 	BatteryLevel    int       `lwm2m:"1,%"`
 	BatteryCapacity *float64  `lwm2m:"2,Ah"`
 	BatteryVoltage  *float64  `lwm2m:"3,V"`
-	Timestamp_      time.Time `lwm2m:"-"`
 }
 
 func (b Battery) ID() string {
@@ -157,11 +216,20 @@ func (b Battery) MarshalJSON() ([]byte, error) {
 	return marshalJSON(b)
 }
 
+func NewDigitalInput(deviceID string, digitalInputState bool, ts time.Time) DigitalInput {
+	return DigitalInput{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		DigitalInputState: digitalInputState,
+	}
+}
+
 type DigitalInput struct {
-	ID_                 string    `lwm2m:"-"`
+	DeviceInfo
 	DigitalInputState   bool      `lwm2m:"5500"`
 	DigitalInputCounter *int      `lwm2m:"5501"`
-	Timestamp_          time.Time `lwm2m:"-"`
 }
 
 func (d DigitalInput) ID() string {
@@ -180,10 +248,19 @@ func (d DigitalInput) MarshalJSON() ([]byte, error) {
 	return marshalJSON(d)
 }
 
+func NewPeopleCounter(deviceID string, actualNumberOfPersons int, ts time.Time) PeopleCounter {
+	return PeopleCounter{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		ActualNumberOfPersons: actualNumberOfPersons,
+	}
+}
+
 type PeopleCounter struct {
-	ID_                   string    `lwm2m:"-"`
+	DeviceInfo
 	ActualNumberOfPersons int       `lwm2m:"1"`
-	Timestamp_            time.Time `lwm2m:"-"`
 }
 
 func (pc PeopleCounter) ID() string {
@@ -202,11 +279,20 @@ func (pc PeopleCounter) MarshalJSON() ([]byte, error) {
 	return marshalJSON(pc)
 }
 
+func NewPresence(deviceID string, digitalInputState bool, ts time.Time) Presence {
+	return Presence{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		DigitalInputState: digitalInputState,
+	}
+}
+
 type Presence struct {
-	ID_                 string    `lwm2m:"-"`
+	DeviceInfo
 	DigitalInputState   bool      `lwm2m:"5500"`
 	DigitalInputCounter *int      `lwm2m:"5501"`
-	Timestamp_          time.Time `lwm2m:"-"`
 }
 
 func (d Presence) ID() string {
@@ -225,8 +311,18 @@ func (d Presence) MarshalJSON() ([]byte, error) {
 	return marshalJSON(d)
 }
 
+func NewDistance(deviceID string, sensorValue float64, ts time.Time) Distance {
+	return Distance{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
+
 type Distance struct {
-	ID_              string    `lwm2m:"-"`
+	DeviceInfo
 	SensorValue      float64   `lwm2m:"5700,m"`
 	SensorUnits      *string   `lwm2m:"5701"`
 	MinMeasuredValue *float64  `lwm2m:"5601"`
@@ -234,7 +330,6 @@ type Distance struct {
 	MinRangeValue    *float64  `lwm2m:"5603"`
 	MaxRangeValue    *float64  `lwm2m:"5604"`
 	ApplicationType  *string   `lwm2m:"5750"`
-	Timestamp_       time.Time `lwm2m:"-"`
 }
 
 func (d Distance) ID() string {
@@ -253,11 +348,20 @@ func (d Distance) MarshalJSON() ([]byte, error) {
 	return marshalJSON(d)
 }
 
+func NewConductivity(deviceID string, sensorValue float64, ts time.Time) Conductivity {
+	return Conductivity{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
+
 type Conductivity struct {
-	ID_         string    `lwm2m:"-"`
+	DeviceInfo
 	SensorValue float64   `lwm2m:"5700,S/m"`
 	SensorUnits *string   `lwm2m:"5701"`
-	Timestamp_  time.Time `lwm2m:"-"`
 }
 
 func (c Conductivity) ID() string {
@@ -276,10 +380,19 @@ func (c Conductivity) MarshalJSON() ([]byte, error) {
 	return marshalJSON(c)
 }
 
+func NewPressure(deviceID string, sensorValue float64, ts time.Time) Pressure {
+	return Pressure{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
+
 type Pressure struct {
-	ID_         string    `lwm2m:"-"`
+	DeviceInfo
 	SensorValue float64   `lwm2m:"5700,Pa"`
-	Timestamp_  time.Time `lwm2m:"-"`
 }
 
 func (p Pressure) ID() string {
@@ -298,10 +411,19 @@ func (p Pressure) MarshalJSON() ([]byte, error) {
 	return marshalJSON(p)
 }
 
+func NewPower(deviceID string, sensorValue float64, ts time.Time) Power {
+	return Power{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
+
 type Power struct {
-	ID_         string    `lwm2m:"-"`
+	DeviceInfo
 	SensorValue float64   `lwm2m:"5700,W"`
-	Timestamp_  time.Time `lwm2m:"-"`
 }
 
 func (p Power) ID() string {
@@ -320,10 +442,19 @@ func (p Power) MarshalJSON() ([]byte, error) {
 	return marshalJSON(p)
 }
 
+func NewEnergy(deviceID string, sensorValue float64, ts time.Time) Energy {
+	return Energy{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
+
 type Energy struct {
-	ID_         string    `lwm2m:"-"`
+	DeviceInfo	
 	SensorValue float64   `lwm2m:"5700,Wh"`
-	Timestamp_  time.Time `lwm2m:"-"`
 }
 
 func (e Energy) ID() string {
@@ -342,9 +473,17 @@ func (e Energy) MarshalJSON() ([]byte, error) {
 	return marshalJSON(e)
 }
 
+func NewDevice(deviceID string, ts time.Time) Device {
+	return Device{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+	}
+}
+
 type Device struct {
-	ID_        string    `lwm2m:"-"`
-	Timestamp_ time.Time `lwm2m:"-"`
+	DeviceInfo
 }
 
 func (d Device) ID() string {

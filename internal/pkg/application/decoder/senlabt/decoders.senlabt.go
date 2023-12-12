@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -30,21 +31,16 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
+	return convertToLwm2mObjects(deviceID, d, e.Timestamp), nil
+}
+
+func convertToLwm2mObjects(deviceID string, d SenlabPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
-	objects = append(objects, lwm2m.Battery{
-		ID_:          deviceID,
-		BatteryLevel: d.BatteryLevel,
-		Timestamp_:   e.Timestamp,
-	})
+	objects = append(objects, lwm2m.NewBattery(deviceID, d.BatteryLevel, ts))
+	objects = append(objects, lwm2m.NewTemperature(deviceID, d.Temperature, ts))
 
-	objects = append(objects, lwm2m.Temperature{
-		ID_:         deviceID,
-		Timestamp_:  e.Timestamp,
-		SensorValue: lwm2m.Round(d.Temperature),
-	})
-
-	return objects, nil
+	return objects
 }
 
 func decodePayload(b []byte, p *SenlabPayload) error {

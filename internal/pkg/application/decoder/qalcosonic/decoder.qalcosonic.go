@@ -35,11 +35,15 @@ type QalcosonicDeltaVolume struct {
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
-	p, _, err := decodePayload(ctx, e)
+	p, ap, err := decodePayload(ctx, e)
 	if err != nil {
 		return nil, err
 	}
 
+	return convertToLwm2mObjects(deviceID, p, ap), nil
+}
+
+func convertToLwm2mObjects(deviceID string, p *QalcosonicPayload, ap *AlarmPacketPayload) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	contains := func(strs []string, s string) *bool {
@@ -54,31 +58,23 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 
 	if p != nil {
 		for _, d := range p.Deltas {
-			objects = append(objects, lwm2m.WaterMeter{
-				ID_:                  deviceID,
-				Timestamp_:           d.Timestamp,
-				TypeOfMeter:          &p.Type,
-				CumulatedWaterVolume: d.CumulatedVolume,
-				LeakDetected:         contains(p.Messages, "Leak"),
-				BackFlowDetected:     contains(p.Messages, "Backflow"),
-			})
+			wm := lwm2m.NewWaterMeter(deviceID, d.CumulatedVolume, d.Timestamp)
+			wm.TypeOfMeter = &p.Type
+			wm.LeakDetected = contains(p.Messages, "Leak")
+			wm.BackFlowDetected = contains(p.Messages, "Backflow")
+
+			objects = append(objects, wm)
 		}
 
-		objects = append(objects, lwm2m.WaterMeter{
-			ID_:                  deviceID,
-			Timestamp_:           p.Timestamp,
-			TypeOfMeter:          &p.Type,
-			CumulatedWaterVolume: p.CurrentVolume,
-			LeakDetected:         contains(p.Messages, "Leak"),
-			BackFlowDetected:     contains(p.Messages, "Backflow"),
-		})
+		wm := lwm2m.NewWaterMeter(deviceID, p.CurrentVolume, p.Timestamp)
+		wm.TypeOfMeter = &p.Type
+		wm.LeakDetected = contains(p.Messages, "Leak")
+		wm.BackFlowDetected = contains(p.Messages, "Backflow")
+
+		objects = append(objects, wm)
 
 		if p.Temperature != nil {
-			objects = append(objects, lwm2m.Temperature{
-				ID_:         deviceID,
-				Timestamp_:  p.Timestamp,
-				SensorValue: lwm2m.Round(float64(*p.Temperature) / 10),
-			})
+			objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Temperature)/10, p.Timestamp))
 		}
 
 		//TODO: create error objects
@@ -94,7 +90,7 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 			})
 		}
 	*/
-	return objects, nil
+	return objects
 }
 
 func decodePayload(ctx context.Context, ue application.SensorEvent) (*QalcosonicPayload, *AlarmPacketPayload, error) {

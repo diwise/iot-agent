@@ -3,6 +3,7 @@ package elsys
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -46,64 +47,42 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		json.Unmarshal(e.Object, &p)
 	}
 
+	return convertToLwm2mObjects(deviceID, p, e.Timestamp), nil
+}
+
+func convertToLwm2mObjects(deviceID string, p ElsysPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	if p.Temperature != nil {
-		objects = append(objects, lwm2m.Temperature{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: lwm2m.Round(float64(*p.Temperature)),
-		})
+		objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Temperature), ts))
 	}
 
 	if p.ExternalTemperature != nil {
-		objects = append(objects, lwm2m.Temperature{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: lwm2m.Round(float64(*p.ExternalTemperature)),
-		})
+		objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.ExternalTemperature), ts))
 	}
 
 	if p.Humidity != nil {
-		objects = append(objects, lwm2m.Humidity{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: float64(*p.Humidity),
-		})
+		objects = append(objects, lwm2m.NewHumidity(deviceID, float64(*p.Humidity), ts))
 	}
 
 	if p.Light != nil {
-		objects = append(objects, lwm2m.Illuminance{
-			ID_:         deviceID,
-			Timestamp_:  e.Timestamp,
-			SensorValue: float64(*p.Light),
-		})
+		objects = append(objects, lwm2m.NewIlluminance(deviceID, float64(*p.Light), ts))
 	}
 
 	if p.CO2 != nil {
 		co2 := float64(*p.CO2)
-		objects = append(objects, lwm2m.AirQuality{
-			ID_:        deviceID,
-			Timestamp_: e.Timestamp,
-			CO2:        &co2,
-		})
+		objects = append(objects, lwm2m.NewAirQuality(deviceID, co2, ts))
 	}
 
 	if p.VDD != nil {
 		vdd := float64(*p.VDD) / 1000
-		objects = append(objects, lwm2m.Battery{
-			ID_:            deviceID,
-			Timestamp_:     e.Timestamp,
-			BatteryVoltage: &vdd,
-		})
+		bat := lwm2m.NewBattery(deviceID, 0, ts)
+		bat.BatteryVoltage = &vdd
+		objects = append(objects, bat)
 	}
 
 	if p.Occupancy != nil {
-		objects = append(objects, lwm2m.Presence{
-			ID_:               deviceID,
-			Timestamp_:        e.Timestamp,
-			DigitalInputState: *p.Occupancy == 2,
-		})
+		objects = append(objects, lwm2m.NewPresence(deviceID, *p.Occupancy == 2, ts))
 	}
 
 	if p.DigitalInput != nil {
@@ -112,13 +91,12 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 			pulseAbs = new(int)
 			*pulseAbs = int(*p.PulseAbs)
 		}
-		objects = append(objects, lwm2m.DigitalInput{
-			ID_:                 deviceID,
-			Timestamp_:          e.Timestamp,
-			DigitalInputState:   *p.DigitalInput,
-			DigitalInputCounter: pulseAbs,
-		})
+
+		di := lwm2m.NewDigitalInput(deviceID, *p.DigitalInput, ts)
+		di.DigitalInputCounter = pulseAbs
+
+		objects = append(objects, di)
 	}
 
-	return objects, nil
+	return objects
 }
