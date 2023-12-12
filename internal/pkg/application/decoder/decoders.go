@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 )
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")

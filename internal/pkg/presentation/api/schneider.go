@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"

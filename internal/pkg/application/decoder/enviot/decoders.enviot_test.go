@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
@@ -23,7 +23,7 @@ func TestEnviotDecoder(t *testing.T) {
 
 	humidity, _ := objects[1].(lwm2m.Humidity)
 	is.Equal(humidity.SensorValue, float64(85))
-	
+
 	battery, _ := objects[2].(lwm2m.Battery)
 	is.Equal(battery.BatteryLevel, int(86))
 }

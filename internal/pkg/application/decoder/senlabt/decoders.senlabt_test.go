@@ -8,13 +8,12 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
 func TestSenlabTBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
-
 
 	ue, _ := application.Netmore([]byte(senlabT))
 

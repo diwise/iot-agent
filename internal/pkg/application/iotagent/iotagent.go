@@ -12,8 +12,8 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/lwm2m"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/messaging-golang/pkg/messaging"
@@ -67,7 +67,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		return err
 	}
 
-	log = log.With(slog.String("device_id", device.ID()),slog.String("type", device.SensorType()))
+	log = log.With(slog.String("device_id", device.ID()), slog.String("type", device.SensorType()))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	decoder := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
@@ -86,10 +86,16 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	if device.IsActive() {
+		var errs []error
 		for _, obj := range objects {
-			a.handleSensorMeasurementList(ctx, device.ID(), lwm2m.ToPack(obj))
-			// TODO: handle error
+			err := a.handleSensorMeasurementList(ctx, device.ID(), lwm2m.ToPack(obj))
+			if err != nil {
+				log.Error("could not handle measurement", "err", err.Error())
+				errs = append(errs, err)
+				// TODO: handle error
+			}
 		}
+		return errors.Join(errs...)
 	} else {
 		log.Warn("ignored message from inactive device")
 	}
