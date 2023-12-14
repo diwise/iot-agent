@@ -9,6 +9,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/farshidtz/senml/v2"
 	"github.com/matryer/is"
 )
 
@@ -54,11 +55,18 @@ func TestDecodeElsysPayload(t *testing.T) {
 
 	is.Equal(len(objects), 4)
 
-	p := lwm2m.ToSinglePack(objects)
-	err = p.Validate()
+	singlePack := senml.Pack{}
+	packs := lwm2m.ToPacks(objects)
+	for _, p := range packs {
+		err := p.Validate()
+		is.NoErr(err)
+		singlePack = append(singlePack, p...)
+	}
+
+	err = singlePack.Validate()
 	is.NoErr(err)
 
-	j, err := json.Marshal(p)
+	j, err := json.Marshal(singlePack)
 	is.NoErr(err)
 
 	is.Equal(string(j), `[{"bn":"devId/3303/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":7.5},{"bn":"devId/3304/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3304"},{"n":"5700","u":"%RH","v":84},{"bn":"devId/3411/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3411"},{"n":"1","u":"%","v":0},{"n":"3","u":"V","v":3.642},{"bn":"devId/3200/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":false}]`)

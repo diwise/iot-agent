@@ -11,6 +11,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/farshidtz/senml/v2"
 	"github.com/matryer/is"
 )
 
@@ -75,10 +76,19 @@ func TestDecode(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(17, len(objects))
 
-	p := lwm2m.ToSinglePack(objects)
-	b, _ := json.Marshal(p)
+	singlePack := senml.Pack{}
+	packs := lwm2m.ToPacks(objects)
+	for _, p := range packs {
+		err := p.Validate()
+		is.NoErr(err)
+		singlePack = append(singlePack, p...)
+	}
 
-	p.Normalize()
+	err = singlePack.Validate()
+	is.NoErr(err)
+	b, _ := json.Marshal(singlePack)
+
+	singlePack.Normalize()
 
 	is.Equal(len(b), 2410)
 }

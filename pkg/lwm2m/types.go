@@ -58,9 +58,10 @@ func NewHumidity(deviceID string, sensorValue float64, ts time.Time) Humidity {
 		SensorValue: sensorValue,
 	}
 }
+
 type Humidity struct {
 	DeviceInfo
-	SensorValue float64   `lwm2m:"5700,%RH"`
+	SensorValue float64 `lwm2m:"5700,%RH"`
 }
 
 func (h Humidity) ID() string {
@@ -79,7 +80,6 @@ func (h Humidity) MarshalJSON() ([]byte, error) {
 	return marshalJSON(h)
 }
 
-
 func NewIlluminance(deviceID string, sensorValue float64, ts time.Time) Illuminance {
 	return Illuminance{
 		DeviceInfo: DeviceInfo{
@@ -92,7 +92,7 @@ func NewIlluminance(deviceID string, sensorValue float64, ts time.Time) Illumina
 
 type Illuminance struct {
 	DeviceInfo
-	SensorValue float64   `lwm2m:"5700,lux"`
+	SensorValue float64 `lwm2m:"5700,lux"`
 }
 
 func (i Illuminance) ID() string {
@@ -123,7 +123,7 @@ func NewAirQuality(deviceID string, co2 float64, ts time.Time) AirQuality {
 
 type AirQuality struct {
 	DeviceInfo
-	CO2        *float64  `lwm2m:"17,ppm"`
+	CO2 *float64 `lwm2m:"17,ppm"`
 }
 
 func (aq AirQuality) ID() string {
@@ -154,17 +154,17 @@ func NewWaterMeter(deviceID string, cumulatedWaterVolume float64, ts time.Time) 
 
 type WaterMeter struct {
 	DeviceInfo
-	CumulatedWaterVolume float64   `lwm2m:"1,m3"`
-	TypeOfMeter          *string   `lwm2m:"3"`
-	CumulatedPulseValue  *int      `lwm2m:"4"`
-	PulseRatio           *int      `lwm2m:"5"`
-	MinimumFlowRate      *float64  `lwm2m:"7,m3/s"`
-	MaximumFlowRate      *float64  `lwm2m:"8,m3/s"`
-	LeakSuspected        *bool     `lwm2m:"9"`
-	LeakDetected         *bool     `lwm2m:"10"`
-	BackFlowDetected     *bool     `lwm2m:"11"`
-	BlockedMeter         *bool     `lwm2m:"12"`
-	FraudDetected        *bool     `lwm2m:"13"`
+	CumulatedWaterVolume float64  `lwm2m:"1,m3"`
+	TypeOfMeter          *string  `lwm2m:"3"`
+	CumulatedPulseValue  *int     `lwm2m:"4"`
+	PulseRatio           *int     `lwm2m:"5"`
+	MinimumFlowRate      *float64 `lwm2m:"7,m3/s"`
+	MaximumFlowRate      *float64 `lwm2m:"8,m3/s"`
+	LeakSuspected        *bool    `lwm2m:"9"`
+	LeakDetected         *bool    `lwm2m:"10"`
+	BackFlowDetected     *bool    `lwm2m:"11"`
+	BlockedMeter         *bool    `lwm2m:"12"`
+	FraudDetected        *bool    `lwm2m:"13"`
 }
 
 func (w WaterMeter) ID() string {
@@ -183,7 +183,6 @@ func (w WaterMeter) MarshalJSON() ([]byte, error) {
 	return marshalJSON(w)
 }
 
-
 func NewBattery(deviceID string, batteryLevel int, ts time.Time) Battery {
 	return Battery{
 		DeviceInfo: DeviceInfo{
@@ -193,11 +192,12 @@ func NewBattery(deviceID string, batteryLevel int, ts time.Time) Battery {
 		BatteryLevel: batteryLevel,
 	}
 }
+
 type Battery struct {
 	DeviceInfo
-	BatteryLevel    int       `lwm2m:"1,%"`
-	BatteryCapacity *float64  `lwm2m:"2,Ah"`
-	BatteryVoltage  *float64  `lwm2m:"3,V"`
+	BatteryLevel    int      `lwm2m:"1,%"`
+	BatteryCapacity *float64 `lwm2m:"2,Ah"`
+	BatteryVoltage  *float64 `lwm2m:"3,V"`
 }
 
 func (b Battery) ID() string {
@@ -228,8 +228,8 @@ func NewDigitalInput(deviceID string, digitalInputState bool, ts time.Time) Digi
 
 type DigitalInput struct {
 	DeviceInfo
-	DigitalInputState   bool      `lwm2m:"5500"`
-	DigitalInputCounter *int      `lwm2m:"5501"`
+	DigitalInputState   bool `lwm2m:"5500"`
+	DigitalInputCounter *int `lwm2m:"5501"`
 }
 
 func (d DigitalInput) ID() string {
@@ -260,7 +260,7 @@ func NewPeopleCounter(deviceID string, actualNumberOfPersons int, ts time.Time) 
 
 type PeopleCounter struct {
 	DeviceInfo
-	ActualNumberOfPersons int       `lwm2m:"1"`
+	ActualNumberOfPersons int `lwm2m:"1"`
 }
 
 func (pc PeopleCounter) ID() string {
@@ -291,8 +291,8 @@ func NewPresence(deviceID string, digitalInputState bool, ts time.Time) Presence
 
 type Presence struct {
 	DeviceInfo
-	DigitalInputState   bool      `lwm2m:"5500"`
-	DigitalInputCounter *int      `lwm2m:"5501"`
+	DigitalInputState   bool `lwm2m:"5500"`
+	DigitalInputCounter *int `lwm2m:"5501"`
 }
 
 func (d Presence) ID() string {
@@ -323,13 +323,13 @@ func NewDistance(deviceID string, sensorValue float64, ts time.Time) Distance {
 
 type Distance struct {
 	DeviceInfo
-	SensorValue      float64   `lwm2m:"5700,m"`
-	SensorUnits      *string   `lwm2m:"5701"`
-	MinMeasuredValue *float64  `lwm2m:"5601"`
-	MaxMeasuredValue *float64  `lwm2m:"5602"`
-	MinRangeValue    *float64  `lwm2m:"5603"`
-	MaxRangeValue    *float64  `lwm2m:"5604"`
-	ApplicationType  *string   `lwm2m:"5750"`
+	SensorValue      float64  `lwm2m:"5700,m"`
+	SensorUnits      *string  `lwm2m:"5701"`
+	MinMeasuredValue *float64 `lwm2m:"5601"`
+	MaxMeasuredValue *float64 `lwm2m:"5602"`
+	MinRangeValue    *float64 `lwm2m:"5603"`
+	MaxRangeValue    *float64 `lwm2m:"5604"`
+	ApplicationType  *string  `lwm2m:"5750"`
 }
 
 func (d Distance) ID() string {
@@ -360,8 +360,8 @@ func NewConductivity(deviceID string, sensorValue float64, ts time.Time) Conduct
 
 type Conductivity struct {
 	DeviceInfo
-	SensorValue float64   `lwm2m:"5700,S/m"`
-	SensorUnits *string   `lwm2m:"5701"`
+	SensorValue float64 `lwm2m:"5700,S/m"`
+	SensorUnits *string `lwm2m:"5701"`
 }
 
 func (c Conductivity) ID() string {
@@ -392,7 +392,7 @@ func NewPressure(deviceID string, sensorValue float64, ts time.Time) Pressure {
 
 type Pressure struct {
 	DeviceInfo
-	SensorValue float64   `lwm2m:"5700,Pa"`
+	SensorValue float64 `lwm2m:"5700,Pa"`
 }
 
 func (p Pressure) ID() string {
@@ -423,7 +423,7 @@ func NewPower(deviceID string, sensorValue float64, ts time.Time) Power {
 
 type Power struct {
 	DeviceInfo
-	SensorValue float64   `lwm2m:"5700,W"`
+	SensorValue float64 `lwm2m:"5700,W"`
 }
 
 func (p Power) ID() string {
@@ -453,8 +453,8 @@ func NewEnergy(deviceID string, sensorValue float64, ts time.Time) Energy {
 }
 
 type Energy struct {
-	DeviceInfo	
-	SensorValue float64   `lwm2m:"5700,Wh"`
+	DeviceInfo
+	SensorValue float64 `lwm2m:"5700,Wh"`
 }
 
 func (e Energy) ID() string {
@@ -499,5 +499,28 @@ func (d Device) ObjectURN() string {
 	return fmt.Sprintf("%s:%s", prefix, d.ObjectID())
 }
 func (d Device) MarshalJSON() ([]byte, error) {
+	return marshalJSON(d)
+}
+
+type Stopwatch struct {
+	DeviceInfo
+	CumulativeTime      float64 `json:"cumulativeTime" lwm2m:"5544,s"`    //The total time in seconds that the timer input is true.
+	OnOff               *bool   `json:"onOff,omitempty" lwm2m:"5850"`     //On/off control. Boolean value where True is On and False is Off
+	DigitalInputCounter int32   `json:"digitalInputCounter" lwm2m:"5501"` //The cumulative value of active state detected.
+}
+
+func (d Stopwatch) ID() string {
+	return d.ID_
+}
+func (d Stopwatch) Timestamp() time.Time {
+	return d.Timestamp_
+}
+func (d Stopwatch) ObjectID() string {
+	return "3350"
+}
+func (d Stopwatch) ObjectURN() string {
+	return fmt.Sprintf("%s:%s", prefix, d.ObjectID())
+}
+func (d Stopwatch) MarshalJSON() ([]byte, error) {
 	return marshalJSON(d)
 }

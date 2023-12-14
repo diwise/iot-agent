@@ -19,17 +19,6 @@ type Lwm2mObject interface {
 	MarshalJSON() ([]byte, error)
 }
 
-func ToSinglePack(objects []Lwm2mObject) senml.Pack {
-	pack := senml.Pack{}
-
-	for _, obj := range objects {
-		p := ToPack(obj)
-		pack = append(pack, p...)
-	}
-
-	return pack
-}
-
 func ToPack(object Lwm2mObject) senml.Pack {
 	o, _ := marshalJSON(object)
 	p := senml.Pack{}
@@ -49,8 +38,64 @@ func ToPacks(objects []Lwm2mObject) []senml.Pack {
 	return packs
 }
 
+func Diff(a, b senml.Pack) []senml.Record {
+	diff := []senml.Record{}
 
-func Round (val float64) float64 {
+	for _, r1 := range a {
+		for _, r2 := range b {
+			if r1.Name == r2.Name {
+				if !IsEqual(r1, r2) {
+					diff = append(diff, r2)
+				}
+			}
+		}
+	}
+
+	return diff
+}
+
+func IsEqual(a, b senml.Record) bool {
+	n := a.Name == b.Name
+	u := a.Unit == b.Unit
+	vs := a.StringValue == b.StringValue
+	vd := a.DataValue == b.DataValue
+
+	vb := isBoolEqual(a.BoolValue, b.BoolValue)
+
+	ts := almostEqual(&a.Time, &b.Time, 0.0001)
+	uts := almostEqual(&a.UpdateTime, &b.UpdateTime, 0.0001)
+
+	s := almostEqual(a.Sum, b.Sum, 0.0001)
+	val := almostEqual(a.Value, b.Value, 0.0001)
+
+	return n && u && ts && uts && vs && vd && vb && s && val
+}
+
+func isBoolEqual(a, b *bool) bool {
+	if a == nil && b == nil {
+		return true
+	}
+
+	if a != nil && b != nil {
+		return *a == *b
+	}
+
+	return false
+}
+
+func almostEqual(a, b *float64, epsilon float64) bool {
+	if a == nil && b == nil {
+		return true
+	}
+
+	if a != nil && b != nil {
+		return math.Abs(*a-*b) <= epsilon
+	}
+
+	return false
+}
+
+func Round(val float64) float64 {
 	ratio := math.Pow(10, float64(3))
 	return math.Round(val*ratio) / ratio
 }
