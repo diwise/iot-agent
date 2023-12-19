@@ -44,6 +44,20 @@ func TestStripsPayload(t *testing.T) {
 	is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3303")
 }
 
+func TestElt2HpPayload(t *testing.T) {
+	is, dmc, e, s := testSetup(t)
+
+	agent := New(dmc, e, s).(*app)
+	ue, _ := application.Netmore([]byte(elt2hp))
+	err := agent.HandleSensorEvent(context.Background(), ue)
+
+	is.NoErr(err)
+	is.True(len(e.SendCalls()) > 0)
+
+	pack := getPackFromSendCalls(e, 0)
+	is.True(pack[0].BaseName == "urn:oma:lwm2m:ext:3200")
+}
+
 func TestElsysPayload(t *testing.T) {
 	is, dmc, e, s := testSetup(t)
 
@@ -115,6 +129,9 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 			} else if devEUI == "3489573498573459" {
 				sensorType = "presence"
 				types = []string{"urn:oma:lwm2m:ext:3302"}
+			} else if devEUI == "a81758fffe09ec03" {
+				sensorType = "elt_2_hp"
+				types = []string{"urn:oma:lwm2m:ext:3200"}
 			}
 
 			res := &dmctest.DeviceMock{
@@ -147,6 +164,22 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *event
 
 	return is, dmc, e, s
 }
+
+const elt2hp string = `[{
+	"devEui":"a81758fffe09ec03",
+	"deviceName":"elt_2_hp",
+	"sensorType":"elt_2_hp",
+	"fPort":"5",
+	"payload":"01004b0254070e3a0d0014000f5bea1a00",
+	"timestamp":"2023-10-30T13:57:37.868543Z",
+	"rxInfo":{
+		"gatewayId":"881",
+		"rssi":-117,
+		"snr":-17
+	},
+	"txInfo":{},
+	"error":{}
+}]`
 
 const senlabT string = `[{
 	"devEui": "70b3d580a010f260",

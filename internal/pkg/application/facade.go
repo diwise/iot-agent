@@ -134,6 +134,7 @@ func Netmore(uplinkPayload []byte) (SensorEvent, error) {
 
 	var bytes []byte
 	bytes, err = hex.DecodeString(m[0].Data)
+
 	if err != nil {
 		return SensorEvent{}, err
 	}
