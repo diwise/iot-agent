@@ -38,20 +38,29 @@ func ToPacks(objects []Lwm2mObject) []senml.Pack {
 	return packs
 }
 
+
 func Diff(a, b senml.Pack) []senml.Record {
-	diff := []senml.Record{}
+	aa := a.Clone()
+	bb := b.Clone()
 
-	for _, r1 := range a {
-		for _, r2 := range b {
-			if r1.Name == r2.Name {
-				if !IsEqual(r1, r2) {
-					diff = append(diff, r2)
-				}
-			}
-		}
-	}
+	aa.Normalize()
+	bb.Normalize()
 
-	return diff
+    diff := []senml.Record{}
+    recordMap := make(map[string]senml.Record)
+
+    for _, r := range aa {
+        recordMap[r.Name] = r
+    }
+
+    for _, r2 := range bb {
+        r1, exists := recordMap[r2.Name]
+        if !exists || !IsEqual(r1, r2) {
+            diff = append(diff, r2)
+        }
+    }
+
+    return diff
 }
 
 func IsEqual(a, b senml.Record) bool {
@@ -180,14 +189,10 @@ func addValue(r *senml.Record, value reflect.Value) bool {
 
 func getTags(f reflect.StructField) (string, string) {
 	tag := f.Tag.Get("lwm2m")
-	if !strings.Contains(tag, ",") {
-		return tag, ""
-	}
 	tags := strings.Split(tag, ",")
-
+	
 	if len(tags) > 1 {
 		return tags[0], tags[1]
-	} else {
-		return tags[0], ""
 	}
+	return tags[0], ""
 }
