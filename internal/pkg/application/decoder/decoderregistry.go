@@ -28,6 +28,7 @@ func NewDecoderRegistry() DecoderRegistry {
 		"cube02":           sensefarm.Decoder, // deprecated, use sensefarm
 		"elsys":            elsys.Decoder,
 		"elsys_codec":      elsys.Decoder, // deprecated, use elsys
+		"elt_2_hp":         elsys.Decoder,
 		"enviot":           enviot.Decoder,
 		"milesight":        milesight.Decoder,
 		"milesight_am100":  milesight.Decoder, // deprecated, use milesight
