@@ -60,18 +60,17 @@ func TestDecodeElsysPayload(t *testing.T) {
 	ue, _ := application.Netmore([]byte(elt2hp))
 	x := DecodeElsysPayload(ue.Data)
 
-	is.Equal(x.Temperature, float32(7.5))
-	is.Equal(x.Humidity, int8(84))
-	is.Equal(x.VDD, uint16(3642))
-	is.Equal(x.DigitalInput, false)
+	is.Equal(*x.Temperature, float32(7.5))
+	is.Equal(*x.Humidity, int8(84))
+	is.Equal(*x.VDD, uint16(3642))
+	is.Equal(*x.DigitalInput, false)
 	is.Equal(x.Pressure, float32(1006.57))
-	is.Equal(x.DigitalInput2, false)
+	is.Equal(*x.DigitalInput2, false)
 
-	
 	ue, _ = application.Netmore([]byte(elt2hp_negTemp))
 	x = DecodeElsysPayload(ue.Data)
 
-	is.Equal(x.Temperature, float32(-6.7))
+	is.Equal(*x.Temperature, float32(-6.7))
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
