@@ -18,11 +18,15 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
+	"github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/farshidtz/senml/v2"
+	"github.com/google/uuid"
 )
 
 //go:generate moq -rm -out iotagent_mock.go . App
+
+const UNKNOWN = "unknown"
 
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
@@ -68,8 +72,13 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 			log.Warn("blacklisted", "deviceName", se.DeviceName)
 			return nil
 		}
-
+		a.createUnknownDevice(ctx, se)
 		return err
+	}
+
+	if a.isDeviceUnknown(device) {
+		a.ignoreDeviceFor(ctx, devEUI, 1*time.Hour)
+		return nil
 	}
 
 	log = log.With(
@@ -115,6 +124,29 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	return err
+}
+
+func (a *app) isDeviceUnknown(device dmc.Device) bool {
+	return device.SensorType() == UNKNOWN
+}
+
+func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) {
+	logger := logging.GetFromContext(ctx).With(slog.String("func", "createUnknownDevice"))
+
+	d := types.Device{
+		Active:   false,
+		DeviceID: uuid.New().String(),
+		SensorID: se.DevEui,
+		Name:     se.DeviceName,
+		DeviceProfile: types.DeviceProfile{
+			Name: UNKNOWN,
+		},
+	}
+
+	err := a.deviceManagementClient.CreateDevice(ctx, d)
+	if err != nil {
+		logger.Error("failed to create unknown device", "err", err.Error())
+	}
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {

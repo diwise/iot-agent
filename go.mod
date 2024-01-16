@@ -17,7 +17,7 @@ require (
 
 require (
 	github.com/diwise/iot-core v0.0.0-20231004112753-89ecfec9253c
-	github.com/diwise/iot-device-mgmt v0.0.0-20231004084956-25222ac40f26
+	github.com/diwise/iot-device-mgmt v0.0.0-20240116090705-22302c74e598
 	github.com/google/uuid v1.3.1
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/open-policy-agent/opa v0.57.0
