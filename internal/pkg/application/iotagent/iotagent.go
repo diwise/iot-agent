@@ -129,7 +129,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	return a.handleSensorMeasurementList(ctx, device.ID(), pack)
 }
 
-func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
+func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {	
 	return a.deviceManagementClient.FindDeviceFromInternalID(ctx, deviceID)
 }
 
