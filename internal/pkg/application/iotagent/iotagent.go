@@ -42,22 +42,26 @@ type app struct {
 	eventSender            events.EventSender
 	storage                storage.Storage
 
-	notFoundDevices   map[string]time.Time
-	notFoundDevicesMu sync.Mutex
+	notFoundDevices            map[string]time.Time
+	notFoundDevicesMu          sync.Mutex
+	createUnknownDeviceEnabled bool
+	createUnknownDeviceTenant  string
 }
 
-func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage) App {
+func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
 	c := conversion.NewConverterRegistry()
 	d := decoder.NewDecoderRegistry()
 	m := messageprocessor.NewMessageReceivedProcessor(c)
 
 	return &app{
-		messageProcessor:       m,
-		decoderRegistry:        d,
-		deviceManagementClient: dmc,
-		eventSender:            eventPub,
-		storage:                store,
-		notFoundDevices:        make(map[string]time.Time),
+		messageProcessor:           m,
+		decoderRegistry:            d,
+		deviceManagementClient:     dmc,
+		eventSender:                eventPub,
+		storage:                    store,
+		notFoundDevices:            make(map[string]time.Time),
+		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
+		createUnknownDeviceTenant:  createUnknownDeviceTenant,
 	}
 }
 
@@ -72,11 +76,14 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 			log.Warn("blacklisted", "deviceName", se.DeviceName)
 			return nil
 		}
-		a.createUnknownDevice(ctx, se)
+
+		if a.createUnknownDeviceEnabled {
+			a.createUnknownDevice(ctx, se)
+		}
 		return err
 	}
 
-	if a.isDeviceUnknown(device) {
+	if a.createUnknownDeviceEnabled && a.isDeviceUnknown(device) {
 		a.ignoreDeviceFor(ctx, devEUI, 1*time.Hour)
 		return nil
 	}
@@ -140,6 +147,9 @@ func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEven
 		Name:     se.DeviceName,
 		DeviceProfile: types.DeviceProfile{
 			Name: UNKNOWN,
+		},
+		Tenant: types.Tenant{
+			Name: a.createUnknownDeviceTenant,
 		},
 	}
 
