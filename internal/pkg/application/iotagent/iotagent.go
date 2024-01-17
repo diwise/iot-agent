@@ -18,11 +18,15 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
+	"github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/farshidtz/senml/v2"
+	"github.com/google/uuid"
 )
 
 //go:generate moq -rm -out iotagent_mock.go . App
+
+const UNKNOWN = "unknown"
 
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
@@ -38,22 +42,26 @@ type app struct {
 	eventSender            events.EventSender
 	storage                storage.Storage
 
-	notFoundDevices   map[string]time.Time
-	notFoundDevicesMu sync.Mutex
+	notFoundDevices            map[string]time.Time
+	notFoundDevicesMu          sync.Mutex
+	createUnknownDeviceEnabled bool
+	createUnknownDeviceTenant  string
 }
 
-func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage) App {
+func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
 	c := conversion.NewConverterRegistry()
 	d := decoder.NewDecoderRegistry()
 	m := messageprocessor.NewMessageReceivedProcessor(c)
 
 	return &app{
-		messageProcessor:       m,
-		decoderRegistry:        d,
-		deviceManagementClient: dmc,
-		eventSender:            eventPub,
-		storage:                store,
-		notFoundDevices:        make(map[string]time.Time),
+		messageProcessor:           m,
+		decoderRegistry:            d,
+		deviceManagementClient:     dmc,
+		eventSender:                eventPub,
+		storage:                    store,
+		notFoundDevices:            make(map[string]time.Time),
+		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
+		createUnknownDeviceTenant:  createUnknownDeviceTenant,
 	}
 }
 
@@ -69,7 +77,15 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 			return nil
 		}
 
+		if a.createUnknownDeviceEnabled {
+			a.createUnknownDevice(ctx, se)
+		}
 		return err
+	}
+
+	if a.createUnknownDeviceEnabled && a.isDeviceUnknown(device) {
+		a.ignoreDeviceFor(ctx, devEUI, 1*time.Hour)
+		return nil
 	}
 
 	log = log.With(
@@ -115,6 +131,32 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	return err
+}
+
+func (a *app) isDeviceUnknown(device dmc.Device) bool {
+	return device.SensorType() == UNKNOWN
+}
+
+func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) {
+	logger := logging.GetFromContext(ctx).With(slog.String("func", "createUnknownDevice"))
+
+	d := types.Device{
+		Active:   false,
+		DeviceID: uuid.New().String(),
+		SensorID: se.DevEui,
+		Name:     se.DeviceName,
+		DeviceProfile: types.DeviceProfile{
+			Name: UNKNOWN,
+		},
+		Tenant: types.Tenant{
+			Name: a.createUnknownDeviceTenant,
+		},
+	}
+
+	err := a.deviceManagementClient.CreateDevice(ctx, d)
+	if err != nil {
+		logger.Error("failed to create unknown device", "err", err.Error())
+	}
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
