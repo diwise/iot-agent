@@ -1,7 +1,6 @@
 package application
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/matryer/is"
@@ -49,12 +48,12 @@ var uplinkChirpStack = []string{
 }
 
 var uplinkNetmore = []string{
-	//`[{"devEui":"fdget435345345","sensorType":"cube02","timestamp":"2022-10-18T13:32:46.361551Z","payload":"b006b8000130094598000001c1a8000099000001f4a9000008416be864","spreadingFactor":"12","rssi":"-106","snr":"4.2","gatewayIdentifier":"126","fPort":"2"}]`,
-	//`[{"devEui":"fgert43t34t34t43t4","sensorType":"other","timestamp":"2022-10-18T13:43:04.584377Z","payload":"110a00520000410c0000000000003db600000000","spreadingFactor":"12","rssi":"-97","snr":"0.5","gatewayIdentifier":"187","fPort":"125"}]`,
-	//`[{"devEui":"fgh45t6435435345","sensorType":"strips_lora_ms_h","timestamp":"2022-10-18T11:50:04.138012Z","payload":"ffff0a01","spreadingFactor":"8","rssi":"-112","snr":"-3","gatewayIdentifier":"824","fPort":"1"}]`,
-	//`[{"devEui":"dfg34g34reg3453454","sensorType":"strips_lora_ms_wl","timestamp":"2022-10-18T11:57:33.587149Z","payload":"ffff01580200c80400c807001508001509000a010d000e00","spreadingFactor":"8","rssi":"-95","snr":"5.5","gatewayIdentifier":"187","fPort":"1"}]`,
-	//`[{"devEui":"43gfrdg34tgb445h","sensorType":"tem_lab_14ns","timestamp":"2022-10-18T12:12:25.509216Z","payload":"01ef82359c1000c0","spreadingFactor":"11","rssi":"-112","snr":"-6.8","gatewayIdentifier":"187","fPort":"3","latitude":57.687844,"longitude":12.036078}]`,
-	//`[{"devEui":"rg34g34gerg3454trg","sensorType":"qalcosonic_w1e","messageType":"payload","timestamp":"2022-10-18T12:17:03.166298Z","payload":"8e974e6300227a060050c24d63cb790600000000000000000000000000000016003300000000000000000000000e00","fCntUp":6647,"toa":null,"freq":867300000,"batteryLevel":"255","ack":false,"spreadingFactor":"8","rssi":"-108","snr":"3.5","gatewayIdentifier":"126","fPort":"100","tags":{"application":["1_kretsloppvatten_w1e_1"],"customer":["kretsloppvatten"],"deviceType":["w1e"],"facilityID":[],"municipality":[],"serial":["05014191"]},"gateways":[{"rssi":"-108","snr":"3.5","gatewayIdentifier":"126","antenna":0}]}]`,
+	`[{"devEui":"fdget435345345","sensorType":"cube02","timestamp":"2022-10-18T13:32:46.361551Z","payload":"b006b8000130094598000001c1a8000099000001f4a9000008416be864","spreadingFactor":"12","rssi":"-106","snr":"4.2","gatewayIdentifier":"126","fPort":"2"}]`,
+	`[{"devEui":"fgert43t34t34t43t4","sensorType":"other","timestamp":"2022-10-18T13:43:04.584377Z","payload":"110a00520000410c0000000000003db600000000","spreadingFactor":"12","rssi":"-97","snr":"0.5","gatewayIdentifier":"187","fPort":"125"}]`,
+	`[{"devEui":"fgh45t6435435345","sensorType":"strips_lora_ms_h","timestamp":"2022-10-18T11:50:04.138012Z","payload":"ffff0a01","spreadingFactor":"8","rssi":"-112","snr":"-3","gatewayIdentifier":"824","fPort":"1"}]`,
+	`[{"devEui":"dfg34g34reg3453454","sensorType":"strips_lora_ms_wl","timestamp":"2022-10-18T11:57:33.587149Z","payload":"ffff01580200c80400c807001508001509000a010d000e00","spreadingFactor":"8","rssi":"-95","snr":"5.5","gatewayIdentifier":"187","fPort":"1"}]`,
+	`[{"devEui":"43gfrdg34tgb445h","sensorType":"tem_lab_14ns","timestamp":"2022-10-18T12:12:25.509216Z","payload":"01ef82359c1000c0","spreadingFactor":"11","rssi":"-112","snr":"-6.8","gatewayIdentifier":"187","fPort":"3","latitude":57.687844,"longitude":12.036078}]`,
+	`[{"devEui":"rg34g34gerg3454trg","sensorType":"qalcosonic_w1e","messageType":"payload","timestamp":"2022-10-18T12:17:03.166298Z","payload":"8e974e6300227a060050c24d63cb790600000000000000000000000000000016003300000000000000000000000e00","fCntUp":6647,"toa":null,"freq":867300000,"batteryLevel":"255","ack":false,"spreadingFactor":"8","rssi":"-108","snr":"3.5","gatewayIdentifier":"126","fPort":"100","tags":{"application":["1_kretsloppvatten_w1e_1"],"customer":["kretsloppvatten"],"deviceType":["w1e"],"facilityID":[],"municipality":[],"serial":["05014191"]},"gateways":[{"rssi":"-108","snr":"3.5","gatewayIdentifier":"126","antenna":0}]}]`,
 	`[{"devEui":"a81758fffe09ec03","sensorType":"elt_2_hp","timestamp":"2023-10-30T13:57:37.868543Z","payload":"01006f0245070e270d0014000f3d221a00","spreadingFactor":"12","dr":0,"rssi":"-117","snr":"-17","gatewayIdentifier":"881","fPort":"5"}]`,
 }
 
