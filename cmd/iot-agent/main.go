@@ -72,7 +72,7 @@ func main() {
 
 func createMessagingContextOrDie(ctx context.Context) messaging.MsgContext {
 	log := logging.GetFromContext(ctx)
-	
+
 	msgCfg := messaging.LoadConfiguration(ctx, serviceName, log)
 	msgCtx, err := messaging.Initialize(ctx, msgCfg)
 	if err != nil {
@@ -136,11 +136,10 @@ func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devi
 	}
 	defer policies.Close()
 
-	app := iotagent.New(dmc, msgCtx, storage)
-	
 	createUnknownDeviceEnabled := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", "false") == "true"
 	createUnknownDeviceTenant := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", "default")
-	app := iotagent.New(dmc, sender, storage, createUnknownDeviceEnabled, createUnknownDeviceTenant)
+
+	app := iotagent.New(dmc, msgCtx, storage, createUnknownDeviceEnabled, createUnknownDeviceTenant)
 
 	r := chi.NewRouter()
 	a, err := api.New(ctx, r, facade, forwardingEndpoint, app, policies)

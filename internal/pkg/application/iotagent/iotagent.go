@@ -44,9 +44,10 @@ type app struct {
 	notFoundDevicesMu          sync.Mutex
 	createUnknownDeviceEnabled bool
 	createUnknownDeviceTenant  string
+
 }
 
-func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store storage.Storage) App {
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
 	d := decoder.NewDecoderRegistry()
 
 	return &app{
@@ -55,6 +56,8 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store stor
 		msgCtx:                 msgCtx,
 		storage:                store,
 		notFoundDevices:        make(map[string]time.Time),
+		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
+		createUnknownDeviceTenant:  createUnknownDeviceTenant,
 	}
 }
 
@@ -71,14 +74,13 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		}
 
 		if a.createUnknownDeviceEnabled {
-			a.createUnknownDevice(ctx, se)
+			err := a.createUnknownDevice(ctx, se)
+			if err != nil {
+				log.Error("could not create unknown device", "err", err.Error())				
+			}
 		}
-		return err
-	}
 
-	if a.createUnknownDeviceEnabled && a.isDeviceUnknown(device) {
-		a.ignoreDeviceFor(ctx, devEUI, 1*time.Hour)
-		return nil
+		return err
 	}
 
 	if a.createUnknownDeviceEnabled && a.isDeviceUnknown(device) {
@@ -126,9 +128,7 @@ func (a *app) isDeviceUnknown(device dmc.Device) bool {
 	return device.SensorType() == UNKNOWN
 }
 
-func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) {
-	logger := logging.GetFromContext(ctx).With(slog.String("func", "createUnknownDevice"))
-
+func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) error {
 	d := types.Device{
 		Active:   false,
 		DeviceID: uuid.New().String(),
@@ -142,36 +142,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEven
 		},
 	}
 
-	err := a.deviceManagementClient.CreateDevice(ctx, d)
-	if err != nil {
-		logger.Error("failed to create unknown device", "err", err.Error())
-	}
-}
-
-func (a *app) isDeviceUnknown(device dmc.Device) bool {
-	return device.SensorType() == UNKNOWN
-}
-
-func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) {
-	logger := logging.GetFromContext(ctx).With(slog.String("func", "createUnknownDevice"))
-
-	d := types.Device{
-		Active:   false,
-		DeviceID: uuid.New().String(),
-		SensorID: se.DevEui,
-		Name:     se.DeviceName,
-		DeviceProfile: types.DeviceProfile{
-			Name: UNKNOWN,
-		},
-		Tenant: types.Tenant{
-			Name: a.createUnknownDeviceTenant,
-		},
-	}
-
-	err := a.deviceManagementClient.CreateDevice(ctx, d)
-	if err != nil {
-		logger.Error("failed to create unknown device", "err", err.Error())
-	}
+	return  a.deviceManagementClient.CreateDevice(ctx, d)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {

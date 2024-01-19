@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/matryer/is"
