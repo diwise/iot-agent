@@ -34,15 +34,17 @@ func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecora
 	numberOfBytes := len(b)
 
 	const (
-		Battery     uint16 = 373  // 0x0175
-		CO2         uint16 = 1917 // 0x077D
-		Distance    uint16 = 898  // 0x0382
-		Humidity    uint16 = 1128 // 0x0468
-		Temperature uint16 = 871  // 0x0367
+		Battery       uint16 = 373  // 0x0175
+		CO2           uint16 = 1917 // 0x077D
+		Distance      uint16 = 898  // 0x0382
+		Humidity      uint16 = 1128 // 0x0468
+		Temperature   uint16 = 871  // 0x0367
+		DistanceEM400 uint16 = 1154 // 0x482
+		Position      uint16 = 1280 //0x500
 	)
 
 	data_length := map[uint16]int{
-		Battery: 1, CO2: 2, Distance: 2, Humidity: 1, Temperature: 2,
+		Battery: 1, CO2: 2, Distance: 2, Humidity: 1, Temperature: 2, DistanceEM400: 2, Position: 1,
 	}
 
 	rangeCheck := func(atPos, numBytes int) bool {
@@ -84,6 +86,16 @@ func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecora
 			callback(payload.Humidity(float32(b[pos]) / 2.0))
 		case Temperature:
 			callback(payload.Temperature(float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0))
+		case DistanceEM400:
+			millimeters := float64(binary.LittleEndian.Uint16(b[pos : pos+2]))
+			// convert distance to meters
+			callback(payload.Distance(millimeters / 1000.0))
+		case Position:
+			p := "normal"
+			if float32(b[pos]) == 1 {
+				p = "tilt"
+			}
+			callback(payload.Position(p))
 		default:
 			return fmt.Errorf("unknown channel header %X", channel_header)
 		}

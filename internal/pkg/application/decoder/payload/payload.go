@@ -32,6 +32,7 @@ const (
 	PowerProperty        string = "power"
 	PresenceProperty     string = "presence"
 	PressureProperty     string = "pressure"
+	PositionProperty     string = "position"
 	ResistanceProperty   string = "resistance"
 	StatusProperty       string = "status"
 	TemperatureProperty  string = "temperature"
@@ -361,5 +362,13 @@ func Timestamp(t time.Time) PayloadDecoratorFunc {
 		Timestamp time.Time
 	}{
 		t,
+	})
+}
+
+func Position(s string) PayloadDecoratorFunc {
+	return S(PositionProperty, struct {
+		Position string `json:"position"`
+	}{
+		Position: s,
 	})
 }

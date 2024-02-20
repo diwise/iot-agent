@@ -129,7 +129,7 @@ func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devi
 		fatal(ctx, "unable to open opa policy file", err)
 	}
 	defer policies.Close()
-	
+
 	createUnknownDeviceEnabled := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", "false") == "true"
 	createUnknownDeviceTenant := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", "default")
 	app := iotagent.New(dmc, sender, storage, createUnknownDeviceEnabled, createUnknownDeviceTenant)
