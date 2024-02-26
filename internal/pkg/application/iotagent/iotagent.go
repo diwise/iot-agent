@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -108,6 +109,10 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	if device.IsActive() {
 		var errs []error
 		for _, obj := range objects {
+			if !slices.Contains(device.Types(), obj.ObjectURN()) {
+				continue
+			}
+
 			err := a.handleSensorMeasurementList(ctx, device.ID(), lwm2m.ToPack(obj))
 			if err != nil {
 				log.Error("could not handle measurement", "err", err.Error())
