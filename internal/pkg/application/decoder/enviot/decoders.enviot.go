@@ -43,7 +43,10 @@ func convertToLwm2mObjects(deviceID string, p EnviotPayload, ts time.Time) []lwm
 	}
 
 	if p.Payload.Battery != nil {
-		objects = append(objects, lwm2m.NewBattery(deviceID, int(*p.Payload.Battery), ts))
+		d := lwm2m.NewDevice(deviceID, ts)
+		bl := int(*p.Payload.Battery)
+		d.BatteryLevel = &bl
+		objects = append(objects, d)
 	}
 
 	if p.Payload.SensorStatus == 0 && p.Payload.SnowHeight != nil {

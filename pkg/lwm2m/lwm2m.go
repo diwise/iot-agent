@@ -16,7 +16,6 @@ type Lwm2mObject interface {
 	ObjectID() string
 	ObjectURN() string
 	Timestamp() time.Time
-	MarshalJSON() ([]byte, error)
 }
 
 func ToPack(object Lwm2mObject) senml.Pack {
@@ -38,7 +37,6 @@ func ToPacks(objects []Lwm2mObject) []senml.Pack {
 	return packs
 }
 
-
 func Diff(a, b senml.Pack) []senml.Record {
 	aa := a.Clone()
 	bb := b.Clone()
@@ -46,21 +44,21 @@ func Diff(a, b senml.Pack) []senml.Record {
 	aa.Normalize()
 	bb.Normalize()
 
-    diff := []senml.Record{}
-    recordMap := make(map[string]senml.Record)
+	diff := []senml.Record{}
+	recordMap := make(map[string]senml.Record)
 
-    for _, r := range aa {
-        recordMap[r.Name] = r
-    }
+	for _, r := range aa {
+		recordMap[r.Name] = r
+	}
 
-    for _, r2 := range bb {
-        r1, exists := recordMap[r2.Name]
-        if !exists || !IsEqual(r1, r2) {
-            diff = append(diff, r2)
-        }
-    }
+	for _, r2 := range bb {
+		r1, exists := recordMap[r2.Name]
+		if !exists || !IsEqual(r1, r2) {
+			diff = append(diff, r2)
+		}
+	}
 
-    return diff
+	return diff
 }
 
 func IsEqual(a, b senml.Record) bool {
@@ -190,7 +188,7 @@ func addValue(r *senml.Record, value reflect.Value) bool {
 func getTags(f reflect.StructField) (string, string) {
 	tag := f.Tag.Get("lwm2m")
 	tags := strings.Split(tag, ",")
-	
+
 	if len(tags) > 1 {
 		return tags[0], tags[1]
 	}

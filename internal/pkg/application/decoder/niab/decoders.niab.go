@@ -29,7 +29,10 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 func convertToLwm2mObjects(deviceID string, p NiabPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
-	objects = append(objects, lwm2m.NewBattery(deviceID, p.Battery, ts))
+	d := lwm2m.NewDevice(deviceID, ts)
+	bat := int(p.Battery)
+	d.BatteryLevel = &bat	
+	objects = append(objects, d)
 
 	objects = append(objects, lwm2m.NewTemperature(deviceID, p.Temperature, ts))
 
@@ -37,7 +40,7 @@ func convertToLwm2mObjects(deviceID string, p NiabPayload, ts time.Time) []lwm2m
 		objects = append(objects, lwm2m.NewDistance(deviceID, *p.Distance, ts))
 	}
 
-	return objects	
+	return objects
 }
 
 func decode(b []byte) (NiabPayload, error) {

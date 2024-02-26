@@ -75,10 +75,10 @@ func convertToLwm2mObjects(deviceID string, p ElsysPayload, ts time.Time) []lwm2
 	}
 
 	if p.VDD != nil {
-		vdd := float64(*p.VDD) / 1000
-		bat := lwm2m.NewBattery(deviceID, 0, ts)
-		bat.BatteryVoltage = &vdd
-		objects = append(objects, bat)
+		vdd := int(*p.VDD)
+		d := lwm2m.NewDevice(deviceID, ts)
+		d.PowerSourceVoltage = &vdd
+		objects = append(objects, d)
 	}
 
 	if p.Occupancy != nil {
@@ -100,7 +100,6 @@ func convertToLwm2mObjects(deviceID string, p ElsysPayload, ts time.Time) []lwm2
 
 	return objects
 }
-
 
 const (
 	TYPE_TEMP          = 0x01 //temp 2 bytes -3276.8°C -->3276.7°C

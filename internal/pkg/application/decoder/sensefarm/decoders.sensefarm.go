@@ -42,10 +42,10 @@ func convertToLwm2mObjects(deviceID string, psf SensefarmPayload, ts time.Time) 
 
 	objects = append(objects, lwm2m.NewTemperature(deviceID, float64(psf.Temperature), ts))
 
-	v := float64(psf.BatteryVoltage)
-	bat := lwm2m.NewBattery(deviceID, 0, ts)
-	bat.BatteryVoltage = &v
-	objects = append(objects, bat)
+	d := lwm2m.NewDevice(deviceID, ts)
+	bat := int(psf.BatteryVoltage)
+	d.PowerSourceVoltage = &bat
+	objects = append(objects, d)
 
 	for _, r := range psf.Resistances {
 		objects = append(objects, lwm2m.NewConductivity(deviceID, 1/float64(r), ts))

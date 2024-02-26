@@ -44,18 +44,17 @@ type app struct {
 	notFoundDevicesMu          sync.Mutex
 	createUnknownDeviceEnabled bool
 	createUnknownDeviceTenant  string
-
 }
 
 func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
 	d := decoder.NewDecoderRegistry()
 
 	return &app{
-		decoderRegistry:        d,
-		deviceManagementClient: dmc,
-		msgCtx:                 msgCtx,
-		storage:                store,
-		notFoundDevices:        make(map[string]time.Time),
+		decoderRegistry:            d,
+		deviceManagementClient:     dmc,
+		msgCtx:                     msgCtx,
+		storage:                    store,
+		notFoundDevices:            make(map[string]time.Time),
 		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
 		createUnknownDeviceTenant:  createUnknownDeviceTenant,
 	}
@@ -76,7 +75,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		if a.createUnknownDeviceEnabled {
 			err := a.createUnknownDevice(ctx, se)
 			if err != nil {
-				log.Error("could not create unknown device", "err", err.Error())				
+				log.Error("could not create unknown device", "err", err.Error())
 			}
 		}
 
@@ -113,7 +112,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 			if err != nil {
 				log.Error("could not handle measurement", "err", err.Error())
 				errs = append(errs, err)
-				// TODO: handle error
+				continue
 			}
 		}
 		return errors.Join(errs...)
@@ -142,7 +141,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEven
 		},
 	}
 
-	return  a.deviceManagementClient.CreateDevice(ctx, d)
+	return a.deviceManagementClient.CreateDevice(ctx, d)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
@@ -171,7 +170,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	return a.handleSensorMeasurementList(ctx, device.ID(), pack)
 }
 
-func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {	
+func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
 	return a.deviceManagementClient.FindDeviceFromInternalID(ctx, deviceID)
 }
 

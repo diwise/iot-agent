@@ -34,11 +34,15 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 	return convertToLwm2mObjects(deviceID, d, e.Timestamp), nil
 }
 
-func convertToLwm2mObjects(deviceID string, d SenlabPayload, ts time.Time) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(deviceID string, p SenlabPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
-	objects = append(objects, lwm2m.NewBattery(deviceID, d.BatteryLevel, ts))
-	objects = append(objects, lwm2m.NewTemperature(deviceID, d.Temperature, ts))
+	d := lwm2m.NewDevice(deviceID, ts)
+	bat := int(p.BatteryLevel)
+	d.BatteryLevel = &bat
+	objects = append(objects, d)
+
+	objects = append(objects, lwm2m.NewTemperature(deviceID, p.Temperature, ts))
 
 	return objects
 }

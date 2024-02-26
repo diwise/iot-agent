@@ -24,8 +24,8 @@ func TestEnviotDecoder(t *testing.T) {
 	humidity, _ := objects[1].(lwm2m.Humidity)
 	is.Equal(humidity.SensorValue, float64(85))
 
-	battery, _ := objects[2].(lwm2m.Battery)
-	is.Equal(battery.BatteryLevel, int(86))
+	battery, _ := objects[2].(lwm2m.Device)
+	is.Equal(*battery.BatteryLevel, int(86))
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {

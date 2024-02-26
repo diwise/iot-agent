@@ -19,13 +19,13 @@ func TestElsysCO2Decoder(t *testing.T) {
 	ue, _ := application.ChirpStack([]byte(elsysCO2))
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
-	
+
 	is.Equal(len(objects), 5)
 }
 
 func TestElsysTemperatureDecoder(t *testing.T) {
 	is, _ := testSetup(t)
-	
+
 	ue, _ := application.ChirpStack([]byte(elsysTemp))
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
@@ -40,7 +40,6 @@ func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is.NoErr(err)
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
-
 
 	is.NoErr(err)
 	is.Equal(len(objects), 4)
@@ -69,7 +68,7 @@ func TestDecodeElsysPayload(t *testing.T) {
 	j, err := json.Marshal(singlePack)
 	is.NoErr(err)
 
-	is.Equal(string(j), `[{"bn":"devId/3303/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":7.5},{"bn":"devId/3304/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3304"},{"n":"5700","u":"%RH","v":84},{"bn":"devId/3411/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3411"},{"n":"1","u":"%","v":0},{"n":"3","u":"V","v":3.642},{"bn":"devId/3200/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":false}]`)
+	is.Equal(string(j), `[{"bn":"devId/3303/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":7.5},{"bn":"devId/3304/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3304"},{"n":"5700","u":"%RH","v":84},{"bn":"devId/3/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3"},{"n":"7","u":"mV","v":3642},{"bn":"devId/3200/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":false}]`)
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {

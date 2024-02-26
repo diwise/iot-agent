@@ -32,7 +32,10 @@ func convertToLwm2mObjects(deviceID string, p MilesightPayload, ts time.Time) []
 	objects := []lwm2m.Lwm2mObject{}
 
 	if p.Battery != nil {
-		objects = append(objects, lwm2m.NewBattery(deviceID, *p.Battery, ts))
+		d := lwm2m.NewDevice(deviceID, ts)
+		bat := int(*p.Battery)
+		d.BatteryLevel = &bat
+		objects = append(objects, d)
 	}
 
 	if p.CO2 != nil {

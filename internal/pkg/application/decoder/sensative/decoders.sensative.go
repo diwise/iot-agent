@@ -58,7 +58,10 @@ func convertToLwm2mObjects(deviceID string, p SensativePayload, ts time.Time) []
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
 	if p.BatteryLevel != nil {
-		objects = append(objects, lwm2m.NewBattery(deviceID, *p.BatteryLevel, ts))
+		d := lwm2m.NewDevice(deviceID, ts)
+		bat := int(*p.BatteryLevel)
+		d.BatteryLevel = &bat		
+		objects = append(objects, d)
 	}
 
 	if p.Temperature != nil {

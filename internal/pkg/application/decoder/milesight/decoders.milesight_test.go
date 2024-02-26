@@ -19,8 +19,8 @@ func TestMilesightAM100Decoder(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(objects[0].ID(), "devid")
 
-	b, _ := objects[0].(lwm2m.Battery)
-	is.Equal(b.BatteryLevel, int(89))
+	b, _ := objects[0].(lwm2m.Device)
+	is.Equal(*b.BatteryLevel, int(89))
 
 	co2, _ := objects[1].(lwm2m.AirQuality)
 	is.Equal(*co2.CO2, float64(886))

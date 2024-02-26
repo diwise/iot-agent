@@ -48,7 +48,7 @@ func TestIsEqual(t *testing.T) {
 	is.True(!IsEqual(r1, r2))
 }
 
-func TestDiff(t *testing.T){
+func TestDiff(t *testing.T) {
 	is := is.New(t)
 
 	ts := time.Now()
