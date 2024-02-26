@@ -91,7 +91,10 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			case "W":
 				object = lwm2m.NewPower(id, value, time.Now().UTC())
 			case "%":
-				object = lwm2m.NewBattery(id, int(value), time.Now().UTC())
+				bat := int(value)
+				obj := lwm2m.NewDevice(id, time.Now().UTC())
+				obj.BatteryLevel = &bat
+				object = obj
 			default:
 				log.Warn("unknown unit", "unit", d.Unit)
 			}
