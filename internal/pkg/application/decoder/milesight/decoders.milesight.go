@@ -17,6 +17,7 @@ type MilesightPayload struct {
 	Distance    *float64
 	Humidity    *float64
 	Temperature *float64
+	Position    *string
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
@@ -55,6 +56,8 @@ func convertToLwm2mObjects(deviceID string, p MilesightPayload, ts time.Time) []
 		objects = append(objects, lwm2m.NewTemperature(deviceID, *p.Temperature, ts))
 	}
 
+	//TODO: Position
+
 	return objects
 }
 
@@ -64,15 +67,17 @@ func decode(b []byte) (MilesightPayload, error) {
 	numberOfBytes := len(b)
 
 	const (
-		Battery     uint16 = 373  // 0x0175
-		CO2         uint16 = 1917 // 0x077D
-		Distance    uint16 = 898  // 0x0382
-		Humidity    uint16 = 1128 // 0x0468
-		Temperature uint16 = 871  // 0x0367
+		Battery       uint16 = 373  // 0x0175
+		CO2           uint16 = 1917 // 0x077D
+		Distance      uint16 = 898  // 0x0382
+		Humidity      uint16 = 1128 // 0x0468
+		Temperature   uint16 = 871  // 0x0367
+		DistanceEM400 uint16 = 1154 // 0x482
+		Position      uint16 = 1280 //0x500
 	)
 
 	data_length := map[uint16]int{
-		Battery: 1, CO2: 2, Distance: 2, Humidity: 1, Temperature: 2,
+		Battery: 1, CO2: 2, Distance: 2, Humidity: 1, Temperature: 2, DistanceEM400: 2, Position: 1,
 	}
 
 	rangeCheck := func(atPos, numBytes int) bool {
@@ -119,6 +124,18 @@ func decode(b []byte) (MilesightPayload, error) {
 		case Temperature:
 			t := float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0
 			p.Temperature = &t
+
+		case DistanceEM400:
+			millimeters := float64(binary.LittleEndian.Uint16(b[pos : pos+2]))
+			// convert distance to meters
+			meters := millimeters / 1000.0
+			p.Distance = &meters
+		case Position:
+			position := "normal"
+			if float32(b[pos]) == 1 {
+				position = "tilt"
+			}
+			p.Position = &position
 		default:
 			return p, fmt.Errorf("unknown channel header %X", channel_header)
 		}

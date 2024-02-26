@@ -45,6 +45,20 @@ func TestMilesightEM500Decoder(t *testing.T) {
 	is.Equal(d.SensorValue, float64(5.0))
 }
 
+func TestMilesightDecoderEM400TLD(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ue, _ := application.ChirpStack([]byte(data_em400))
+	objects, err := Decoder(context.Background(), "devid", ue)
+	is.NoErr(err)
+	is.Equal(objects[0].ID(), "devid")
+
+	device, _ := objects[0].(lwm2m.Device)
+	is.Equal(*device.BatteryLevel, 98)
+	distance, _ := objects[1].(lwm2m.Distance)
+	is.Equal(distance.SensorValue, float64(0.267))
+}
+
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
 	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -94,5 +108,30 @@ const data_em500 string = `{
 	"object":
 	{
 		"distance":5000
+	}
+}`
+
+const data_em400 string = `{
+	"applicationID":"71",
+	"applicationName":"ncksalnckls",
+	"deviceName":"EM400_TLD",
+	"deviceProfileName":"Milesight EM400",
+	"deviceProfileID":"f865a295-3d90-424e-967c-133c35d5594c",
+	"devEUI":"24e124126d154397",
+	"txInfo":
+	{
+		"frequency":868100000,
+		"dr":5
+	},
+	"adr":true,
+	"fCnt":10901,
+	"fPort":5,
+	"data":"AXViA2f9/wSCCwEFAAA=",
+	"object":
+	{
+		"battery": 98,
+		"distance": 267,
+		"position": "normal",
+		"temperature": -0.3
 	}
 }`
