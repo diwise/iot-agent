@@ -207,12 +207,7 @@ func (a *app) GetMeasurements(ctx context.Context, deviceID string, temprel stri
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
-	m := core.MessageReceived{
-		Device:    deviceID,
-		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
-		Pack:      pack,
-	}
-
+	m := core.NewMessageReceived(pack)
 	a.msgCtx.SendCommandTo(ctx, &m, "iot-core")
 
 	return nil

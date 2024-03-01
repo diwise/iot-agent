@@ -25,7 +25,7 @@ func TestSenlabTPayload(t *testing.T) {
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 1)
+	pack := getPackFromSendCalls(e, 0)
 	is.True(*pack[1].Value == 6.625)
 }
 
@@ -39,7 +39,7 @@ func TestStripsPayload(t *testing.T) {
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 1)
+	pack := getPackFromSendCalls(e, 0)
 	is.Equal(pack[0].StringValue, "urn:oma:lwm2m:ext:3303")
 }
 
@@ -53,7 +53,7 @@ func TestElt2HpPayload(t *testing.T) {
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 3)
+	pack := getPackFromSendCalls(e, 0)
 	is.Equal(pack[0].StringValue, "urn:oma:lwm2m:ext:3200")
 }
 
@@ -79,13 +79,13 @@ func TestErsPayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.Equal(len(e.SendCommandToCalls()), 5) // expecting five calls since payload should produce measurement for both temperature and co2 and more...
+	is.Equal(len(e.SendCommandToCalls()), 2) // expecting five calls since payload should produce measurement for both temperature and co2 and more...
 
 	tempPack := getPackFromSendCalls(e, 0) // the first call to send is for the temperature pack.
 	is.Equal(tempPack[0].StringValue, "urn:oma:lwm2m:ext:3303")
 	is.Equal(tempPack[1].Name, "5700")
 
-	co2Pack := getPackFromSendCalls(e, 3) // the second call to send is for the co2 pack.
+	co2Pack := getPackFromSendCalls(e, 1) // the second call to send is for the co2 pack.
 
 	is.Equal(co2Pack[0].StringValue, "urn:oma:lwm2m:ext:3428")
 	is.Equal(co2Pack[1].Name, "17")
@@ -109,7 +109,7 @@ func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
 	sendCalls := e.SendCommandToCalls()
 	cmd := sendCalls[i].Command
 	m := cmd.(*iotcore.MessageReceived)
-	return m.Pack
+	return m.Pack()
 }
 
 func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messaging.MsgContextMock, *storage.StorageMock) {
