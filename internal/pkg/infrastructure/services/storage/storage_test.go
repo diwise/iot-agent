@@ -6,54 +6,38 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/qalcosonic"
-	"github.com/farshidtz/senml/v2"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/matryer/is"
 )
 
 func TestSQL(t *testing.T) {
 	// start TimescaleDB using 'docker compose -f deployments/docker-compose.yaml up'
 	// test will PASS if no DB is running
 
-	s, ctx, err := testSetup()
+	is, s, ctx, err := testSetup(t)
 	if err != nil {
 		return
 	}
 
-	var p payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	qalcosonic.Decoder(context.Background(), ue, func(ctx context.Context, pp payload.Payload) error {
-		p = pp
-		return nil
-	})
+	objects, err := qalcosonic.Decoder(context.Background(), "devID", ue)
+	is.NoErr(err)
 
-	var pack senml.Pack
-	err = conversion.Watermeter(ctx, "deviceID", p, func(p senml.Pack) error {
-		pack = p
-		return nil
-	})
+	packs := lwm2m.ToPacks(objects)
 
-	if err != nil {
-		t.Error(err)
-	}
+	err = s.Add(ctx, "devID", packs[0], time.Now())
+	is.NoErr(err)
 
-	err = s.Add(ctx, "devID", pack, time.Now())
-	if err != nil {
-		t.Error(err)
-	}
+	storedPacks, err := s.GetMeasurements(ctx, "devID", "", time.Unix(0, 0), time.Now(), 1000)
+	is.NoErr(err)
 
-	packs, err := s.GetMeasurements(ctx, "devID", "", time.Unix(0, 0), time.Now(), 1000)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(packs) == 0 {
+	if len(storedPacks) == 0 {
 		t.Fail()
 	}
 }
 
-func testSetup() (Storage, context.Context, error) {
+func testSetup(t *testing.T) (*is.I, Storage, context.Context, error) {
 	cfg := Config{
 		host:     "localhost",
 		user:     "diwise",
@@ -67,12 +51,14 @@ func testSetup() (Storage, context.Context, error) {
 
 	s, err := Connect(ctx, cfg)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	_ = s.Initialize(ctx)
 
-	return s, ctx, nil
+	is := is.New(t)
+
+	return is, s, ctx, nil
 }
 
 const qalcosonic_w1t string = `

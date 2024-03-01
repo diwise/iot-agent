@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/matryer/is"
@@ -18,7 +19,10 @@ func TestNetmore(t *testing.T) {
 	is := is.New(t)
 
 	for _, ue := range uplinkNetmore {
-		_, err := Netmore([]byte(ue))
+		se, err := Netmore([]byte(ue))
+		is.NoErr(err)
+
+		_, err = json.Marshal(se)
 		is.NoErr(err)
 	}
 }

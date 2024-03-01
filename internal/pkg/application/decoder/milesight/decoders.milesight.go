@@ -5,32 +5,65 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 )
 
-func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-
-	var decorators []payload.PayloadDecoratorFunc
-
-	decoratorAppender := func(m payload.PayloadDecoratorFunc) {
-		decorators = append(decorators, m)
-	}
-
-	if err := decodeMilesightMeasurements(ue.Data, decoratorAppender); err != nil {
-		return err
-	}
-
-	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
-	if err != nil {
-		return err
-	}
-
-	return fn(ctx, p)
+type MilesightPayload struct {
+	Battery     *int
+	CO2         *int
+	Distance    *float64
+	Humidity    *float64
+	Temperature *float64
+	Position    *string
 }
 
-func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecoratorFunc)) error {
+func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+	p, err := decode(e.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	return convertToLwm2mObjects(deviceID, p, e.Timestamp), nil
+}
+
+func convertToLwm2mObjects(deviceID string, p MilesightPayload, ts time.Time) []lwm2m.Lwm2mObject {
+	objects := []lwm2m.Lwm2mObject{}
+
+	if p.Battery != nil {
+		d := lwm2m.NewDevice(deviceID, ts)
+		bat := int(*p.Battery)
+		d.BatteryLevel = &bat
+		objects = append(objects, d)
+	}
+
+	if p.CO2 != nil {
+		co2 := float64(*p.CO2)
+		objects = append(objects, lwm2m.NewAirQuality(deviceID, co2, ts))
+	}
+
+	if p.Distance != nil {
+		objects = append(objects, lwm2m.NewDistance(deviceID, *p.Distance, ts))
+	}
+
+	if p.Humidity != nil {
+		objects = append(objects, lwm2m.NewHumidity(deviceID, *p.Humidity, ts))
+	}
+
+	if p.Temperature != nil {
+		objects = append(objects, lwm2m.NewTemperature(deviceID, *p.Temperature, ts))
+	}
+
+	//TODO: Position
+
+	return objects
+}
+
+func decode(b []byte) (MilesightPayload, error) {
+	p := MilesightPayload{}
+
 	numberOfBytes := len(b)
 
 	const (
@@ -53,12 +86,12 @@ func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecora
 
 	pos := 0
 	size := 0
+	const HeaderSize int = 2
 
 	for pos < numberOfBytes {
 
-		const HeaderSize int = 2
 		if !rangeCheck(pos, HeaderSize) {
-			return errors.New("range check failed before trying to read channel header")
+			return p, errors.New("range check failed before trying to read channel header")
 		}
 
 		channel_header := binary.BigEndian.Uint16(b[pos : pos+HeaderSize])
@@ -66,42 +99,49 @@ func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecora
 
 		var ok bool
 		if size, ok = data_length[channel_header]; !ok {
-			return fmt.Errorf("unknown channel header %X", channel_header)
+			return p, fmt.Errorf("unknown channel header %X", channel_header)
 		}
 
 		if !rangeCheck(pos, size) {
-			return errors.New("range check failed before trying to read channel value")
+			return p, errors.New("range check failed before trying to read channel value")
 		}
 
 		switch channel_header {
 		case Battery:
-			callback(payload.BatteryLevel(int(b[pos])))
+			b := int(b[pos])
+			p.Battery = &b
 		case CO2:
-			callback(payload.CO2(int(binary.LittleEndian.Uint16(b[pos : pos+2]))))
+			co2 := int(binary.LittleEndian.Uint16(b[pos : pos+2]))
+			p.CO2 = &co2
 		case Distance:
 			millimeters := float64(binary.LittleEndian.Uint16(b[pos : pos+2]))
+			meters := millimeters / 1000.0
 			// convert distance to meters
-			callback(payload.Distance(millimeters / 1000.0))
+			p.Distance = &meters
 		case Humidity:
-			callback(payload.Humidity(float32(b[pos]) / 2.0))
+			h := float64(b[pos]) / 2.0
+			p.Humidity = &h
 		case Temperature:
-			callback(payload.Temperature(float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0))
+			t := float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0
+			p.Temperature = &t
+
 		case DistanceEM400:
 			millimeters := float64(binary.LittleEndian.Uint16(b[pos : pos+2]))
 			// convert distance to meters
-			callback(payload.Distance(millimeters / 1000.0))
+			meters := millimeters / 1000.0
+			p.Distance = &meters
 		case Position:
-			p := "normal"
+			position := "normal"
 			if float32(b[pos]) == 1 {
-				p = "tilt"
+				position = "tilt"
 			}
-			callback(payload.Position(p))
+			p.Position = &position
 		default:
-			return fmt.Errorf("unknown channel header %X", channel_header)
+			return p, fmt.Errorf("unknown channel header %X", channel_header)
 		}
 
 		pos = pos + size
 	}
 
-	return nil
+	return p, nil
 }

@@ -7,82 +7,56 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
 func TestMilesightAM100Decoder(t *testing.T) {
 	is, _ := testSetup(t)
-
-	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(data_am100))
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
 
+	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "24e124725c140542")
+	is.Equal(objects[0].ID(), "devid")
 
-	blvl, ok := payload.Get[int](r, payload.BatteryLevelProperty)
-	is.True(ok)
-	is.Equal(blvl, 89)
+	b, _ := objects[0].(lwm2m.Device)
+	is.Equal(*b.BatteryLevel, int(89))
 
-	co2, ok := payload.Get[int](r, payload.CO2Property)
-	is.True(ok)
-	is.Equal(co2, 886)
+	co2, _ := objects[1].(lwm2m.AirQuality)
+	is.Equal(*co2.CO2, float64(886))
 
-	hlvl, ok := payload.Get[float32](r, payload.HumidityProperty)
-	is.True(ok)
-	is.Equal(hlvl, float32(29))
+	h, _ := objects[2].(lwm2m.Humidity)
+	is.Equal(h.SensorValue, float64(29))
 
-	templvl, ok := payload.Get[float64](r, payload.TemperatureProperty)
-	is.True(ok)
-	is.Equal(templvl, float64(22.3))
+	tmp, _ := objects[3].(lwm2m.Temperature)
+	is.Equal(tmp.SensorValue, float64(22.3))
 }
 
 func TestMilesightEM500Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(data_em500))
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
 
+	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "24e124126d154397")
+	is.Equal(objects[0].ID(), "devid")
 
-	distance, ok := payload.Get[float64](r, payload.DistanceProperty)
-	is.True(ok)
-	is.Equal(distance, float64(5.0))
+	d, _ := objects[0].(lwm2m.Distance)
+	is.Equal(d.SensorValue, float64(5.0))
 }
 
 func TestMilesightDecoderEM400TLD(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(data_em400))
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
-
+	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "24e124126d154397")
+	is.Equal(objects[0].ID(), "devid")
 
-	distance, ok := payload.Get[float64](r, payload.DistanceProperty)
-	is.True(ok)
-	is.Equal(distance, float64(0.267))
-
-	battery, ok := payload.Get[int](r, payload.BatteryLevelProperty)
-	is.True(ok)
-	is.Equal(battery, 98)
-
-	position, ok := payload.Get[string](r, payload.PositionProperty)
-	is.True(ok)
-	is.Equal("normal", position)
+	device, _ := objects[0].(lwm2m.Device)
+	is.Equal(*device.BatteryLevel, 98)
+	distance, _ := objects[1].(lwm2m.Distance)
+	is.Equal(distance.SensorValue, float64(0.267))
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {

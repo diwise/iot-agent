@@ -23,7 +23,6 @@ type decoderRegistry struct {
 }
 
 func NewDecoderRegistry() DecoderRegistry {
-
 	Decoders := map[string]MessageDecoderFunc{
 		"cube02":           sensefarm.Decoder, // deprecated, use sensefarm
 		"elsys":            elsys.Decoder,

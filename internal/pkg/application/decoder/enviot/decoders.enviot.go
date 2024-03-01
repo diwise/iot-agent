@@ -4,51 +4,57 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 )
 
-func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-	obj := struct {
-		Payload struct {
-			Battery      *int     `json:"battery,omitempty"`
-			Humidity     *float32 `json:"humidity,omitempty"`
-			SensorStatus int      `json:"sensorStatus"`
-			SnowHeight   *int     `json:"snowHeight,omitempty"`
-			Temperature  *float32 `json:"temperature,omitempty"`
-		} `json:"payload"`
-	}{}
+type EnviotPayload struct {
+	Payload struct {
+		Battery      *int     `json:"battery,omitempty"`
+		Humidity     *float32 `json:"humidity,omitempty"`
+		SensorStatus int      `json:"sensorStatus"`
+		SnowHeight   *int     `json:"snowHeight,omitempty"`
+		Temperature  *float32 `json:"temperature,omitempty"`
+	} `json:"payload"`
+}
 
-	err := json.Unmarshal(ue.Object, &obj)
+func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+	obj := EnviotPayload{}
+
+	err := json.Unmarshal(e.Object, &obj)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
+		return nil, fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
 	}
 
-	var decorators []payload.PayloadDecoratorFunc
+	return convertToLwm2mObjects(deviceID, obj, e.Timestamp), nil
+}
 
-	if obj.Payload.Temperature != nil {
-		decorators = append(decorators, payload.Temperature(float64(*obj.Payload.Temperature)))
+func convertToLwm2mObjects(deviceID string, p EnviotPayload, ts time.Time) []lwm2m.Lwm2mObject {
+	objects := []lwm2m.Lwm2mObject{}
+
+	if p.Payload.Temperature != nil {
+		objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Payload.Temperature), ts))
 	}
 
-	if obj.Payload.Battery != nil {
-		decorators = append(decorators, payload.BatteryLevel(*obj.Payload.Battery))
+	if p.Payload.Humidity != nil {
+		objects = append(objects, lwm2m.NewHumidity(deviceID, float64(*p.Payload.Humidity), ts))
 	}
 
-	if obj.Payload.Humidity != nil {
-		decorators = append(decorators, payload.Humidity(*obj.Payload.Humidity))
+	if p.Payload.Battery != nil {
+		d := lwm2m.NewDevice(deviceID, ts)
+		bl := int(*p.Payload.Battery)
+		d.BatteryLevel = &bl
+		objects = append(objects, d)
 	}
 
-	if obj.Payload.SensorStatus == 0 && obj.Payload.SnowHeight != nil {
-		decorators = append(decorators, payload.SnowHeight(*obj.Payload.SnowHeight))
+	if p.Payload.SensorStatus == 0 && p.Payload.SnowHeight != nil {
+		applicationType := "SnowHeight"
+		d := lwm2m.NewDistance(deviceID, float64(*p.Payload.SnowHeight), ts)
+		d.ApplicationType = &applicationType
+		objects = append(objects, d)
 	}
 
-	decorators = append(decorators, payload.Status(uint8(obj.Payload.SensorStatus), nil))
-
-	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
-	if err != nil {
-		return err
-	}
-
-	return fn(ctx, p)
+	return objects
 }

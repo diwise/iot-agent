@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
@@ -41,13 +40,11 @@ func main() {
 	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
 	storage := createStorageOrDie(ctx)
 
-	msgCfg := messaging.LoadConfiguration(ctx, serviceName, logger)
-	initMsgCtx := func() (messaging.MsgContext, error) {
-		return messaging.Initialize(ctx, msgCfg)
-	}
+	msgCtx := createMessagingContextOrDie(ctx)
+	defer msgCtx.Close()
 
 	facade := env.GetVariableOrDefault(ctx, "APPSERVER_FACADE", "chirpstack")
-	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, initMsgCtx, storage)
+	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, msgCtx, storage)
 
 	if err != nil {
 		fatal(ctx, "failed to setup iot agent", err)
@@ -73,8 +70,21 @@ func main() {
 	}
 }
 
-func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.DeviceManagementClient {
+func createMessagingContextOrDie(ctx context.Context) messaging.MsgContext {
+	log := logging.GetFromContext(ctx)
 
+	msgCfg := messaging.LoadConfiguration(ctx, serviceName, log)
+	msgCtx, err := messaging.Initialize(ctx, msgCfg)
+	if err != nil {
+		fatal(ctx, "failed to initialize messaging context", err)
+	}
+
+	msgCtx.Start()
+
+	return msgCtx
+}
+
+func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.DeviceManagementClient {
 	dmURL := env.GetVariableOrDie(ctx, "DEV_MGMT_URL", "url to iot-device-mgmt")
 	tokenURL := env.GetVariableOrDie(ctx, "OAUTH2_TOKEN_URL", "a valid oauth2 token URL")
 	clientID := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_ID", "a valid oauth2 client id")
@@ -119,11 +129,7 @@ func createStorageOrDie(ctx context.Context) storage.Storage {
 	return s
 }
 
-func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, initMsgCtx func() (messaging.MsgContext, error), storage storage.Storage) (api.API, error) {
-
-	sender := events.NewSender(ctx, initMsgCtx)
-	sender.Start()
-
+func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage) (api.API, error) {
 	policies, err := os.Open(opaFilePath)
 	if err != nil {
 		fatal(ctx, "unable to open opa policy file", err)
@@ -132,7 +138,8 @@ func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devi
 
 	createUnknownDeviceEnabled := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", "false") == "true"
 	createUnknownDeviceTenant := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", "default")
-	app := iotagent.New(dmc, sender, storage, createUnknownDeviceEnabled, createUnknownDeviceTenant)
+
+	app := iotagent.New(dmc, msgCtx, storage, createUnknownDeviceEnabled, createUnknownDeviceTenant)
 
 	r := chi.NewRouter()
 	a, err := api.New(ctx, r, facade, forwardingEndpoint, app, policies)

@@ -2,75 +2,73 @@ package elsys
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/farshidtz/senml/v2"
 	"github.com/matryer/is"
 )
 
 func TestElsysCO2Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(elsysCO2))
-	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
-		r = m
-		return nil
-	})
-
+	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "a81758fffe05e6fb")
+
+	is.Equal(len(objects), 5)
 }
 
 func TestElsysTemperatureDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(elsysTemp))
-	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
-		r = m
-		return nil
-	})
-
+	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "xxxxxxxxxxxxxx")
+
+	is.Equal(len(objects), 2)
 }
 
 func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, err := application.Netmore([]byte(elt2hp))
 	is.NoErr(err)
-	err = Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
-		r = m
-		return nil
-	})
+	objects, err := Decoder(context.Background(), "devId", ue)
+	is.NoErr(err)
 
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "a81758fffe09ec03")
+	is.Equal(len(objects), 4)
 }
 
 func TestDecodeElsysPayload(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := application.Netmore([]byte(elt2hp))
-	x := DecodeElsysPayload(ue.Data)
+	objects, err := Decoder(context.Background(), "devId", ue)
+	is.NoErr(err)
 
-	is.Equal(*x.Temperature, float32(7.5))
-	is.Equal(*x.Humidity, int8(84))
-	is.Equal(*x.VDD, uint16(3642))
-	is.Equal(*x.DigitalInput, false)
-	is.Equal(x.Pressure, float32(1006.57))
-	is.Equal(*x.DigitalInput2, false)
+	is.Equal(len(objects), 4)
 
-	ue, _ = application.Netmore([]byte(elt2hp_negTemp))
-	x = DecodeElsysPayload(ue.Data)
+	singlePack := senml.Pack{}
+	packs := lwm2m.ToPacks(objects)
+	for _, p := range packs {
+		err := p.Validate()
+		is.NoErr(err)
+		singlePack = append(singlePack, p...)
+	}
 
-	is.Equal(*x.Temperature, float32(-6.7))
+	err = singlePack.Validate()
+	is.NoErr(err)
+
+	j, err := json.Marshal(singlePack)
+	is.NoErr(err)
+
+	is.Equal(string(j), `[{"bn":"devId/3303/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":7.5},{"bn":"devId/3304/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3304"},{"n":"5700","u":"%RH","v":84},{"bn":"devId/3/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3"},{"n":"7","u":"mV","v":3642},{"bn":"devId/3200/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":false}]`)
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
