@@ -12,6 +12,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/senlabt"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/sensative"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/sensefarm"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/vegapuls"
 )
 
 type DecoderRegistry interface {
@@ -39,6 +40,7 @@ func NewDecoderRegistry() DecoderRegistry {
 		"sensefarm":        sensefarm.Decoder,
 		"strips_lora_ms_h": sensative.Decoder, // deprecated, use sensative
 		"tem_lab_14ns":     senlabt.Decoder,   // deprecated, use senlabt
+		"vegapuls_air_41":  vegapuls.Decoder,
 	}
 
 	return &decoderRegistry{
