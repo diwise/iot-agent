@@ -84,7 +84,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	if a.createUnknownDeviceEnabled && a.isDeviceUnknown(device) {
-		a.ignoreDeviceFor(ctx, devEUI, 1*time.Hour)
+		a.ignoreDeviceFor(devEUI, 1*time.Hour)
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 				continue
 			}
 
-			err := a.handleSensorMeasurementList(ctx, device.ID(), lwm2m.ToPack(obj))
+			err := a.handleSensorMeasurementList(ctx, lwm2m.ToPack(obj))
 			if err != nil {
 				log.Error("could not handle measurement", "err", err.Error())
 				errs = append(errs, err)
@@ -151,6 +151,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEven
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	deviceID = strings.ToLower(deviceID)
+	
 	log := logging.GetFromContext(ctx).With(slog.String("device_id", deviceID))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
@@ -172,7 +173,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
 
-	return a.handleSensorMeasurementList(ctx, device.ID(), pack)
+	return a.handleSensorMeasurementList(ctx, pack)
 }
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
@@ -206,7 +207,7 @@ func (a *app) GetMeasurements(ctx context.Context, deviceID string, temprel stri
 	return measurements, nil
 }
 
-func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
+func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) error {
 	m := core.NewMessageReceived(pack)
 	a.msgCtx.SendCommandTo(ctx, &m, "iot-core")
 
@@ -237,14 +238,14 @@ func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context
 
 	device, err := finder(ctx, id)
 	if err != nil {
-		a.ignoreDeviceFor(ctx, id, 1*time.Hour)
+		a.ignoreDeviceFor(id, 1*time.Hour)
 		return nil, fmt.Errorf("device lookup failure (%w)", err)
 	}
 
 	return device, nil
 }
 
-func (a *app) ignoreDeviceFor(ctx context.Context, id string, period time.Duration) {
+func (a *app) ignoreDeviceFor(id string, period time.Duration) {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
 
