@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/farshidtz/senml/v2"
+	"github.com/diwise/senml"
 	"github.com/matryer/is"
 )
 

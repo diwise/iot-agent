@@ -5,7 +5,7 @@ package storage
 
 import (
 	"context"
-	"github.com/farshidtz/senml/v2"
+	"github.com/diwise/senml"
 	"sync"
 	"time"
 )

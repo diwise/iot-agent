@@ -11,7 +11,8 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
-	"github.com/farshidtz/senml/v2"
+	"github.com/diwise/senml"
+
 	"github.com/matryer/is"
 )
 

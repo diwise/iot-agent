@@ -20,7 +20,8 @@ import (
 	"github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/farshidtz/senml/v2"
+	"github.com/diwise/senml"
+
 	"github.com/google/uuid"
 )
 

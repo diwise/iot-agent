@@ -11,7 +11,7 @@ import (
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
 	"github.com/diwise/messaging-golang/pkg/messaging"
-	"github.com/farshidtz/senml/v2"
+	"github.com/diwise/senml"
 	"github.com/matryer/is"
 )
 
@@ -109,7 +109,7 @@ func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
 	sendCalls := e.SendCommandToCalls()
 	cmd := sendCalls[i].Command
 	m := cmd.(*iotcore.MessageReceived)
-	return m.Pack()
+	return m.Pack
 }
 
 func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messaging.MsgContextMock, *storage.StorageMock) {
