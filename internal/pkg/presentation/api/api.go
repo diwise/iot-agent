@@ -168,7 +168,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 			return
 		}
 
-		deviceID := pack[0].StringValue
+		deviceID := getDeviceID(pack)
 		err = a.app.HandleSensorMeasurementList(ctx, deviceID, pack)
 
 		if err != nil {
@@ -179,6 +179,14 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 
 		w.WriteHeader(http.StatusCreated)
 	}
+}
+
+func getDeviceID(m senml.Pack) string {
+	r, ok := m.GetRecord(senml.FindByName("0"))
+	if !ok {
+		return ""
+	}
+	return strings.Split(r.Name, "/")[0]
 }
 
 func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
