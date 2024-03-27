@@ -3,10 +3,12 @@ package elsys
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type ElsysPayload struct {
@@ -47,10 +49,10 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		json.Unmarshal(e.Object, &p)
 	}
 
-	return convertToLwm2mObjects(deviceID, p, e.Timestamp), nil
+	return convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp), nil
 }
 
-func convertToLwm2mObjects(deviceID string, p ElsysPayload, ts time.Time) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	if p.Temperature != nil {
@@ -97,6 +99,8 @@ func convertToLwm2mObjects(deviceID string, p ElsysPayload, ts time.Time) []lwm2
 
 		objects = append(objects, di)
 	}
+
+	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
 }

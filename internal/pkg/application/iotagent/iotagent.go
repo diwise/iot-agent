@@ -19,8 +19,8 @@ import (
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/messaging-golang/pkg/messaging"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/senml"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 
 	"github.com/google/uuid"
 )
@@ -64,7 +64,10 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store stor
 
 func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent) error {
 	devEUI := strings.ToLower(se.DevEui)
-	log := logging.GetFromContext(ctx).With(slog.String("devEui", devEUI))
+
+	log := logging.GetFromContext(ctx)
+	log = log.With(slog.String("devEUI", devEUI))
+
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	device, err := a.findDevice(ctx, devEUI, a.deviceManagementClient.FindDeviceFromDevEUI)
@@ -107,26 +110,27 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		return err
 	}
 
-	if device.IsActive() {
-		var errs []error
-		for _, obj := range objects {
-			if !slices.Contains(device.Types(), obj.ObjectURN()) {
-				continue
-			}
-
-			err := a.handleSensorMeasurementList(ctx, lwm2m.ToPack(obj))
-			if err != nil {
-				log.Error("could not handle measurement", "err", err.Error())
-				errs = append(errs, err)
-				continue
-			}
-		}
-		return errors.Join(errs...)
-	} else {
-		log.Warn("ignored message from inactive device")
+	if !device.IsActive() {
+		log.Debug("ignored message from inactive device")
+		return nil
 	}
 
-	return nil
+	var errs []error
+	for _, obj := range objects {
+		if !slices.Contains(device.Types(), obj.ObjectURN()) {
+			log.Debug("skip object since device should not handle object type", slog.String("object_type", obj.ObjectURN()))
+			continue
+		}
+
+		err := a.handleSensorMeasurementList(ctx, lwm2m.ToPack(obj))
+		if err != nil {
+			log.Error("could not handle measurement", "err", err.Error())
+			errs = append(errs, err)
+			continue
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func (a *app) isDeviceUnknown(device dmc.Device) bool {
@@ -152,7 +156,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEven
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	deviceID = strings.ToLower(deviceID)
-	
+
 	log := logging.GetFromContext(ctx).With(slog.String("device_id", deviceID))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
@@ -209,15 +213,21 @@ func (a *app) GetMeasurements(ctx context.Context, deviceID string, temprel stri
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) error {
+	log := logging.GetFromContext(ctx)
 	m := core.NewMessageReceived(pack)
-	a.msgCtx.SendCommandTo(ctx, &m, "iot-core")
+
+	err := a.msgCtx.SendCommandTo(ctx, &m, "iot-core")
+	if err != nil {
+		log.Error("could not send message.received to iot-core", "err", err.Error())
+		return err
+	}
 
 	return nil
 }
 
 var errDeviceOnBlackList = errors.New("blacklisted")
 
-func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, id string) bool {
+func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
 
@@ -253,7 +263,7 @@ func (a *app) ignoreDeviceFor(id string, period time.Duration) {
 	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, l lwm2m.Lwm2mObject) {
+func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, _ lwm2m.Lwm2mObject) {
 	log := logging.GetFromContext(ctx)
 
 	msg := &StatusMessage{
@@ -272,6 +282,8 @@ func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, l 
 	if err != nil {
 		log.Error("failed to publish status message", "err", err.Error())
 	}
+
+	log.Debug("status message sent")
 }
 
 type StatusMessage struct {

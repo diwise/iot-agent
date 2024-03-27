@@ -6,10 +6,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type SensefarmPayload struct {
@@ -34,10 +36,10 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
-	return convertToLwm2mObjects(deviceID, psf, e.Timestamp), nil
+	return convertToLwm2mObjects(ctx, deviceID, psf, e.Timestamp), nil
 }
 
-func convertToLwm2mObjects(deviceID string, psf SensefarmPayload, ts time.Time) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, psf SensefarmPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
 	objects = append(objects, lwm2m.NewTemperature(deviceID, float64(psf.Temperature), ts))
@@ -54,6 +56,8 @@ func convertToLwm2mObjects(deviceID string, psf SensefarmPayload, ts time.Time) 
 	for _, sm := range psf.SoilMoistures {
 		objects = append(objects, lwm2m.NewPressure(deviceID, float64(sm*1000), ts))
 	}
+
+	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
 }

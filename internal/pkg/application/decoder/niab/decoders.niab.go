@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type NiabPayload struct {
@@ -23,15 +25,15 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
-	return convertToLwm2mObjects(deviceID, p, e.Timestamp), nil
+	return convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp), nil
 }
 
-func convertToLwm2mObjects(deviceID string, p NiabPayload, ts time.Time) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p NiabPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	d := lwm2m.NewDevice(deviceID, ts)
 	bat := int(p.Battery)
-	d.BatteryLevel = &bat	
+	d.BatteryLevel = &bat
 	objects = append(objects, d)
 
 	objects = append(objects, lwm2m.NewTemperature(deviceID, p.Temperature, ts))
@@ -39,6 +41,8 @@ func convertToLwm2mObjects(deviceID string, p NiabPayload, ts time.Time) []lwm2m
 	if p.Distance != nil {
 		objects = append(objects, lwm2m.NewDistance(deviceID, *p.Distance, ts))
 	}
+
+	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
 }

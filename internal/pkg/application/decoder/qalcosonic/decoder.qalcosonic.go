@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"log/slog"
 	"strings"
 
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
@@ -40,10 +42,10 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
-	return convertToLwm2mObjects(deviceID, p, ap), nil
+	return convertToLwm2mObjects(ctx, deviceID, p, ap), nil
 }
 
-func convertToLwm2mObjects(deviceID string, p *QalcosonicPayload, ap *AlarmPacketPayload) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPayload, ap *AlarmPacketPayload) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	contains := func(strs []string, s string) *bool {
@@ -90,6 +92,8 @@ func convertToLwm2mObjects(deviceID string, p *QalcosonicPayload, ap *AlarmPacke
 			})
 		}
 	*/
+	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
+
 	return objects
 }
 

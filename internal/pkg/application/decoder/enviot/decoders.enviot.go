@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type EnviotPayload struct {
@@ -28,10 +30,10 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
 	}
 
-	return convertToLwm2mObjects(deviceID, obj, e.Timestamp), nil
+	return convertToLwm2mObjects(ctx, deviceID, obj, e.Timestamp), nil
 }
 
-func convertToLwm2mObjects(deviceID string, p EnviotPayload, ts time.Time) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p EnviotPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	if p.Payload.Temperature != nil {
@@ -55,6 +57,8 @@ func convertToLwm2mObjects(deviceID string, p EnviotPayload, ts time.Time) []lwm
 		d.ApplicationType = &applicationType
 		objects = append(objects, d)
 	}
+
+	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
 }

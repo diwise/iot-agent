@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type SensativePayload struct {
@@ -31,7 +33,7 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
-	objects := convertToLwm2mObjects(deviceID, p, e.Timestamp)
+	objects := convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp)
 
 	if len(objects) == 0 {
 		checkIn := struct {
@@ -54,13 +56,13 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 	return objects, nil
 }
 
-func convertToLwm2mObjects(deviceID string, p SensativePayload, ts time.Time) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p SensativePayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
 	if p.BatteryLevel != nil {
 		d := lwm2m.NewDevice(deviceID, ts)
 		bat := int(*p.BatteryLevel)
-		d.BatteryLevel = &bat		
+		d.BatteryLevel = &bat
 		objects = append(objects, d)
 	}
 
@@ -91,6 +93,8 @@ func convertToLwm2mObjects(deviceID string, p SensativePayload, ts time.Time) []
 	if p.Presence != nil {
 		objects = append(objects, lwm2m.NewPresence(deviceID, *p.Presence, ts))
 	}
+
+	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
 }

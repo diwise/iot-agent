@@ -11,6 +11,14 @@ import (
 	"github.com/diwise/senml"
 )
 
+func DeviceID(p senml.Pack) string {
+	r, ok := p.GetRecord(senml.FindByName("0"))
+	if !ok {
+		return ""
+	}
+	return strings.Split(r.Name, "/")[0]
+}
+
 type Lwm2mObject interface {
 	ID() string
 	ObjectID() string
