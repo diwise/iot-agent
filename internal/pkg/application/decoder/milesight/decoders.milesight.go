@@ -3,93 +3,156 @@ package milesight
 import (
 	"context"
 	"encoding/binary"
-	"errors"
-	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
-func Decoder(ctx context.Context, ue application.SensorEvent, fn func(context.Context, payload.Payload) error) error {
-
-	var decorators []payload.PayloadDecoratorFunc
-
-	decoratorAppender := func(m payload.PayloadDecoratorFunc) {
-		decorators = append(decorators, m)
-	}
-
-	if err := decodeMilesightMeasurements(ue.Data, decoratorAppender); err != nil {
-		return err
-	}
-
-	p, err := payload.New(ue.DevEui, ue.Timestamp, decorators...)
-	if err != nil {
-		return err
-	}
-
-	return fn(ctx, p)
+type MilesightPayload struct {
+	Battery     *int
+	CO2         *int
+	Distance    *float64
+	Humidity    *float64
+	Temperature *float64
+	Position    *string
 }
 
-func decodeMilesightMeasurements(b []byte, callback func(m payload.PayloadDecoratorFunc)) error {
-	numberOfBytes := len(b)
-
-	const (
-		Battery     uint16 = 373  // 0x0175
-		CO2         uint16 = 1917 // 0x077D
-		Distance    uint16 = 898  // 0x0382
-		Humidity    uint16 = 1128 // 0x0468
-		Temperature uint16 = 871  // 0x0367
-	)
-
-	data_length := map[uint16]int{
-		Battery: 1, CO2: 2, Distance: 2, Humidity: 1, Temperature: 2,
+func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+	p, err := decode(e.Data)
+	if err != nil {
+		return nil, err
 	}
 
-	rangeCheck := func(atPos, numBytes int) bool {
-		return (atPos + numBytes - 1) < numberOfBytes
+	return convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp), nil
+}
+
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p MilesightPayload, ts time.Time) []lwm2m.Lwm2mObject {
+	objects := []lwm2m.Lwm2mObject{}
+
+	if p.Battery != nil {
+		d := lwm2m.NewDevice(deviceID, ts)
+		bat := int(*p.Battery)
+		d.BatteryLevel = &bat
+		objects = append(objects, d)
 	}
 
-	pos := 0
-	size := 0
+	if p.CO2 != nil {
+		co2 := float64(*p.CO2)
+		objects = append(objects, lwm2m.NewAirQuality(deviceID, co2, ts))
+	}
 
-	for pos < numberOfBytes {
+	if p.Distance != nil {
+		objects = append(objects, lwm2m.NewDistance(deviceID, *p.Distance, ts))
+	}
 
-		const HeaderSize int = 2
-		if !rangeCheck(pos, HeaderSize) {
-			return errors.New("range check failed before trying to read channel header")
-		}
+	if p.Humidity != nil {
+		objects = append(objects, lwm2m.NewHumidity(deviceID, *p.Humidity, ts))
+	}
 
-		channel_header := binary.BigEndian.Uint16(b[pos : pos+HeaderSize])
-		pos = pos + HeaderSize
+	if p.Temperature != nil {
+		objects = append(objects, lwm2m.NewTemperature(deviceID, *p.Temperature, ts))
+	}
 
-		var ok bool
-		if size, ok = data_length[channel_header]; !ok {
-			return fmt.Errorf("unknown channel header %X", channel_header)
-		}
+	//TODO: Position
 
-		if !rangeCheck(pos, size) {
-			return errors.New("range check failed before trying to read channel value")
-		}
+	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
 
-		switch channel_header {
-		case Battery:
-			callback(payload.BatteryLevel(int(b[pos])))
-		case CO2:
-			callback(payload.CO2(int(binary.LittleEndian.Uint16(b[pos : pos+2]))))
-		case Distance:
-			millimeters := float64(binary.LittleEndian.Uint16(b[pos : pos+2]))
-			// convert distance to meters
-			callback(payload.Distance(millimeters / 1000.0))
-		case Humidity:
-			callback(payload.Humidity(float32(b[pos]) / 2.0))
-		case Temperature:
-			callback(payload.Temperature(float64(binary.LittleEndian.Uint16(b[pos:pos+2])) / 10.0))
+	return objects
+}
+
+func decode(bytes []byte) (MilesightPayload, error) {
+	m := milesightdecoder(bytes)
+
+	p := MilesightPayload{}
+
+	if bat, ok := m["battery"]; ok {
+		b := int(bat.(uint8))
+		p.Battery = &b
+	}
+
+	if temp, ok := m["temperature"]; ok {
+		t := temp.(float64)
+		p.Temperature = &t
+	}
+
+	if distance, ok := m["distance"]; ok {
+		d := float64(distance.(uint16)) / 1000 // meters
+		p.Distance = &d
+	}
+
+	if position, ok := m["position"]; ok {
+		pos := position.(string)
+		p.Position = &pos
+	}
+
+	if humidity, ok := m["humidity"]; ok {
+		h := humidity.(float64)
+		p.Humidity = &h
+	}
+
+	if co2, ok := m["co2"]; ok {
+		c := int(co2.(uint16))
+		p.CO2 = &c
+	}
+
+	return p, nil
+}
+
+func milesightdecoder(bytes []byte) map[string]any {
+	var decoded = make(map[string]any)
+	i := 0
+	for i < len(bytes) {
+		channelID := bytes[i]
+		i++
+		channelType := bytes[i]
+		i++
+		switch {
+		case channelID == 0x01 && channelType == 0x75: // BATTERY
+			decoded["battery"] = bytes[i]
+			i += 1
+		case channelID == 0x03 && channelType == 0x67: // TEMPERATURE
+			decoded["temperature"] = float64(int16(binary.LittleEndian.Uint16(bytes[i:i+2]))) / 10.0
+			i += 2
+		case channelID == 0x03 && channelType == 0x82: // DISTANCE (EM500UDL)
+			decoded["distance"] = binary.LittleEndian.Uint16(bytes[i : i+2])
+			i += 2
+		case channelID == 0x04 && channelType == 0x82: // DISTANCE
+			decoded["distance"] = binary.LittleEndian.Uint16(bytes[i : i+2])
+			i += 2
+		case channelID == 0x05 && channelType == 0x00: // POSITION
+			if bytes[i] == 0 {
+				decoded["position"] = "normal"
+			} else {
+				decoded["position"] = "tilt"
+			}
+			i += 1
+		case channelID == 0x83 && channelType == 0x67: // TEMPERATURE WITH ABNORMAL
+			decoded["temperature"] = float64(int16(binary.LittleEndian.Uint16(bytes[i:i+2]))) / 10.0
+			decoded["temperature_abnormal"] = bytes[i+2] != 0
+			i += 3
+		case channelID == 0x84 && channelType == 0x82: // DISTANCE WITH ALARMING
+			decoded["distance"] = binary.LittleEndian.Uint16(bytes[i : i+2])
+			decoded["distance_alarming"] = bytes[i+2] != 0
+			i += 3
+		case channelID == 0x04 && channelType == 0x68: // HUMIDITY
+			decoded["humidity"] = float64(bytes[i]) / 2.0
+			i++
+		case channelID == 0x05 && channelType == 0x6a: // PIR (Activity)
+			decoded["activity"] = binary.LittleEndian.Uint16(bytes[i : i+2])
+			i += 2
+		case channelID == 0x06 && channelType == 0x65: // LIGHT
+			decoded["illumination"] = binary.LittleEndian.Uint16(bytes[i : i+2])
+			decoded["infrared_and_visible"] = binary.LittleEndian.Uint16(bytes[i+2 : i+4])
+			decoded["infrared"] = binary.LittleEndian.Uint16(bytes[i+4 : i+6])
+			i += 6
+		case channelID == 0x07 && channelType == 0x7d: // CO2
+			decoded["co2"] = binary.LittleEndian.Uint16(bytes[i : i+2])
+			i += 2
 		default:
-			return fmt.Errorf("unknown channel header %X", channel_header)
 		}
-
-		pos = pos + size
 	}
-
-	return nil
+	return decoded
 }

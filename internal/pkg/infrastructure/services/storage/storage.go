@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/farshidtz/senml/v2"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

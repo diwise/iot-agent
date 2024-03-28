@@ -2,6 +2,7 @@ package qalcosonic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -9,111 +10,88 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/senml"
+
 	"github.com/matryer/is"
 )
 
 func TestQalcosonic_w1t(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
+	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
-	is.True(r != nil)
-	is.Equal("116c52b4274f", r.DevEui())
-	temp, _ := payload.Get[float64](r, payload.TemperatureProperty)
-	is.Equal(float64(2578), temp)
-	timestamp, _ := payload.Get[time.Time](r, payload.TimestampProperty)
-	is.Equal(timestamp, toT("2020-09-09T12:32:21Z"))            // time for reading
-	is.Equal(r.Timestamp(), toT("2022-08-25T07:35:21.834484Z")) // time from gateway
-	volumes, _ := payload.GetSlice[struct {
-		Volume    float64
-		Cumulated float64
-		Time      time.Time
-	}](r, payload.VolumeProperty)
-	is.Equal(16, len(volumes))
-	is.Equal(float64(0), volumes[0].Volume)
-	is.Equal(float64(284554), volumes[0].Cumulated)
-	is.Equal(float64(volumes[0].Cumulated+volumes[1].Volume), volumes[1].Cumulated)
-	is.Equal(volumes[0].Time, toT("2020-09-08T22:00:00Z"))
+	is.True(p != nil)
+	is.True(ap == nil)
+
+	is.Equal(*p.Temperature, uint16(2578))
+	is.Equal(15, len(p.Deltas))
 }
 
 func TestQalcosonic_w1h(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.Netmore([]byte(qalcosonic_w1h))
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
+	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "116c52b4274f")
-	is.Equal(r.Status().Code, 48)
-	timestamp, _ := payload.Get[time.Time](r, payload.TimestampProperty)
-	is.Equal(timestamp, toT("2020-05-29T07:51:59Z")) // time for reading
-	volumes, _ := payload.GetSlice[struct {
-		Volume    float64
-		Cumulated float64
-		Time      time.Time
-	}](r, payload.VolumeProperty)
-	is.Equal(24, len(volumes))
-	is.Equal(float64(0), volumes[0].Volume)
-	is.Equal(float64(528333), volumes[0].Cumulated)
-	is.Equal(float64(volumes[0].Cumulated+volumes[1].Volume), volumes[1].Cumulated)
-	is.Equal(volumes[0].Time, toT("2020-05-28T01:00:00Z"))
+	is.True(ap == nil)
+
+	is.Equal(24, len(p.Deltas))
+	is.Equal(uint8(48), p.StatusCode)
 }
 
 func TestQalcosonic_w1e(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
-
 	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
+	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
-	is.Equal(r.DevEui(), "116c52b4274f")
-	is.Equal(r.Status().Code, 0x30)
-	timestamp, _ := payload.Get[time.Time](r, payload.TimestampProperty)
-	is.Equal(timestamp, toT("2019-07-22T11:37:50Z")) // time for reading
-	volumes, _ := payload.GetSlice[struct {
-		Volume    float64
-		Cumulated float64
-		Time      time.Time
-	}](r, payload.VolumeProperty)
-	is.Equal(17, len(volumes))
-	is.Equal(float64(0), volumes[0].Volume)
-	is.Equal(float64(10727), volumes[0].Cumulated)
-	is.Equal(float64(volumes[0].Cumulated+volumes[1].Volume), volumes[1].Cumulated)
-	is.Equal(volumes[0].Time, toT("2019-07-21T19:00:00Z"))
+	is.True(ap == nil)
+
+	is.Equal(16, len(p.Deltas))
+	is.Equal(uint8(48), p.StatusCode)
 }
 
 func TestQalcosonicAlarmMessage(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
-
 	ue, _ := application.Netmore([]byte(qalcosonicAlarmPacket))
-	err := Decoder(context.Background(), ue, func(ctx context.Context, p payload.Payload) error {
-		r = p
-		return nil
-	})
+	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
-	timestamp, _ := payload.Get[time.Time](r, payload.TimestampProperty)
-	is.Equal(timestamp, toT("2019-07-19T12:02:11Z")) // time for reading
-	is.Equal(r.Status().Code, 136)
-	is.Equal(r.Status().Messages[0], "Permanent error")
+
+	is.True(p == nil)
+	is.True(ap.StatusCode == uint8(136))
+}
+
+func TestDecode(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
+	objects, err := Decoder(context.Background(), "id", ue)
+
+	is.NoErr(err)
+	is.Equal(17, len(objects))
+
+	singlePack := senml.Pack{}
+	packs := lwm2m.ToPacks(objects)
+	for _, p := range packs {
+		err := p.Validate()
+		is.NoErr(err)
+		singlePack = append(singlePack, p...)
+	}
+
+	err = singlePack.Validate()
+	is.NoErr(err)
+	b, _ := json.Marshal(singlePack)
+
+	singlePack.Normalize()
+
+	is.Equal(len(b), 2410)
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {

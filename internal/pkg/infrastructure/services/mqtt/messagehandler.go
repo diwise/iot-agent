@@ -43,26 +43,26 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 
 			ctx, span := tracer.Start(context.Background(), "forward-message")
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
 			_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 			messageCounter.Add(ctx, 1)
-
-			log.Debug("received payload", "payload", string(payload), "topic", msg.Topic())
-
+			
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(payload))
 			if err != nil {
 				log.Error("failed to create http request", "err", err.Error())
 				return
 			}
 
-			log.Debug("forwarding received payload", "endpoint", forwardingEndpoint)
+			log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", forwardingEndpoint)
 
 			req.Header.Add("Content-Type", "application/json")
+			
 			resp, err := httpClient.Do(req)
 			if err != nil {
 				log.Error("forwarding request failed", "err", err.Error())
-			} else if resp.StatusCode != http.StatusCreated {
+			} 
+			
+			if err == nil && resp.StatusCode != http.StatusCreated {
 				err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
 				log.Error("failed to forward message", "err", err.Error())
 			}

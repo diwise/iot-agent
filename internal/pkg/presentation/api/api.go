@@ -18,10 +18,11 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/farshidtz/senml/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/riandyrn/otelchi"
 	"github.com/rs/cors"
@@ -112,9 +113,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
-
-		log.Debug("starting to process message", "body", string(msg))
-
+		
 		if r.URL.Query().Has("facade") {
 			facade = application.GetFacade(r.URL.Query().Get("facade"))
 		}
@@ -152,9 +151,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
-
-		log.Debug("starting to process message", "body", string(msg))
-
+		
 		pack := senml.Pack{}
 		err = json.Unmarshal(msg, &pack)
 
@@ -168,7 +165,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 			return
 		}
 
-		deviceID := pack[0].StringValue
+		deviceID := lwm2m.DeviceID(pack)
 		err = a.app.HandleSensorMeasurementList(ctx, deviceID, pack)
 
 		if err != nil {
@@ -181,6 +178,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 	}
 }
 
+
 func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
@@ -190,7 +188,6 @@ func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 
 		ctx, span := tracer.Start(r.Context(), "retrieve-measurements")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		deviceID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
