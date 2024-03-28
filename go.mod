@@ -3,12 +3,12 @@ module github.com/diwise/iot-agent
 go 1.22.0
 
 require (
-	github.com/diwise/messaging-golang v0.0.0-20240126121333-1e56bea211f9
+	github.com/diwise/messaging-golang v0.0.0-20240328100115-197aa8e3a58d
 	github.com/diwise/service-chassis v0.0.0-20240322150318-bfd966f97527
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/matryer/is v1.4.1
-	github.com/riandyrn/otelchi v0.5.1
+	github.com/riandyrn/otelchi v0.5.2
 	github.com/rs/cors v1.10.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
 	go.opentelemetry.io/otel v1.24.0
@@ -20,7 +20,7 @@ require (
 	github.com/diwise/senml v0.0.0-20240320103927-03207b97394b
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.5.5
-	github.com/open-policy-agent/opa v0.61.0
+	github.com/open-policy-agent/opa v0.62.1
 	go.opentelemetry.io/otel/metric v1.24.0
 )
 
