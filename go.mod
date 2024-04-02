@@ -8,19 +8,19 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/matryer/is v1.4.1
-	github.com/riandyrn/otelchi v0.5.2
+	github.com/riandyrn/otelchi v0.6.0
 	github.com/rs/cors v1.10.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
 	go.opentelemetry.io/otel v1.24.0
 )
 
 require (
-	github.com/diwise/iot-core v0.0.0-20240327133903-471441491b05
-	github.com/diwise/iot-device-mgmt v0.0.0-20240116090705-22302c74e598
+	github.com/diwise/iot-core v0.0.0-20240402110744-2094bbe16ee1
+	github.com/diwise/iot-device-mgmt v0.0.0-20240402110751-a06313b737f0
 	github.com/diwise/senml v0.0.0-20240320103927-03207b97394b
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.5.5
-	github.com/open-policy-agent/opa v0.62.1
+	github.com/open-policy-agent/opa v0.63.0
 	go.opentelemetry.io/otel/metric v1.24.0
 )
 
@@ -52,8 +52,8 @@ require (
 	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240325203815-454cdb8f5daa // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240325203815-454cdb8f5daa // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240401170217-c3f982113cda // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240401170217-c3f982113cda // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
@@ -68,10 +68,8 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
 	github.com/rabbitmq/amqp091-go v1.9.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	go.opentelemetry.io/contrib v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.1.0 // indirect
-	go.uber.org/goleak v1.3.0 // indirect
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
