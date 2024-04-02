@@ -7,7 +7,7 @@ import (
 	"context"
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
-	"github.com/farshidtz/senml/v2"
+	"github.com/diwise/senml"
 	"sync"
 	"time"
 )

@@ -7,27 +7,25 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
 func TestEnviotDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(enviot))
-	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
-		r = m
-		return nil
-	})
-
+	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
-	temp, _ := payload.Get[float64](r, payload.TemperatureProperty)
-	is.Equal(temp, 11.5)
-	humidity, _ := payload.Get[float32](r, payload.HumidityProperty)
-	is.Equal(humidity, float32(85))
-	batterylevel, _ := payload.Get[int](r, payload.BatteryLevelProperty)
-	is.Equal(batterylevel, 86)
+
+	temp, _ := objects[0].(lwm2m.Temperature)
+	is.Equal(temp.SensorValue, float64(11.5))
+
+	humidity, _ := objects[1].(lwm2m.Humidity)
+	is.Equal(humidity.SensorValue, float64(85))
+
+	battery, _ := objects[2].(lwm2m.Device)
+	is.Equal(*battery.BatteryLevel, int(86))
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {

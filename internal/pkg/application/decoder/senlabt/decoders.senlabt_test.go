@@ -8,48 +8,39 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
 func TestSenlabTBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.Netmore([]byte(senlabT))
-	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
-		r = m
-		return nil
-	})
 
+	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
+
 	ts, _ := time.Parse(time.RFC3339Nano, "2022-04-12T05:08:50.301732Z")
-	is.Equal(r.Timestamp(), ts)
+	is.Equal(objects[0].Timestamp(), ts)
 }
 
 func TestSenlabTTempDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	var r payload.Payload
 	ue, _ := application.ChirpStack([]byte(senlabTemp))
-	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
-		r = m
-		return nil
-	})
-
+	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
 
-	v, ok := payload.Get[float64](r, payload.TemperatureProperty)
+	v, ok := objects[1].(lwm2m.Temperature)
 	is.True(ok)
-	is.Equal(v, float64(22.375))
+	is.Equal(v.SensorValue, float64(22.375))
 }
 
 func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := application.Netmore([]byte(senlabT_sensorReadingError))
-	err := Decoder(context.Background(), ue, func(c context.Context, m payload.Payload) error {
-		return nil
-	})
+
+	_, err := Decoder(context.Background(), "devID", ue)
 
 	is.True(err != nil)
 }

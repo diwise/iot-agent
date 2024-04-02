@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/matryer/is"
@@ -18,7 +19,10 @@ func TestNetmore(t *testing.T) {
 	is := is.New(t)
 
 	for _, ue := range uplinkNetmore {
-		_, err := Netmore([]byte(ue))
+		se, err := Netmore([]byte(ue))
+		is.NoErr(err)
+
+		_, err = json.Marshal(se)
 		is.NoErr(err)
 	}
 }
@@ -49,6 +53,7 @@ var uplinkNetmore = []string{
 	`[{"devEui":"43gfrdg34tgb445h","sensorType":"tem_lab_14ns","timestamp":"2022-10-18T12:12:25.509216Z","payload":"01ef82359c1000c0","spreadingFactor":"11","rssi":"-112","snr":"-6.8","gatewayIdentifier":"187","fPort":"3","latitude":57.687844,"longitude":12.036078}]`,
 	`[{"devEui":"rg34g34gerg3454trg","sensorType":"qalcosonic_w1e","messageType":"payload","timestamp":"2022-10-18T12:17:03.166298Z","payload":"8e974e6300227a060050c24d63cb790600000000000000000000000000000016003300000000000000000000000e00","fCntUp":6647,"toa":null,"freq":867300000,"batteryLevel":"255","ack":false,"spreadingFactor":"8","rssi":"-108","snr":"3.5","gatewayIdentifier":"126","fPort":"100","tags":{"application":["1_kretsloppvatten_w1e_1"],"customer":["kretsloppvatten"],"deviceType":["w1e"],"facilityID":[],"municipality":[],"serial":["05014191"]},"gateways":[{"rssi":"-108","snr":"3.5","gatewayIdentifier":"126","antenna":0}]}]`,
 	`[{"devEui":"a81758fffe09ec03","sensorType":"elt_2_hp","timestamp":"2023-10-30T13:57:37.868543Z","payload":"01006f0245070e270d0014000f3d221a00","spreadingFactor":"12","dr":0,"rssi":"-117","snr":"-17","gatewayIdentifier":"881","fPort":"5"}]`,
+	`[{"devEui":"c4ac590000ccc60d","sensorType":"vegapuls_air_41","timestamp":"2024-02-28T11:21:59.626943Z","payload":"02003fbf3faf2d61002403","spreadingFactor":"7","dr":5,"rssi":"-107","snr":"4","gatewayIdentifier":"274","fPort":"1","tags":{"application":["thingboard_KoV"],"customer":["kretsloppvatten"],"deviceType":["vega"],"serial":["211800"]}}]`,
 }
 
 var payloadWithError string = `{"applicationID":"1","applicationName":"Watermetering","deviceName":"yyyyyyyyyy","devEUI":"xxxxxxxxxxxxxx","type":"UPLINK_FCNT_RETRANSMISSION","error":"frame-counter did not increment","fCnt":456,"tags":{"Location":"UnSet","SerialNo":"zzzzzzzzzzz"}}`

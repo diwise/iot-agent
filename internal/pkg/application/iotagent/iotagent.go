@@ -2,27 +2,32 @@ package iotagent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/conversion"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder/payload"
-	"github.com/diwise/iot-agent/internal/pkg/application/events"
-	"github.com/diwise/iot-agent/internal/pkg/application/messageprocessor"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
+	"github.com/diwise/iot-device-mgmt/pkg/types"
+	"github.com/diwise/messaging-golang/pkg/messaging"
+	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/farshidtz/senml/v2"
+
+	"github.com/google/uuid"
 )
 
 //go:generate moq -rm -out iotagent_mock.go . App
+
+const UNKNOWN = "unknown"
 
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
@@ -32,34 +37,37 @@ type App interface {
 }
 
 type app struct {
-	messageProcessor       messageprocessor.MessageProcessor
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
-	eventSender            events.EventSender
+	msgCtx                 messaging.MsgContext
 	storage                storage.Storage
 
-	notFoundDevices   map[string]time.Time
-	notFoundDevicesMu sync.Mutex
+	notFoundDevices            map[string]time.Time
+	notFoundDevicesMu          sync.Mutex
+	createUnknownDeviceEnabled bool
+	createUnknownDeviceTenant  string
 }
 
-func New(dmc dmc.DeviceManagementClient, eventPub events.EventSender, store storage.Storage) App {
-	c := conversion.NewConverterRegistry()
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
 	d := decoder.NewDecoderRegistry()
-	m := messageprocessor.NewMessageReceivedProcessor(c)
 
 	return &app{
-		messageProcessor:       m,
-		decoderRegistry:        d,
-		deviceManagementClient: dmc,
-		eventSender:            eventPub,
-		storage:                store,
-		notFoundDevices:        make(map[string]time.Time),
+		decoderRegistry:            d,
+		deviceManagementClient:     dmc,
+		msgCtx:                     msgCtx,
+		storage:                    store,
+		notFoundDevices:            make(map[string]time.Time),
+		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
+		createUnknownDeviceTenant:  createUnknownDeviceTenant,
 	}
 }
 
 func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent) error {
 	devEUI := strings.ToLower(se.DevEui)
-	log := logging.GetFromContext(ctx).With(slog.String("devEui", devEUI))
+
+	log := logging.GetFromContext(ctx)
+	log = log.With(slog.String("devEUI", devEUI))
+
 	ctx = logging.NewContextWithLogger(ctx, log)
 
 	device, err := a.findDevice(ctx, devEUI, a.deviceManagementClient.FindDeviceFromDevEUI)
@@ -69,56 +77,86 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 			return nil
 		}
 
+		if a.createUnknownDeviceEnabled {
+			err := a.createUnknownDevice(ctx, se)
+			if err != nil {
+				log.Error("could not create unknown device", "err", err.Error())
+			}
+		}
+
 		return err
 	}
 
-	log = log.With(
-		slog.String("device_id", device.ID()),
-		slog.String("type", device.SensorType()),
-	)
+	if a.createUnknownDeviceEnabled && a.isDeviceUnknown(device) {
+		a.ignoreDeviceFor(devEUI, 1*time.Hour)
+		return nil
+	}
+
+	log = log.With(slog.String("device_id", device.ID()), slog.String("type", device.SensorType()))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	log.Debug("message received")
-
-	decodePayload := decoder.PayloadErrorDecoder
-	if !se.HasError() {
-		decodePayload = a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
-	}
-
-	err = decodePayload(ctx, se, func(ctx context.Context, p payload.Payload) error {
-		a.sendStatusMessage(ctx, device.ID(), device.Tenant(), p)
-
-		packs, err := a.messageProcessor.ProcessMessage(ctx, p, device)
-		if err != nil {
-			return fmt.Errorf("failed to process message (%w)", err)
-		}
-
-		err = a.storage.AddMany(ctx, device.ID(), packs, time.Now().UTC())
-		if err != nil {
-			log.Error("could not store measurements", "err", err.Error())
-			return err
-		}
-
-		if device.IsActive() {
-			for _, pack := range packs {
-				a.handleSensorMeasurementList(ctx, device.ID(), pack)
-			}
-		} else {
-			log.Warn("ignored message from inactive device")
-		}
-
-		return nil
-	})
-
+	decoder := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
+	objects, err := decoder(ctx, device.ID(), se)
 	if err != nil {
-		log.Error("failed to handle received message", "err", err.Error())
+		log.Error("failed to decode message", "err", err.Error())
+		return err
 	}
 
-	return err
+	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
+
+	err = a.storage.AddMany(ctx, device.ID(), lwm2m.ToPacks(objects), time.Now().UTC())
+	if err != nil {
+		log.Error("could not store measurements", "err", err.Error())
+		return err
+	}
+
+	if !device.IsActive() {
+		log.Debug("ignored message from inactive device")
+		return nil
+	}
+
+	var errs []error
+	for _, obj := range objects {
+		if !slices.Contains(device.Types(), obj.ObjectURN()) {
+			log.Debug("skip object since device should not handle object type", slog.String("object_type", obj.ObjectURN()))
+			continue
+		}
+
+		err := a.handleSensorMeasurementList(ctx, lwm2m.ToPack(obj))
+		if err != nil {
+			log.Error("could not handle measurement", "err", err.Error())
+			errs = append(errs, err)
+			continue
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (a *app) isDeviceUnknown(device dmc.Device) bool {
+	return device.SensorType() == UNKNOWN
+}
+
+func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) error {
+	d := types.Device{
+		Active:   false,
+		DeviceID: uuid.New().String(),
+		SensorID: se.DevEui,
+		Name:     se.DeviceName,
+		DeviceProfile: types.DeviceProfile{
+			Name: UNKNOWN,
+		},
+		Tenant: types.Tenant{
+			Name: a.createUnknownDeviceTenant,
+		},
+	}
+
+	return a.deviceManagementClient.CreateDevice(ctx, d)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	deviceID = strings.ToLower(deviceID)
+
 	log := logging.GetFromContext(ctx).With(slog.String("device_id", deviceID))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
@@ -140,7 +178,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
 
-	return a.handleSensorMeasurementList(ctx, device.ID(), pack)
+	return a.handleSensorMeasurementList(ctx, pack)
 }
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
@@ -174,21 +212,22 @@ func (a *app) GetMeasurements(ctx context.Context, deviceID string, temprel stri
 	return measurements, nil
 }
 
-func (a *app) handleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
-	m := core.MessageReceived{
-		Device:    deviceID,
-		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
-		Pack:      pack,
-	}
+func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) error {
+	log := logging.GetFromContext(ctx)
+	m := core.NewMessageReceived(pack)
 
-	a.eventSender.Send(ctx, &m)
+	err := a.msgCtx.SendCommandTo(ctx, &m, "iot-core")
+	if err != nil {
+		log.Error("could not send message.received to iot-core", "err", err.Error())
+		return err
+	}
 
 	return nil
 }
 
 var errDeviceOnBlackList = errors.New("blacklisted")
 
-func (a *app) deviceIsCurrentlyIgnored(ctx context.Context, id string) bool {
+func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
 
@@ -210,45 +249,61 @@ func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context
 
 	device, err := finder(ctx, id)
 	if err != nil {
-		a.ignoreDeviceFor(ctx, id, 1*time.Hour)
+		a.ignoreDeviceFor(id, 1*time.Hour)
 		return nil, fmt.Errorf("device lookup failure (%w)", err)
 	}
 
 	return device, nil
 }
 
-func (a *app) ignoreDeviceFor(ctx context.Context, id string, period time.Duration) {
+func (a *app) ignoreDeviceFor(id string, period time.Duration) {
 	a.notFoundDevicesMu.Lock()
 	defer a.notFoundDevicesMu.Unlock()
 
 	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, p payload.Payload) {
-	logger := logging.GetFromContext(ctx).With(slog.String("func", "sendStatusMessage"))
+func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, _ lwm2m.Lwm2mObject) {
+	log := logging.GetFromContext(ctx)
 
-	var decorators []func(*events.StatusMessage)
-
-	decorators = append(decorators, events.WithTenant(tenant))
-
-	if p != nil {
-		decorators = append(decorators, events.WithStatus(p.Status().Code, p.Status().Messages))
-	} else {
-		decorators = append(decorators, events.WithStatus(0, []string{}))
+	msg := &StatusMessage{
+		DeviceID:  deviceID,
+		Tenant:    tenant,
+		Timestamp: time.Now().UTC(),
 	}
 
-	if bat, ok := payload.Get[int](p, payload.BatteryLevelProperty); ok {
-		decorators = append(decorators, events.WithBatteryLevel(bat))
-	}
-
-	msg := events.NewStatusMessage(deviceID, decorators...)
+	// TODO: status codes and messages?
 
 	if msg.Tenant == "" {
-		logger.Warn("tenant information is missing")
+		log.Warn("tenant information is missing")
 	}
 
-	err := a.eventSender.Publish(ctx, msg)
+	err := a.msgCtx.PublishOnTopic(ctx, msg)
 	if err != nil {
-		logger.Error("failed to publish status message", "err", err.Error())
+		log.Error("failed to publish status message", "err", err.Error())
 	}
+
+	log.Debug("status message sent")
+}
+
+type StatusMessage struct {
+	DeviceID     string    `json:"deviceID"`
+	BatteryLevel int       `json:"batteryLevel"`
+	Code         int       `json:"statusCode"`
+	Messages     []string  `json:"statusMessages,omitempty"`
+	Tenant       string    `json:"tenant"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
+func (m *StatusMessage) ContentType() string {
+	return "application/json"
+}
+
+func (m *StatusMessage) TopicName() string {
+	return "device-status"
+}
+
+func (m *StatusMessage) Body() []byte {
+	b, _ := json.Marshal(m)
+	return b
 }

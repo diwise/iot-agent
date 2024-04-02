@@ -9,11 +9,12 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
-	"github.com/farshidtz/senml/v2"
+	
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/senml"
 )
 
 func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
@@ -46,7 +47,7 @@ func TestSchneiderHandler(t *testing.T) {
 
 	resp, _ := testRequest(is, http.MethodPost, api.forwardingEndpoint+"/schneider", bytes.NewBuffer([]byte(schneiderDataPointId)))
 	is.Equal(resp.StatusCode, http.StatusCreated)            // status code should be 201
-	is.Equal(len(app.HandleSensorMeasurementListCalls()), 6) // should be 6 - once for each object in schneider data
+	is.Equal(len(app.HandleSensorMeasurementListCalls()), 4) // should be 4 - once for each supported object in schneider data
 }
 
 func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T) {
