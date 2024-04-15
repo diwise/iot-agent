@@ -19,10 +19,6 @@ type AxsensorPayload struct {
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
-	//   "payload": "804f21" har längd 3 och blir till error
-	// if len(e.Data)%2 != 0 {
-	// 	return nil, errors.New("not valid payload")
-	// }
 
 	if e.FPort != 2 {
 		return nil, errors.New("not valid fPort")

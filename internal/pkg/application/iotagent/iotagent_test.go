@@ -133,9 +133,6 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messa
 			} else if devEUI == "a81758fffe09ec03" {
 				sensorType = "elt_2_hp"
 				types = []string{"urn:oma:lwm2m:ext:3200"}
-			} else if devEUI == "363536305B398E11" {
-				sensorType = "axsensor"
-				types = []string{"urn:oma:lwm2m:ext:3330"}
 			}
 
 			res := &dmctest.DeviceMock{
@@ -273,11 +270,3 @@ const livboj string = `
         "prevHistSeqNr": 65535
     }
 }`
-
-const axsensor string = `
-[{"devEui":"363536305b398e11","sensorType":"other","messageType":"payload","timestamp":"2024-04-05T08:16:28.321140Z",
-"payload":"80cf36","fCntUp":2543,"toa":null,"freq":868500000,"batteryLevel":"0","ack":false,
-"spreadingFactor":"12","dr":0,"rssi":"-119","snr":"2.5","gatewayIdentifier":"508","fPort":"2","tags":{"GBG_KOV":[]},
-"gateways":[{"rssi":"-122","snr":"-2.2","gatewayIdentifier":"640","gwEui":"7076ff005605080f",
-"mac":"7076ff030a3a","antenna":0},{"rssi":"-119","snr":"2.5","
-gatewayIdentifier":"508","gwEui":"7076ff0056050503","mac":"7076ff030776","antenna":0}]}]`
