@@ -105,6 +105,20 @@ func TestPresencePayload(t *testing.T) {
 	is.True(*pack[1].BoolValue)
 }
 
+func TestDistancePayload(t *testing.T) {
+	is, dmc, e, s := testSetup(t)
+
+	agent := New(dmc, e, s, true, "default").(*app)
+	ue, _ := application.Netmore([]byte(vegapuls))
+	err := agent.HandleSensorEvent(context.Background(), ue)
+
+	is.NoErr(err)
+	is.True(len(e.SendCommandToCalls()) > 0)
+
+	pack := getPackFromSendCalls(e, 0)
+	is.Equal(*pack[1].Value, 0.0)
+}
+
 func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
 	sendCalls := e.SendCommandToCalls()
 	cmd := sendCalls[i].Command
@@ -133,6 +147,9 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messa
 			} else if devEUI == "a81758fffe09ec03" {
 				sensorType = "elt_2_hp"
 				types = []string{"urn:oma:lwm2m:ext:3200"}
+			} else if devEUI == "04c46100008f70e4" {
+				sensorType = "vegapuls_air_41"
+				types = []string{"urn:oma:lwm2m:ext:3330"}
 			}
 
 			res := &dmctest.DeviceMock{
@@ -161,6 +178,19 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messa
 
 	return is, dmc, e, s
 }
+
+const vegapuls string = `[{
+	"devEui":"04c46100008f70e4",
+	"sensorType":"vegapuls_air_41",
+	"timestamp":"2024-04-23T09:47:59.915747Z",
+	"payload":"02003fe79e6b2d6000d6b2",
+	"spreadingFactor":"10",
+	"dr":2,
+	"rssi":"-103",
+	"snr":"8",
+	"gatewayIdentifier":"640",
+	"fPort":"1"
+}]`
 
 const elt2hp string = `[{
     "devEui":"a81758fffe09ec03",
