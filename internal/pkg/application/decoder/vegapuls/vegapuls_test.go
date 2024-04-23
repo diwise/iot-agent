@@ -23,6 +23,9 @@ func TestVegapulsSensor(t *testing.T) {
 	b, _ := objects[0].(lwm2m.Device)
 	is.Equal(*b.BatteryLevel, int(36))
 
+	dist, _ := objects[1].(lwm2m.Distance)
+	is.Equal(dist.SensorValue, float64(1.27439))
+
 	tmp, _ := objects[2].(lwm2m.Temperature)
 	is.Equal(tmp.SensorValue, float64(25))
 }
@@ -55,7 +58,7 @@ const testData string = `[{
 	"deviceName":"vegapuls_air_41",
 	"sensorType":"vegapuls_air_41",
 	"fPort":"1",
-	"payload":"02003FA31F152D2400FA09",
+	"payload": "02003FA31F152D2400FA09",
 	"timestamp":"2024-02-28T11:21:59.626943Z",
 	"rxInfo":{
 		"gatewayId":"274",

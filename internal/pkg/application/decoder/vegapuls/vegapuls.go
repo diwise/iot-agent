@@ -15,7 +15,7 @@ import (
 
 type VegapulsPayload struct {
 	Battery     *int
-	Distance    *float64
+	Distance    *float32
 	Temperature *float64
 }
 
@@ -39,7 +39,8 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p VegapulsPaylo
 	}
 
 	if p.Distance != nil {
-		objects = append(objects, lwm2m.NewDistance(deviceID, *p.Distance, ts))
+		dist := roundFloat(float64(*p.Distance), 5)
+		objects = append(objects, lwm2m.NewDistance(deviceID, dist, ts))
 	}
 
 	if p.Temperature != nil {
@@ -56,8 +57,6 @@ func decode(b []byte) (VegapulsPayload, error) {
 
 	numberOfBytes := len(b)
 
-	fmt.Printf("%d\n", numberOfBytes)
-
 	if numberOfBytes < 11 {
 		return p, fmt.Errorf("incomplete or partial payload")
 	}
@@ -67,7 +66,7 @@ func decode(b []byte) (VegapulsPayload, error) {
 	}
 
 	distBits := binary.BigEndian.Uint32(b[2:6])
-	distance := math.Float64frombits(uint64(distBits))
+	distance := math.Float32frombits(distBits)
 	p.Distance = &distance
 
 	battery := int(b[7])
@@ -78,4 +77,9 @@ func decode(b []byte) (VegapulsPayload, error) {
 	p.Temperature = &temp
 
 	return p, nil
+}
+
+func roundFloat(val float64, precision uint) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
 }
