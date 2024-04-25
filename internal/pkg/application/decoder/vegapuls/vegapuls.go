@@ -17,6 +17,7 @@ type VegapulsPayload struct {
 	Battery     *int
 	Distance    *float32
 	Temperature *float64
+	Unit        *uint32
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
@@ -52,28 +53,71 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p VegapulsPaylo
 	return objects
 }
 
+var packetLengthByIndicator map[int]int = map[int]int{
+	2:  11,
+	8:  11,
+	12: 20,
+}
+
+var distanceUnit map[uint32]string = map[uint32]string{
+	44: "ft",
+	45: "m",
+	47: "inch",
+	49: "mm",
+}
+
+const fahrenheit uint32 = 33
+
 func decode(b []byte) (VegapulsPayload, error) {
 	p := VegapulsPayload{}
 
-	numberOfBytes := len(b)
+	packetIndicator := int(b[0])
 
-	if numberOfBytes < 11 {
-		return p, fmt.Errorf("incomplete or partial payload")
-	}
-
-	if int(b[0]) != 2 {
+	packetLength, ok := packetLengthByIndicator[packetIndicator]
+	if !ok {
 		return p, fmt.Errorf("unknown packet indicator")
 	}
 
-	distBits := binary.BigEndian.Uint32(b[2:6])
+	if len(b) < packetLength {
+		return p, fmt.Errorf("incomplete or partial payload")
+	}
+
+	pos := 0
+
+	if packetIndicator != 2 {
+		pos = -1
+	}
+
+	distBits := binary.BigEndian.Uint32(b[pos+2 : pos+6])
 	distance := math.Float32frombits(distBits)
+
+	// convert from not meters to meters
+	switch {
+	case distanceUnit[uint32(b[pos+6])] == "ft":
+		distance = distance * 0.3048
+	case distanceUnit[uint32(b[pos+6])] == "inch":
+		distance = distance * 0.0254
+	case distanceUnit[uint32(b[pos+6])] == "mm":
+		distance = distance * 1000
+	}
+
 	p.Distance = &distance
 
-	battery := int(b[7])
+	if packetIndicator == 2 {
+		packetLength = packetLength + 1
+	}
+
+	battery := int(b[packetLength-5])
 	p.Battery = &battery
 
-	tempBits := binary.BigEndian.Uint16(b[8:10])
+	tempBits := binary.BigEndian.Uint16(b[packetLength-4 : packetLength-2])
 	temp := float64(tempBits) / 10
+
+	if uint32(b[packetLength-2]) == fahrenheit {
+		f := (temp - 32) * 5 / 9
+		temp = f
+	}
+
 	p.Temperature = &temp
 
 	return p, nil
