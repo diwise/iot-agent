@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -11,17 +12,18 @@ import (
 )
 
 type AxsensorPayload struct {
-	Distance         *float64 `json:"level,omitempty"`
-	Pressure         *float64 `json:"pressure,omitempty"`
-	Temperature      *float64 `json:"temperature,omitempty"`
-	RelativeHumidity *float64 `json:"relativeHumidity,omitempty"`
-	Vbat             *float64 `json:"vbat,omitempty"`
+	FillingPercentage *float64 `json:"fillingPercentage"`
+	FillingLevel      *int64   `json:"fillinglevel,omitempty"`
+	Pressure          *float64 `json:"pressure,omitempty"`
+	Temperature       *float64 `json:"temperature,omitempty"`
+	RelativeHumidity  *float64 `json:"relativeHumidity,omitempty"`
+	Vbat              *float64 `json:"vbat,omitempty"`
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
 
 	if e.FPort != 2 {
-		return nil, errors.New("not valid fPort")
+		return nil, errors.New("invalid fPort")
 	}
 
 	p, err := decode(e.Data)
@@ -41,21 +43,27 @@ func decode(b []byte) (AxsensorPayload, error) {
 	for idx < blen {
 		switch b[idx] {
 		case 0x80:
-			level := 1400 - (binary.LittleEndian.Uint16(b[idx+1:idx+3]) / 10) //472
-			sewerdistance := float64(level)
-			p.Distance = &sewerdistance
+			byteValue := int16(binary.LittleEndian.Uint16(b[idx+1 : idx+3]))
+			level := float64(1400.0 - byteValue/10.0) //472
+			perc := level * 100 / 1400
+			levelPercentage := roundFloat(perc, 5)
+
+			p.FillingPercentage = &levelPercentage
+
+			levelCM := int64((level + 5) / 10) // convert from mm to cm
+			p.FillingLevel = &levelCM
 		case 0xA1:
 			pressure := (float64(b[idx+1]) + float64(b[idx+2])*256) * 100 //Pa
 			p.Pressure = &pressure
 		case 0xA2:
-			temperature := (binary.LittleEndian.Uint16(b[idx+1 : idx+3])) //C 5.6
+			temperature := (binary.LittleEndian.Uint16(b[idx+1 : idx+3])) //C
 			temperatureLevel := float64(temperature) / 10
 			p.Temperature = &temperatureLevel
 		case 0xA3:
 			humidity := (float64(b[idx+1]) + float64(b[idx+2])*256) / 1024 * 100 //rh%
 			p.RelativeHumidity = &humidity
 		case 0xA4:
-			vbat := binary.LittleEndian.Uint16(b[idx+1 : idx+3]) //mV 3488
+			vbat := binary.LittleEndian.Uint16(b[idx+1 : idx+3]) //mV
 			batteryLevel := float64(vbat)
 			p.Vbat = &batteryLevel
 		}
@@ -77,8 +85,11 @@ func decode(b []byte) (AxsensorPayload, error) {
 func convertToLwm2mObjects(deviceID string, p AxsensorPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
-	if p.Distance != nil {
-		objects = append(objects, lwm2m.NewDistance(deviceID, float64(*p.Distance), ts))
+	if p.FillingPercentage != nil {
+		fl := lwm2m.NewFillingLevel(deviceID, float64(*p.FillingPercentage), ts)
+		fl.ActualFillingLevel = p.FillingLevel
+
+		objects = append(objects, fl)
 	}
 
 	if p.Pressure != nil {
@@ -101,4 +112,9 @@ func convertToLwm2mObjects(deviceID string, p AxsensorPayload, ts time.Time) []l
 	}
 
 	return objects
+}
+
+func roundFloat(val float64, precision uint) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
 }
