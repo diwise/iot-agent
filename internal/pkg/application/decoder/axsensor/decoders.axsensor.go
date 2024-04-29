@@ -12,12 +12,11 @@ import (
 )
 
 type AxsensorPayload struct {
-	FillingPercentage *float64 `json:"fillingPercentage"`
-	FillingLevel      *int64   `json:"fillinglevel,omitempty"`
-	Pressure          *float64 `json:"pressure,omitempty"`
-	Temperature       *float64 `json:"temperature,omitempty"`
-	RelativeHumidity  *float64 `json:"relativeHumidity,omitempty"`
-	Vbat              *float64 `json:"vbat,omitempty"`
+	Level            *float64 `json:"level,omitempty"`
+	Pressure         *float64 `json:"pressure,omitempty"`
+	Temperature      *float64 `json:"temperature,omitempty"`
+	RelativeHumidity *float64 `json:"relativeHumidity,omitempty"`
+	Vbat             *float64 `json:"vbat,omitempty"`
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
@@ -44,14 +43,9 @@ func decode(b []byte) (AxsensorPayload, error) {
 		switch b[idx] {
 		case 0x80:
 			byteValue := int16(binary.LittleEndian.Uint16(b[idx+1 : idx+3]))
-			level := float64(1400.0 - byteValue/10.0) //472
-			perc := level * 100 / 1400
-			levelPercentage := roundFloat(perc, 5)
+			level := float64(1400.0 - byteValue/10.0)
 
-			p.FillingPercentage = &levelPercentage
-
-			levelCM := int64((level + 5) / 10) // convert from mm to cm
-			p.FillingLevel = &levelCM
+			p.Level = &level
 		case 0xA1:
 			pressure := (float64(b[idx+1]) + float64(b[idx+2])*256) * 100 //Pa
 			p.Pressure = &pressure
@@ -85,9 +79,13 @@ func decode(b []byte) (AxsensorPayload, error) {
 func convertToLwm2mObjects(deviceID string, p AxsensorPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
-	if p.FillingPercentage != nil {
-		fl := lwm2m.NewFillingLevel(deviceID, float64(*p.FillingPercentage), ts)
-		fl.ActualFillingLevel = p.FillingLevel
+	if p.Level != nil {
+		perc := *p.Level * 100 / 1400
+		levelPercentage := roundFloat(perc, 5)
+		fl := lwm2m.NewFillingLevel(deviceID, float64(levelPercentage), ts)
+
+		levelCM := int64((*p.Level + 5) / 10) // convert from mm to cm
+		fl.ActualFillingLevel = &levelCM
 
 		objects = append(objects, fl)
 	}
