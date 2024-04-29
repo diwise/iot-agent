@@ -84,7 +84,7 @@ func convertToLwm2mObjects(deviceID string, p AxsensorPayload, ts time.Time) []l
 		levelPercentage := roundFloat(perc, 5)
 		fl := lwm2m.NewFillingLevel(deviceID, float64(levelPercentage), ts)
 
-		levelCM := int64((*p.Level + 5) / 10) // convert from mm to cm
+		levelCM := int64((*p.Level + 5) / 10) // convert from mm to cm, rounding up
 		fl.ActualFillingLevel = &levelCM
 
 		objects = append(objects, fl)
