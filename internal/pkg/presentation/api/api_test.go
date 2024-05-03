@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
-	
+
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 
@@ -90,7 +90,7 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 	return is, a, app
 }
 
-func testRequest(is *is.I, method, url string, body io.Reader) (*http.Response, string) {
+func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, string) {
 	req, _ := http.NewRequest(method, url, body)
 	resp, _ := http.DefaultClient.Do(req)
 	respBody, _ := io.ReadAll(resp.Body)

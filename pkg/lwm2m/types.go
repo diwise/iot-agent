@@ -12,6 +12,43 @@ type DeviceInfo struct {
 	Timestamp_ time.Time `lwm2m:"-"`
 }
 
+func NewFillingLevel(deviceID string, sensorValue float64, ts time.Time) FillingLevel {
+	return FillingLevel{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		ActualFillingPercentage: &sensorValue,
+	}
+}
+
+type FillingLevel struct {
+	DeviceInfo
+	ContainerHeight         int64    `lwm2m:"1,cm"`
+	ActualFillingPercentage *float64 `lwm2m:"2,%"`
+	ActualFillingLevel      *int64   `lwm2m:"3,cm"`
+	HighThreshold           *float64 `lwm2m:"4"`
+	ContainerFull           *bool    `lwm2m:"5"`
+	LowThreshold            *float64 `lwm2m:"6"`
+	ContainerEmpty          *bool    `lwm2m:"7"`
+}
+
+func (f FillingLevel) ID() string {
+	return f.ID_
+}
+func (f FillingLevel) Timestamp() time.Time {
+	return f.Timestamp_
+}
+func (f FillingLevel) ObjectID() string {
+	return "3435"
+}
+func (f FillingLevel) ObjectURN() string {
+	return fmt.Sprintf("%s:%s", prefix, f.ObjectID())
+}
+func (f FillingLevel) MarshalJSON() ([]byte, error) {
+	return marshalJSON(f)
+}
+
 func NewTemperature(deviceID string, sensorValue float64, ts time.Time) Temperature {
 	return Temperature{
 		DeviceInfo: DeviceInfo{
@@ -312,12 +349,14 @@ func (d Presence) MarshalJSON() ([]byte, error) {
 }
 
 func NewDistance(deviceID string, sensorValue float64, ts time.Time) Distance {
+	metre := "metre"
 	return Distance{
 		DeviceInfo: DeviceInfo{
 			ID_:        deviceID,
 			Timestamp_: ts,
 		},
 		SensorValue: sensorValue,
+		SensorUnits: &metre,
 	}
 }
 

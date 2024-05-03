@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -11,7 +12,8 @@ import (
 )
 
 type AxsensorPayload struct {
-	Distance         *float64 `json:"level,omitempty"`
+	Distance         *float64 `json:"distance,omitempty"`
+	Level            *float64 `json:"level,omitempty"`
 	Pressure         *float64 `json:"pressure,omitempty"`
 	Temperature      *float64 `json:"temperature,omitempty"`
 	RelativeHumidity *float64 `json:"relativeHumidity,omitempty"`
@@ -21,7 +23,7 @@ type AxsensorPayload struct {
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
 
 	if e.FPort != 2 {
-		return nil, errors.New("not valid fPort")
+		return nil, errors.New("invalid fPort")
 	}
 
 	p, err := decode(e.Data)
@@ -41,21 +43,24 @@ func decode(b []byte) (AxsensorPayload, error) {
 	for idx < blen {
 		switch b[idx] {
 		case 0x80:
-			level := 1400 - (binary.LittleEndian.Uint16(b[idx+1:idx+3]) / 10) //472
-			sewerdistance := float64(level)
-			p.Distance = &sewerdistance
+			byteValue := int16(binary.LittleEndian.Uint16(b[idx+1 : idx+3]))
+			distance := float64(byteValue) / 10.0 // divide by 10 to get value in mm
+			p.Distance = &distance
+
+			level := float64(1400.0 - byteValue/10.0)
+			p.Level = &level
 		case 0xA1:
 			pressure := (float64(b[idx+1]) + float64(b[idx+2])*256) * 100 //Pa
 			p.Pressure = &pressure
 		case 0xA2:
-			temperature := (binary.LittleEndian.Uint16(b[idx+1 : idx+3])) //C 5.6
+			temperature := (binary.LittleEndian.Uint16(b[idx+1 : idx+3])) //C
 			temperatureLevel := float64(temperature) / 10
 			p.Temperature = &temperatureLevel
 		case 0xA3:
 			humidity := (float64(b[idx+1]) + float64(b[idx+2])*256) / 1024 * 100 //rh%
 			p.RelativeHumidity = &humidity
 		case 0xA4:
-			vbat := binary.LittleEndian.Uint16(b[idx+1 : idx+3]) //mV 3488
+			vbat := binary.LittleEndian.Uint16(b[idx+1 : idx+3]) //mV
 			batteryLevel := float64(vbat)
 			p.Vbat = &batteryLevel
 		}
@@ -78,7 +83,19 @@ func convertToLwm2mObjects(deviceID string, p AxsensorPayload, ts time.Time) []l
 	objects := []lwm2m.Lwm2mObject{}
 
 	if p.Distance != nil {
-		objects = append(objects, lwm2m.NewDistance(deviceID, float64(*p.Distance), ts))
+		distance := *p.Distance / 1000 //divide by 1000 to get distance in metres
+		objects = append(objects, lwm2m.NewDistance(deviceID, distance, ts))
+	}
+
+	if p.Level != nil {
+		perc := *p.Level * 100 / 1400
+		levelPercentage := roundFloat(perc, 5)
+		fl := lwm2m.NewFillingLevel(deviceID, float64(levelPercentage), ts)
+
+		levelCM := int64((*p.Level + 5) / 10) // convert from mm to cm, rounding up
+		fl.ActualFillingLevel = &levelCM
+
+		objects = append(objects, fl)
 	}
 
 	if p.Pressure != nil {
@@ -101,4 +118,9 @@ func convertToLwm2mObjects(deviceID string, p AxsensorPayload, ts time.Time) []l
 	}
 
 	return objects
+}
+
+func roundFloat(val float64, precision uint) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
 }
