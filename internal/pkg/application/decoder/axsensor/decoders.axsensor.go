@@ -12,6 +12,7 @@ import (
 )
 
 type AxsensorPayload struct {
+	Distance         *float64 `json:"distance,omitempty"`
 	Level            *float64 `json:"level,omitempty"`
 	Pressure         *float64 `json:"pressure,omitempty"`
 	Temperature      *float64 `json:"temperature,omitempty"`
@@ -43,8 +44,10 @@ func decode(b []byte) (AxsensorPayload, error) {
 		switch b[idx] {
 		case 0x80:
 			byteValue := int16(binary.LittleEndian.Uint16(b[idx+1 : idx+3]))
-			level := float64(1400.0 - byteValue/10.0)
+			distance := float64(byteValue) / 10.0 // divide by 10 to get value in mm
+			p.Distance = &distance
 
+			level := float64(1400.0 - byteValue/10.0)
 			p.Level = &level
 		case 0xA1:
 			pressure := (float64(b[idx+1]) + float64(b[idx+2])*256) * 100 //Pa
@@ -78,6 +81,11 @@ func decode(b []byte) (AxsensorPayload, error) {
 
 func convertToLwm2mObjects(deviceID string, p AxsensorPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
+
+	if p.Distance != nil {
+		distance := *p.Distance / 1000 //divide by 1000 to get distance in metres
+		objects = append(objects, lwm2m.NewDistance(deviceID, distance, ts))
+	}
 
 	if p.Level != nil {
 		perc := *p.Level * 100 / 1400

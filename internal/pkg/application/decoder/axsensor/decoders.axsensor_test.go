@@ -19,38 +19,46 @@ func TestAxsensor(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(objects[0].ID(), "devId")
 
-	is.Equal(len(objects), 3)
+	is.Equal(len(objects), 4)
 
-	device, _ := objects[2].(lwm2m.Device)
-	is.Equal(*device.PowerSourceVoltage, 3488)
+	distance, _ := objects[0].(lwm2m.Distance)
+	expectedDistance := 0.928
+	is.Equal(distance.SensorValue, expectedDistance)
 
-	temp, _ := objects[1].(lwm2m.Temperature)
-	is.Equal(temp.SensorValue, 5.6)
-
-	fillLevel, _ := objects[0].(lwm2m.FillingLevel)
+	fillLevel, _ := objects[1].(lwm2m.FillingLevel)
 	expectedPercentage := float64(33.714290)
 	is.Equal(*fillLevel.ActualFillingPercentage, expectedPercentage)
 	is.Equal(*fillLevel.ActualFillingLevel, int64(47))
+
+	temp, _ := objects[2].(lwm2m.Temperature)
+	is.Equal(temp.SensorValue, 5.6)
+
+	device, _ := objects[3].(lwm2m.Device)
+	is.Equal(*device.PowerSourceVoltage, 3488)
 }
 
-func TestAxsensor2(t *testing.T) {
+func TestAxsensorDifferentPayload(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := application.Netmore([]byte(input2))
 
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
 	is.Equal(objects[0].ID(), "devId")
-	is.Equal(len(objects), 3)
+	is.Equal(len(objects), 4)
 
-	fillingLevel, _ := objects[0].(lwm2m.FillingLevel)
+	distance, _ := objects[0].(lwm2m.Distance)
+	expectedDistance := 1.3987
+	is.Equal(distance.SensorValue, expectedDistance)
+
+	fillingLevel, _ := objects[1].(lwm2m.FillingLevel)
 	expectedPercentage := float64(0.14286)
 	is.Equal(*fillingLevel.ActualFillingPercentage, expectedPercentage)
 	is.Equal(*fillingLevel.ActualFillingLevel, int64(0))
 
-	pressure, _ := objects[1].(lwm2m.Pressure)
+	pressure, _ := objects[2].(lwm2m.Pressure)
 	is.Equal(pressure.SensorValue, float64(100500))
 
-	temp, _ := objects[2].(lwm2m.Temperature)
+	temp, _ := objects[3].(lwm2m.Temperature)
 	is.Equal(temp.SensorValue, 16.0)
 }
 

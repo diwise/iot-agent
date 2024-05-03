@@ -24,9 +24,9 @@ func NewFillingLevel(deviceID string, sensorValue float64, ts time.Time) Filling
 
 type FillingLevel struct {
 	DeviceInfo
-	ContainerHeight         int64    `lwm2m:"1,Cm"`
+	ContainerHeight         int64    `lwm2m:"1,cm"`
 	ActualFillingPercentage *float64 `lwm2m:"2,%"`
-	ActualFillingLevel      *int64   `lwm2m:"3,Cm"`
+	ActualFillingLevel      *int64   `lwm2m:"3,cm"`
 	HighThreshold           *float64 `lwm2m:"4"`
 	ContainerFull           *bool    `lwm2m:"5"`
 	LowThreshold            *float64 `lwm2m:"6"`
@@ -349,12 +349,14 @@ func (d Presence) MarshalJSON() ([]byte, error) {
 }
 
 func NewDistance(deviceID string, sensorValue float64, ts time.Time) Distance {
+	metre := "metre"
 	return Distance{
 		DeviceInfo: DeviceInfo{
 			ID_:        deviceID,
 			Timestamp_: ts,
 		},
 		SensorValue: sensorValue,
+		SensorUnits: &metre,
 	}
 }
 
