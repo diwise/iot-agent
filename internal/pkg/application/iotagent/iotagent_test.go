@@ -116,7 +116,7 @@ func TestDistancePayload(t *testing.T) {
 	is.True(len(e.SendCommandToCalls()) > 0)
 
 	pack := getPackFromSendCalls(e, 0)
-	is.Equal(*pack[1].Value, 0.0)
+	is.Equal(*pack[1].Value, 1.80952)
 }
 
 func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
