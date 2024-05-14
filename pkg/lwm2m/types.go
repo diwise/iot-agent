@@ -441,7 +441,7 @@ func (p Pressure) Timestamp() time.Time {
 	return p.Timestamp_
 }
 func (p Pressure) ObjectID() string {
-	return "3327"
+	return "3323"
 }
 func (p Pressure) ObjectURN() string {
 	return fmt.Sprintf("%s:%s", prefix, p.ObjectID())
