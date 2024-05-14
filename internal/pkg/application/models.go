@@ -2,6 +2,8 @@ package application
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/diwise/senml"
@@ -44,4 +46,14 @@ func (s *SensorEvent) HasError() bool {
 type Measurement struct {
 	Timestamp time.Time  `json:"timestamp"`
 	Pack      senml.Pack `json:"pack"`
+}
+
+type DecoderErr struct {
+	Code      int
+	Messages  []string
+	Timestamp time.Time
+}
+
+func (e *DecoderErr) Error() string {
+	return fmt.Sprintf("error code %d with messages: %s", e.Code, strings.Join(e.Messages, ", "))
 }

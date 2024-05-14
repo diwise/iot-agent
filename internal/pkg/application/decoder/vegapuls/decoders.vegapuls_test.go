@@ -60,7 +60,7 @@ func TestVegapulsSensorConvertsFromInchesToMeters(t *testing.T) {
 	is.Equal(objects[0].ID(), "devid")
 
 	dist, _ := objects[1].(lwm2m.Distance)
-	is.Equal(dist.SensorValue, float64(0.03237)) // the values in inches is 1.27439, which should equal 0.03237
+	is.Equal(dist.SensorValue, float64(0.03237)) // the value in inches is 1.27439, which should equal 0.03237 in metres
 }
 
 func TestVegapulsSensorConvertsFromFahrenheitToCelsius(t *testing.T) {

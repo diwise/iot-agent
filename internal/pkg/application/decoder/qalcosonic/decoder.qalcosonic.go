@@ -37,15 +37,25 @@ type QalcosonicDeltaVolume struct {
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+	var err error
+
 	p, ap, err := decodePayload(ctx, e)
 	if err != nil {
 		return nil, err
 	}
 
-	return convertToLwm2mObjects(ctx, deviceID, p, ap), nil
+	if p.StatusCode != 0 {
+		err = &application.DecoderErr{
+			Code:      int(p.StatusCode),
+			Messages:  p.Messages,
+			Timestamp: p.Timestamp,
+		}
+	}
+
+	return convertToLwm2mObjects(ctx, deviceID, p, ap), err
 }
 
-func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPayload, ap *AlarmPacketPayload) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPayload, _ *AlarmPacketPayload) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	contains := func(strs []string, s string) *bool {

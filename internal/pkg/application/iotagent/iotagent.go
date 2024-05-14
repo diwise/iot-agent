@@ -95,14 +95,31 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	log = log.With(slog.String("device_id", device.ID()), slog.String("type", device.SensorType()))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
+	msg := StatusMessage{
+		DeviceID:     device.ID(),
+		BatteryLevel: 0,
+		Code:         0,
+		Messages:     []string{},
+		Tenant:       device.Tenant(),
+		Timestamp:    time.Now().UTC(),
+	}
+
 	decoder := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 	objects, err := decoder(ctx, device.ID(), se)
 	if err != nil {
-		log.Error("failed to decode message", "err", err.Error())
-		return err
+		decoderErr, ok := err.(*application.DecoderErr)
+
+		if !ok {
+			log.Error("failed to decode message", "err", err.Error())
+			return err
+		}
+
+		msg.Code = decoderErr.Code
+		msg.Messages = decoderErr.Messages
+		msg.Timestamp = decoderErr.Timestamp
 	}
 
-	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
+	a.sendStatusMessage(ctx, msg, device.Tenant())
 
 	err = a.storage.AddMany(ctx, device.ID(), lwm2m.ToPacks(objects), time.Now().UTC())
 	if err != nil {
@@ -146,9 +163,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEven
 		DeviceProfile: types.DeviceProfile{
 			Name: UNKNOWN,
 		},
-		Tenant: types.Tenant{
-			Name: a.createUnknownDeviceTenant,
-		},
+		Tenant: a.createUnknownDeviceTenant,
 	}
 
 	return a.deviceManagementClient.CreateDevice(ctx, d)
@@ -176,7 +191,16 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		return err
 	}
 
-	a.sendStatusMessage(ctx, device.ID(), device.Tenant(), nil)
+	msg := StatusMessage{
+		DeviceID:     device.ID(),
+		BatteryLevel: 0,
+		Code:         0,
+		Messages:     []string{},
+		Tenant:       device.Tenant(),
+		Timestamp:    time.Now().UTC(),
+	}
+
+	a.sendStatusMessage(ctx, msg, device.Tenant())
 
 	return a.handleSensorMeasurementList(ctx, pack)
 }
@@ -263,22 +287,14 @@ func (a *app) ignoreDeviceFor(id string, period time.Duration) {
 	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, deviceID, tenant string, _ lwm2m.Lwm2mObject) {
+func (a *app) sendStatusMessage(ctx context.Context, msg StatusMessage, tenant string) {
 	log := logging.GetFromContext(ctx)
-
-	msg := &StatusMessage{
-		DeviceID:  deviceID,
-		Tenant:    tenant,
-		Timestamp: time.Now().UTC(),
-	}
-
-	// TODO: status codes and messages?
 
 	if msg.Tenant == "" {
 		log.Warn("tenant information is missing")
 	}
 
-	err := a.msgCtx.PublishOnTopic(ctx, msg)
+	err := a.msgCtx.PublishOnTopic(ctx, &msg)
 	if err != nil {
 		log.Error("failed to publish status message", "err", err.Error())
 	}

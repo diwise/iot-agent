@@ -73,8 +73,9 @@ func TestDecode(t *testing.T) {
 
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
 	objects, err := Decoder(context.Background(), "id", ue)
-
-	is.NoErr(err)
+  _, ok := err.(*application.DecoderErr)
+  is.True(ok)
+	
 	is.Equal(17, len(objects))
 
 	singlePack := senml.Pack{}
