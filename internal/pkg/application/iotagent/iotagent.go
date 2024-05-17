@@ -2,6 +2,7 @@ package iotagent
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,8 +22,6 @@ import (
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-
-	"github.com/google/uuid"
 )
 
 //go:generate moq -rm -out iotagent_mock.go . App
@@ -154,10 +153,24 @@ func (a *app) isDeviceUnknown(device dmc.Device) bool {
 	return device.SensorType() == UNKNOWN
 }
 
+func deterministicGUID(input string) string {
+	hasher := sha1.New()
+	hasher.Write([]byte(input))
+	hash := hasher.Sum(nil)
+
+	var uuid [16]byte
+	copy(uuid[:], hash[:16])
+
+	uuid[6] = (uuid[6] & 0x0f) | 0x50
+	uuid[8] = (uuid[8] & 0x3f) | 0x80
+
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%12x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
+}
+
 func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) error {
 	d := types.Device{
 		Active:   false,
-		DeviceID: uuid.New().String(),
+		DeviceID: deterministicGUID(se.DevEui),
 		SensorID: se.DevEui,
 		Name:     se.DeviceName,
 		DeviceProfile: types.DeviceProfile{
