@@ -16,7 +16,7 @@ require (
 
 require (
 	github.com/diwise/iot-core v0.0.0-20240510103507-ecaa7ed8f0ec
-	github.com/diwise/iot-device-mgmt v0.0.0-20240507193532-7d991e7bf508
+	github.com/diwise/iot-device-mgmt v0.0.0-20240517125622-e65b31cb83a0
 	github.com/diwise/senml v0.0.0-20240402140901-e4008e065e05
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.5.5
@@ -51,8 +51,8 @@ require (
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240513163218-0867130af1f8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240513163218-0867130af1f8 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240515191416-fc5f0ca64291 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240515191416-fc5f0ca64291 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
@@ -63,7 +63,7 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
 	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	go.opentelemetry.io/otel/trace v1.26.0 // indirect
@@ -71,7 +71,7 @@ require (
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
-	google.golang.org/grpc v1.63.2 // indirect
+	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

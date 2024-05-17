@@ -119,6 +119,13 @@ func TestDistancePayload(t *testing.T) {
 	is.Equal(*pack[1].Value, 1.80952)
 }
 
+func TestDeterministicGuid(t *testing.T) {
+	is := is.New(t)
+	uuid1 := deterministicGUID("inputstring")
+	uuid2 := deterministicGUID("inputstring")
+	is.Equal(uuid1,uuid2)
+}
+
 func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
 	sendCalls := e.SendCommandToCalls()
 	cmd := sendCalls[i].Command
