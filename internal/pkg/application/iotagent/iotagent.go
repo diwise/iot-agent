@@ -305,6 +305,12 @@ func (a *app) sendStatusMessage(ctx context.Context, msg StatusMessage, tenant s
 
 	if msg.Tenant == "" {
 		log.Warn("tenant information is missing")
+		msg.Tenant = tenant
+	}
+
+	if msg.DeviceID == "" {
+		log.Debug("deviceID is missing from status message")
+		return
 	}
 
 	err := a.msgCtx.PublishOnTopic(ctx, &msg)
