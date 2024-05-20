@@ -118,7 +118,9 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		msg.Timestamp = decoderErr.Timestamp
 	}
 
-	a.sendStatusMessage(ctx, msg, device.Tenant())
+	if !a.sendStatusMessage(ctx, msg, device.Tenant())  {
+		log.Debug("no status message sent for sensor event")
+	}
 
 	err = a.storage.AddMany(ctx, device.ID(), lwm2m.ToPacks(objects), time.Now().UTC())
 	if err != nil {
@@ -213,7 +215,9 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		Timestamp:    time.Now().UTC(),
 	}
 
-	a.sendStatusMessage(ctx, msg, device.Tenant())
+	if !a.sendStatusMessage(ctx, msg, device.Tenant()) {
+		log.Debug("no status message sent for measurement list")
+	}
 
 	return a.handleSensorMeasurementList(ctx, pack)
 }
@@ -300,7 +304,7 @@ func (a *app) ignoreDeviceFor(id string, period time.Duration) {
 	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, msg StatusMessage, tenant string) {
+func (a *app) sendStatusMessage(ctx context.Context, msg StatusMessage, tenant string) bool {
 	log := logging.GetFromContext(ctx)
 
 	if msg.Tenant == "" {
@@ -310,15 +314,17 @@ func (a *app) sendStatusMessage(ctx context.Context, msg StatusMessage, tenant s
 
 	if msg.DeviceID == "" {
 		log.Debug("deviceID is missing from status message")
-		return
+		return false
 	}
 
 	err := a.msgCtx.PublishOnTopic(ctx, &msg)
 	if err != nil {
 		log.Error("failed to publish status message", "err", err.Error())
+		return false
 	}
 
 	log.Debug("status message sent")
+	return true
 }
 
 type StatusMessage struct {
