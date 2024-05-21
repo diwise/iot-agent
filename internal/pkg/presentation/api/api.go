@@ -113,7 +113,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
-		
+
 		if r.URL.Query().Has("facade") {
 			facade = application.GetFacade(r.URL.Query().Get("facade"))
 		}
@@ -151,7 +151,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
-		
+
 		pack := senml.Pack{}
 		err = json.Unmarshal(msg, &pack)
 
@@ -177,7 +177,6 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 		w.WriteHeader(http.StatusCreated)
 	}
 }
-
 
 func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
