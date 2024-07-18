@@ -38,7 +38,10 @@ func main() {
 	defer dmClient.Close(ctx)
 
 	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
-	storage := createStorageOrDie(ctx)
+	storage, err := storage.New(ctx, storage.LoadConfiguration(ctx))
+	if err != nil {
+		fatal(ctx, "could not create or connect to database", err)
+	}
 
 	msgCtx := createMessagingContextOrDie(ctx)
 	defer msgCtx.Close()
@@ -113,23 +116,7 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix strin
 	return mqttClient
 }
 
-func createStorageOrDie(ctx context.Context) storage.Storage {
-	cfg := storage.LoadConfiguration(ctx)
-
-	s, err := storage.Connect(ctx, cfg)
-	if err != nil {
-		fatal(ctx, "could not connect to database", err)
-	}
-
-	err = s.Initialize(ctx)
-	if err != nil {
-		fatal(ctx, "failed to initialize database", err)
-	}
-
-	return s
-}
-
-func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage) (api.API, error) {
+func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, msgCtx messaging.MsgContext, s storage.Storage) (api.API, error) {
 	policies, err := os.Open(opaFilePath)
 	if err != nil {
 		fatal(ctx, "unable to open opa policy file", err)
@@ -139,10 +126,10 @@ func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devi
 	createUnknownDeviceEnabled := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", "false") == "true"
 	createUnknownDeviceTenant := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", "default")
 
-	app := iotagent.New(dmc, msgCtx, storage, createUnknownDeviceEnabled, createUnknownDeviceTenant)
+	app := iotagent.New(dmc, msgCtx, createUnknownDeviceEnabled, createUnknownDeviceTenant)
 
 	r := chi.NewRouter()
-	a, err := api.New(ctx, r, facade, forwardingEndpoint, app, policies)
+	a, err := api.New(ctx, r, facade, forwardingEndpoint, app, policies, s)
 	if err != nil {
 		return nil, err
 	}

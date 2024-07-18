@@ -74,9 +74,14 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 		},
 	}
 
-	a, _ := newAPI(context.Background(), r, "chirpstack", "", app, bytes.NewBufferString(opaModule))
+	a, _ := newAPI(context.Background(), r, "chirpstack", "", app, bytes.NewBufferString(opaModule), storer{})
 
 	return is, a, app
+}
+
+type storer struct{}
+func (s storer) Save(ctx context.Context, se application.SensorEvent) error{
+	return nil
 }
 
 func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, string) {
