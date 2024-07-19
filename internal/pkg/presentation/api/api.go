@@ -38,11 +38,11 @@ type PayloadStorer interface {
 	Save(ctx context.Context, se application.SensorEvent) error
 }
 
-func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader, storer PayloadStorer) (API, error) {
-	return newAPI(ctx, r, facade, forwardingEndpoint, app, policies, storer)
+func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, storer PayloadStorer) (API, error) {
+	return newAPI(ctx, r, facade, forwardingEndpoint, app, storer)
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader, storer PayloadStorer) (*api, error) {
+func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, storer PayloadStorer) (*api, error) {
 	a := &api{
 		r:                  r,
 		app:                app,

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"net/http"
 	"os"
 
@@ -20,17 +19,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var opaFilePath string
-
 const serviceName string = "iot-agent"
 
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
-
-	flag.StringVar(&opaFilePath, "policies", "/opt/diwise/config/authz.rego", "An authorization policy file")
-	flag.Parse()
 
 	forwardingEndpoint := env.GetVariableOrDie(ctx, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
 
@@ -117,19 +111,13 @@ func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix strin
 }
 
 func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, msgCtx messaging.MsgContext, s storage.Storage) (api.API, error) {
-	policies, err := os.Open(opaFilePath)
-	if err != nil {
-		fatal(ctx, "unable to open opa policy file", err)
-	}
-	defer policies.Close()
-
 	createUnknownDeviceEnabled := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", "false") == "true"
 	createUnknownDeviceTenant := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", "default")
 
 	app := iotagent.New(dmc, msgCtx, createUnknownDeviceEnabled, createUnknownDeviceTenant)
 
 	r := chi.NewRouter()
-	a, err := api.New(ctx, r, facade, forwardingEndpoint, app, policies, s)
+	a, err := api.New(ctx, r, facade, forwardingEndpoint, app, s)
 	if err != nil {
 		return nil, err
 	}
