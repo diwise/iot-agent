@@ -4,20 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/pprof"
-	"net/url"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
-	"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -42,13 +34,15 @@ type api struct {
 	forwardingEndpoint string
 }
 
-func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) (API, error) {
-	return newAPI(ctx, r, facade, forwardingEndpoint, app, policies)
+type PayloadStorer interface {
+	Save(ctx context.Context, se application.SensorEvent) error
 }
 
-func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, policies io.Reader) (*api, error) {
-	log := logging.GetFromContext(ctx)
+func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, storer PayloadStorer) (API, error) {
+	return newAPI(ctx, r, facade, forwardingEndpoint, app, storer)
+}
 
+func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, storer PayloadStorer) (*api, error) {
 	a := &api{
 		r:                  r,
 		app:                app,
@@ -67,22 +61,9 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 
 	r.Get("/health", a.health)
 
-	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade))
+	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade, storer))
 	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
 	r.Post("/api/v0/messages/schneider", a.incomingSchneiderMessageHandler(ctx))
-
-	// Handle valid / invalid tokens.
-	authenticator, err := auth.NewAuthenticator(ctx, log, policies)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create api authenticator: %w", err)
-	}
-
-	r.Route("/api/v0/measurements", func(r chi.Router) {
-		r.Group(func(r chi.Router) {
-			r.Use(authenticator)
-			r.Get("/{id}", a.getMeasurementsHandler(ctx))
-		})
-	})
 
 	r.Get("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
 	r.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
@@ -99,7 +80,7 @@ func (a *api) health(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) http.HandlerFunc {
+func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string, storer PayloadStorer) http.HandlerFunc {
 	facade := application.GetFacade(defaultFacade)
 	logger := logging.GetFromContext(ctx)
 
@@ -124,6 +105,11 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string) 
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
+		}
+
+		err = storer.Save(ctx, sensorEvent)
+		if err != nil {
+			log.Warn("could not store sensor event", "err", err.Error())
 		}
 
 		err = a.app.HandleSensorEvent(ctx, sensorEvent)
@@ -176,112 +162,4 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 
 		w.WriteHeader(http.StatusCreated)
 	}
-}
-
-func (a *api) getMeasurementsHandler(ctx context.Context) http.HandlerFunc {
-	logger := logging.GetFromContext(ctx)
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		defer r.Body.Close()
-
-		ctx, span := tracer.Start(r.Context(), "retrieve-measurements")
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
-
-		deviceID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
-		if deviceID == "" {
-			err = fmt.Errorf("no device id is supplied in query")
-			log.Error("bad request", "err", err.Error())
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		log = log.With(slog.String("device_id", deviceID))
-		ctx = logging.NewContextWithLogger(ctx, log)
-
-		device, err := a.app.GetDevice(ctx, deviceID)
-		if err != nil {
-			log.Error("could not get device information", "err", err.Error())
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		allowedTenants := auth.GetAllowedTenantsFromContext(r.Context())
-
-		if !contains(allowedTenants, device.Tenant()) {
-			log.Warn("unauthorized request for device information")
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		temprel := strings.ToLower(r.URL.Query().Get("temprel")) // before, after, between
-		startTime := r.URL.Query().Get("time")                   // 2017-12-13T14:20:00Z
-		endTime := r.URL.Query().Get("endTime")                  // 2018-01-13T14:20:00Z
-
-		t := time.Unix(0, 0)
-		et := time.Now().UTC()
-
-		if temprel == "before" || temprel == "after" || temprel == "between" {
-			t, err = time.Parse(time.RFC3339, startTime)
-			if err != nil {
-				log.Error("invalid time parameter", "err", err.Error())
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			if temprel == "between" {
-				et, err = time.Parse(time.RFC3339, endTime)
-				if err != nil {
-					log.Error("invalid endTime parameter", "err", err.Error())
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-			}
-		} else if len(temprel) > 0 {
-			log.Error(fmt.Sprintf("invalid temprel parameter - %s != before || after || between", temprel))
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		l := 1000
-
-		if lastN := r.URL.Query().Get("lastn"); len(lastN) > 0 {
-			l, err = strconv.Atoi(lastN)
-			if err != nil {
-				log.Error("invalid lastN parameter", "err", err.Error())
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		}
-
-		measurements, err := a.app.GetMeasurements(ctx, deviceID, temprel, t, et, l)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		sortOrder := strings.ToLower(r.URL.Query().Get("sort"))
-
-		sort.SliceStable(measurements, func(i, j int) bool {
-			if sortOrder == "desc" {
-				return measurements[i].Timestamp.After(measurements[j].Timestamp)
-			} else {
-				return measurements[i].Timestamp.Before(measurements[j].Timestamp)
-			}
-		})
-
-		b, _ := json.MarshalIndent(measurements, "  ", "  ")
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(b)
-	}
-}
-
-func contains(arr []string, s string) bool {
-	for _, str := range arr {
-		if strings.EqualFold(s, str) {
-			return true
-		}
-	}
-	return false
 }

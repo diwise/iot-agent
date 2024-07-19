@@ -14,7 +14,6 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
@@ -31,7 +30,6 @@ const UNKNOWN = "unknown"
 type App interface {
 	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
-	GetMeasurements(ctx context.Context, deviceID string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error)
 	GetDevice(ctx context.Context, deviceID string) (dmc.Device, error)
 }
 
@@ -39,7 +37,6 @@ type app struct {
 	decoderRegistry        decoder.DecoderRegistry
 	deviceManagementClient dmc.DeviceManagementClient
 	msgCtx                 messaging.MsgContext
-	storage                storage.Storage
 
 	notFoundDevices            map[string]time.Time
 	notFoundDevicesMu          sync.Mutex
@@ -47,14 +44,13 @@ type app struct {
 	createUnknownDeviceTenant  string
 }
 
-func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, store storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
 	d := decoder.NewDecoderRegistry()
 
 	return &app{
 		decoderRegistry:            d,
 		deviceManagementClient:     dmc,
 		msgCtx:                     msgCtx,
-		storage:                    store,
 		notFoundDevices:            make(map[string]time.Time),
 		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
 		createUnknownDeviceTenant:  createUnknownDeviceTenant,
@@ -118,14 +114,8 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 		msg.Timestamp = decoderErr.Timestamp
 	}
 
-	if !a.sendStatusMessage(ctx, msg, device.Tenant())  {
+	if !a.sendStatusMessage(ctx, msg, device.Tenant()) {
 		log.Debug("no status message sent for sensor event")
-	}
-
-	err = a.storage.AddMany(ctx, device.ID(), lwm2m.ToPacks(objects), time.Now().UTC())
-	if err != nil {
-		log.Error("could not store measurements", "err", err.Error())
-		return err
 	}
 
 	if !device.IsActive() {
@@ -200,12 +190,6 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		return err
 	}
 
-	err = a.storage.Add(ctx, device.ID(), pack, time.Now().UTC())
-	if err != nil {
-		log.Error("could not store measurement", "err", err.Error())
-		return err
-	}
-
 	msg := StatusMessage{
 		DeviceID:     device.ID(),
 		BatteryLevel: 0,
@@ -224,33 +208,6 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
 	return a.deviceManagementClient.FindDeviceFromInternalID(ctx, deviceID)
-}
-
-func (a *app) GetMeasurements(ctx context.Context, deviceID string, temprel string, t, et time.Time, lastN int) ([]application.Measurement, error) {
-	if temprel == "before" {
-		et = t
-		t = time.Unix(0, 0)
-	}
-
-	if temprel == "after" {
-		et = time.Now().UTC()
-	}
-
-	rows, err := a.storage.GetMeasurements(ctx, deviceID, temprel, t, et, lastN)
-	if err != nil {
-		return []application.Measurement{}, err
-	}
-
-	measurements := make([]application.Measurement, len(rows))
-
-	for i, m := range rows {
-		measurements[i] = application.Measurement{
-			Timestamp: m.Timestamp,
-			Pack:      m.Pack,
-		}
-	}
-
-	return measurements, nil
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) error {

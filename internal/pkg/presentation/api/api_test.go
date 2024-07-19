@@ -74,9 +74,14 @@ func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
 		},
 	}
 
-	a, _ := newAPI(context.Background(), r, "chirpstack", "", app, bytes.NewBufferString(opaModule))
+	a, _ := newAPI(context.Background(), r, "chirpstack", "", app, storer{})
 
 	return is, a, app
+}
+
+type storer struct{}
+func (s storer) Save(ctx context.Context, se application.SensorEvent) error{
+	return nil
 }
 
 func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, string) {
@@ -90,38 +95,6 @@ func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, s
 
 const senMLPayload string = `[{"bn": "urn:oma:lwm2m:ext:3303", "bt": 1677079794, "n": "0", "vs": "net:serva:iot:a81758fffe051d02"}, {"n": "5700", "v": -4.5}, {"u": "lat", "v": 62.36956}, {"u": "lon", "v": 17.31984}, {"n": "env", "vs": "air"}, {"n": "tenant", "vs": "default"}]`
 const msgfromMQTT string = `{"level":"info","service":"iot-agent","version":"","mqtt-host":"iot.serva.net","timestamp":"2022-03-28T14:39:11.695538+02:00","message":"received payload: {\"applicationID\":\"8\",\"applicationName\":\"Water-Temperature\",\"deviceName\":\"sk-elt-temp-16\",\"deviceProfileName\":\"Elsys_Codec\",\"deviceProfileID\":\"xxxxxxxxxxxx\",\"devEUI\":\"xxxxxxxxxxxxxx\",\"rxInfo\":[{\"gatewayID\":\"xxxxxxxxxxx\",\"uplinkID\":\"xxxxxxxxxxx\",\"name\":\"SN-LGW-047\",\"time\":\"2022-03-28T12:40:40.653515637Z\",\"rssi\":-105,\"loRaSNR\":8.5,\"location\":{\"latitude\":62.36956091265246,\"longitude\":17.319844410529534,\"altitude\":0}}],\"txInfo\":{\"frequency\":867700000,\"dr\":5},\"adr\":true,\"fCnt\":10301,\"fPort\":5,\"data\":\"Bw2KDADB\",\"object\":{\"externalTemperature\":19.3,\"vdd\":3466},\"tags\":{\"Location\":\"Vangen\"}}"}`
-
-const opaModule string = `
-	#
-	# Use https://play.openpolicyagent.org for easier editing/validation of this policy file
-	#
-	
-	package example.authz
-	
-	default allow := false
-	
-	allow = response {
-		is_valid_token
-	
-		input.method == "GET"
-		pathstart := array.slice(input.path, 0, 3)
-		pathstart == ["api", "v0", "measurements"]
-	
-		token.payload.azp == "diwise-frontend"
-	
-		response := {
-			"tenants": token.payload.tenants
-		}
-	}
-	
-	is_valid_token {
-		1 == 1
-	}
-	
-	token := {"payload": payload} {
-		[_, payload, _] := io.jwt.decode(input.token)
-	}
-	`
 const schneiderDataPointId = `
 [
     {

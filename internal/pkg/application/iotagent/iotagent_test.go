@@ -3,10 +3,8 @@ package iotagent
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
@@ -16,9 +14,9 @@ import (
 )
 
 func TestSenlabTPayload(t *testing.T) {
-	is, dmc, e, s := testSetup(t)
+	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, true, "default").(*app)
 	ue, _ := application.Netmore([]byte(senlabT))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -30,9 +28,9 @@ func TestSenlabTPayload(t *testing.T) {
 }
 
 func TestStripsPayload(t *testing.T) {
-	is, dmc, e, s := testSetup(t)
+	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, true, "default").(*app)
 	ue, _ := application.Netmore([]byte(stripsPayload))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -44,9 +42,9 @@ func TestStripsPayload(t *testing.T) {
 }
 
 func TestElt2HpPayload(t *testing.T) {
-	is, dmc, e, s := testSetup(t)
+	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, true, "default").(*app)
 	ue, _ := application.Netmore([]byte(elt2hp))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -58,9 +56,9 @@ func TestElt2HpPayload(t *testing.T) {
 }
 
 func TestElsysPayload(t *testing.T) {
-	is, dmc, e, s := testSetup(t)
+	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, true, "default").(*app)
 	ue, _ := application.ChirpStack([]byte(elsys))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -72,9 +70,9 @@ func TestElsysPayload(t *testing.T) {
 }
 
 func TestErsPayload(t *testing.T) {
-	is, dmc, e, s := testSetup(t)
+	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, true, "default").(*app)
 	ue, _ := application.ChirpStack([]byte(ers))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -92,9 +90,9 @@ func TestErsPayload(t *testing.T) {
 }
 
 func TestPresencePayload(t *testing.T) {
-	is, dmc, e, s := testSetup(t)
+	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, true, "default").(*app)
 	ue, _ := application.ChirpStack([]byte(livboj))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -106,9 +104,9 @@ func TestPresencePayload(t *testing.T) {
 }
 
 func TestDistancePayload(t *testing.T) {
-	is, dmc, e, s := testSetup(t)
+	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, true, "default").(*app)
 	ue, _ := application.Netmore([]byte(vegapuls))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -123,7 +121,7 @@ func TestDeterministicGuid(t *testing.T) {
 	is := is.New(t)
 	uuid1 := deterministicGUID("inputstring")
 	uuid2 := deterministicGUID("inputstring")
-	is.Equal(uuid1,uuid2)
+	is.Equal(uuid1, uuid2)
 }
 
 func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
@@ -133,7 +131,7 @@ func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
 	return m.Pack
 }
 
-func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messaging.MsgContextMock, *storage.StorageMock) {
+func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messaging.MsgContextMock) {
 	is := is.New(t)
 	dmc := &dmctest.DeviceManagementClientMock{
 		FindDeviceFromDevEUIFunc: func(ctx context.Context, devEUI string) (client.Device, error) {
@@ -176,14 +174,7 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messa
 		SendCommandToFunc:  func(ctx context.Context, command messaging.Command, key string) error { return nil },
 	}
 
-	s := &storage.StorageMock{
-		AddFunc: func(ctx context.Context, id string, pack senml.Pack, timestamp time.Time) error { return nil },
-		AddManyFunc: func(ctx context.Context, id string, packs []senml.Pack, timestamp time.Time) error {
-			return nil
-		},
-	}
-
-	return is, dmc, e, s
+	return is, dmc, e
 }
 
 const vegapuls string = `[{
