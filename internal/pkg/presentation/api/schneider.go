@@ -21,12 +21,6 @@ import (
 	"github.com/google/uuid"
 )
 
-var devices map[string]SchneiderPayload
-
-func init() {
-	devices = make(map[string]SchneiderPayload, 0)
-}
-
 func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
@@ -69,9 +63,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			}
 
 			log.Debug(strings.Join(getDeviceConfigString(id, d), ";"))
-
-			devices[id] = d
-
+			
 			value, err := strconv.ParseFloat(d.Value, 64)
 			if err != nil {
 				log.Error("failed to parse value", "err", err.Error())

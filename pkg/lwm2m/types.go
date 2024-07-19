@@ -441,7 +441,7 @@ func (p Pressure) Timestamp() time.Time {
 	return p.Timestamp_
 }
 func (p Pressure) ObjectID() string {
-	return "3327"
+	return "3323"
 }
 func (p Pressure) ObjectURN() string {
 	return fmt.Sprintf("%s:%s", prefix, p.ObjectID())
@@ -545,6 +545,16 @@ func (d Device) MarshalJSON() ([]byte, error) {
 	return marshalJSON(d)
 }
 
+func NewStopwatch(deviceID string, sensorValue float64, ts time.Time) Stopwatch {
+	return Stopwatch{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		CumulativeTime: sensorValue,
+	}
+}
+
 type Stopwatch struct {
 	DeviceInfo
 	CumulativeTime      float64 `json:"cumulativeTime" lwm2m:"5544,s"`    //The total time in seconds that the timer input is true.
@@ -565,5 +575,39 @@ func (d Stopwatch) ObjectURN() string {
 	return fmt.Sprintf("%s:%s", prefix, d.ObjectID())
 }
 func (d Stopwatch) MarshalJSON() ([]byte, error) {
+	return marshalJSON(d)
+}
+
+func NewTimer(deviceID string, sensorValue float64, ts time.Time) Timer {
+	return Timer{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		DelayDuration: sensorValue,
+	}
+}
+
+type Timer struct {
+	DeviceInfo
+	DelayDuration  float64  `json:"delayDuration" lwm2m:"5521,s"`
+	OnOff          bool     `json:"onOff" lwm2m:"5850"`
+	RemainingTime  *float64 `json:"remainingTime,omitempty" lwm2m:"5538,s"`
+	CumulativeTime *float64 `json:"cumulativeTime,omitempty" lwm2m:"5544,s"`
+}
+
+func (d Timer) ID() string {
+	return d.ID_
+}
+func (d Timer) Timestamp() time.Time {
+	return d.Timestamp_
+}
+func (d Timer) ObjectID() string {
+	return "3340"
+}
+func (d Timer) ObjectURN() string {
+	return fmt.Sprintf("%s:%s", prefix, d.ObjectID())
+}
+func (d Timer) MarshalJSON() ([]byte, error) {
 	return marshalJSON(d)
 }
