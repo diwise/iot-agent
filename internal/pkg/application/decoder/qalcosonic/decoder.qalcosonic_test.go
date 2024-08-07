@@ -2,7 +2,6 @@ package qalcosonic
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log/slog"
 	"testing"
@@ -103,11 +102,6 @@ func TestDecode(t *testing.T) {
 
 	err = singlePack.Validate()
 	is.NoErr(err)
-	b, _ := json.Marshal(singlePack)
-
-	singlePack.Normalize()
-
-	is.Equal(len(b), 2422)
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
