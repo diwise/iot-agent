@@ -70,7 +70,9 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 
 	if p != nil {
 		for _, d := range p.Deltas {
-			wm := lwm2m.NewWaterMeter(deviceID, d.CumulatedVolume, d.Timestamp)
+			m3 := d.CumulatedVolume * 0.001
+
+			wm := lwm2m.NewWaterMeter(deviceID, m3, d.Timestamp)
 			wm.TypeOfMeter = &p.Type
 			wm.LeakDetected = contains(p.Messages, "Leak")
 			wm.BackFlowDetected = contains(p.Messages, "Backflow")
@@ -78,7 +80,9 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 			objects = append(objects, wm)
 		}
 
-		wm := lwm2m.NewWaterMeter(deviceID, p.CurrentVolume, p.Timestamp)
+		m3 := p.CurrentVolume * 0.001
+
+		wm := lwm2m.NewWaterMeter(deviceID, m3, p.Timestamp)
 		wm.TypeOfMeter = &p.Type
 		wm.LeakDetected = contains(p.Messages, "Leak")
 		wm.BackFlowDetected = contains(p.Messages, "Backflow")
@@ -129,6 +133,8 @@ func decodePayload(ctx context.Context, ue application.SensorEvent) (*Qalcosonic
 		p, err = w1h(buf)
 	case 43, 44, 45, 46, 47:
 		p, err = w1e(buf)
+	default:
+		return nil, nil, fmt.Errorf("unknown payload length %d", buf.Len())
 	}
 
 	if err != nil && errors.Is(err, ErrTimeTooFarOff) {
