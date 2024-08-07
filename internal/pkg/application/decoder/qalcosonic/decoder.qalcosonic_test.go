@@ -3,11 +3,9 @@ package qalcosonic
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -56,6 +54,23 @@ func TestQalcosonic_w1e(t *testing.T) {
 	is.Equal(uint8(48), p.StatusCode)
 }
 
+func TestQalcosonic_w1e_lwm2m(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ue, _ := application.Netmore([]byte(qalcosonic_w1e))
+	p, ap, err := decodePayload(context.Background(), ue)
+
+	is.NoErr(err)
+	is.True(ap == nil)
+
+	is.Equal(float64(13609), p.CurrentVolume)
+
+	objects := convertToLwm2mObjects(context.Background(), "", p, nil)
+	is.Equal(17, len(objects))
+
+	is.Equal(float64(13.609), objects[16].(lwm2m.WaterMeter).CumulatedWaterVolume)
+}
+
 func TestQalcosonicAlarmMessage(t *testing.T) {
 	is, _ := testSetup(t)
 
@@ -73,9 +88,9 @@ func TestDecode(t *testing.T) {
 
 	ue, _ := application.Netmore([]byte(qalcosonic_w1t))
 	objects, err := Decoder(context.Background(), "id", ue)
-  _, ok := err.(*application.DecoderErr)
-  is.True(ok)
-	
+	_, ok := err.(*application.DecoderErr)
+	is.True(ok)
+
 	is.Equal(17, len(objects))
 
 	singlePack := senml.Pack{}
@@ -92,7 +107,7 @@ func TestDecode(t *testing.T) {
 
 	singlePack.Normalize()
 
-	is.Equal(len(b), 2410)
+	is.Equal(len(b), 2422)
 }
 
 func TestQalcosonicStatusCodes(t *testing.T) {
@@ -147,18 +162,6 @@ func TestQalcosonicStatusCodes(t *testing.T) {
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
 	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
-}
-
-func toT(s any) time.Time {
-	if str, ok := s.(string); ok {
-		if t, err := time.Parse(time.RFC3339, str); err == nil {
-			return t
-		} else {
-			panic(err)
-		}
-	} else {
-		panic(errors.New("could not cast to string"))
-	}
 }
 
 const qalcosonic_w1e string = `
