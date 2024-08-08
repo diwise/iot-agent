@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -13,6 +14,46 @@ import (
 
 	"github.com/matryer/is"
 )
+
+func TestElsysDigital1True(t *testing.T) {
+	is, _ := testSetup(t)
+	ue, err := application.ChirpStack([]byte(`{"data": "DQEaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
+	is.NoErr(err)
+	p, err := decodePayload(ue.Data)
+	is.NoErr(err)
+	is.Equal(*p.DigitalInput, true)
+}
+
+func TestElsysDigital1True_lwm2m(t *testing.T) {
+	is, _ := testSetup(t)
+	ue, err := application.ChirpStack([]byte(`{"data": "DQEaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
+	is.NoErr(err)
+	p, err := decodePayload(ue.Data)
+	is.NoErr(err)
+	is.Equal(*p.DigitalInput, true)
+	objects := convertToLwm2mObjects(context.Background(), "abc123", p, time.Now())
+	is.Equal(true, objects[0].(lwm2m.DigitalInput).DigitalInputState)
+}
+
+func TestElsysDigital1False(t *testing.T) {
+	is, _ := testSetup(t)
+	ue, err := application.ChirpStack([]byte(`{"data": "DQAaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
+	is.NoErr(err)
+	p, err := decodePayload(ue.Data)
+	is.NoErr(err)
+	is.Equal(*p.DigitalInput, false)
+}
+
+func TestElsysDigital1False_lwm2m(t *testing.T) {
+	is, _ := testSetup(t)
+	ue, err := application.ChirpStack([]byte(`{"data": "DQAaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
+	is.NoErr(err)
+	p, err := decodePayload(ue.Data)
+	is.NoErr(err)
+	is.Equal(*p.DigitalInput, false)
+	objects := convertToLwm2mObjects(context.Background(), "abc123", p, time.Now())
+	is.Equal(false, objects[0].(lwm2m.DigitalInput).DigitalInputState)
+}
 
 func TestElsysCO2Decoder(t *testing.T) {
 	is, _ := testSetup(t)
