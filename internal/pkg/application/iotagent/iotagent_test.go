@@ -69,6 +69,28 @@ func TestElsysPayload(t *testing.T) {
 	is.True(*pack[1].Value == 19.3)
 }
 
+func TestElsysDigital1Payload(t *testing.T) {
+	is, dmc, e := testSetup(t)
+
+	agent := New(dmc, e, true, "default").(*app)
+	ue, _ := application.ChirpStack([]byte(`
+	{
+		"data": "DQEaAA==",
+		"fPort": 5,
+		"devEui": "aabbccddee",
+		"timestamp": "2024-08-05T11:23:45.347949876Z",
+		"deviceName": "braddmatare-3",
+		"sensorType": "Elsys_codec",
+		"object": {
+        	"digital": 1,
+        	"digital2": 0
+    	}
+	}
+	`))
+	err := agent.HandleSensorEvent(context.Background(), ue)
+	is.NoErr(err)
+}
+
 func TestErsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
@@ -146,6 +168,9 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messa
 			} else if devEUI == "a81758fffe05e6fb" {
 				sensorType = "Elsys_Codec"
 				types = []string{"urn:oma:lwm2m:ext:3303", "urn:oma:lwm2m:ext:3428"}
+			} else if devEUI == "aabbccddee" {
+				sensorType = "Elsys_Codec"
+				types = []string{"urn:oma:lwm2m:ext:3200"}
 			} else if devEUI == "3489573498573459" {
 				sensorType = "presence"
 				types = []string{"urn:oma:lwm2m:ext:3302"}

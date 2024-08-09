@@ -220,6 +220,9 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) 
 		return err
 	}
 
+	b, _ := json.Marshal(m)
+	log.Debug("message received sent to iot-core", "body", string(b))
+
 	return nil
 }
 

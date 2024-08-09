@@ -41,12 +41,58 @@ type ElsysPayload struct {
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
-	p := ElsysPayload{}
+	var p ElsysPayload
+	var err error
 
-	if e.Object == nil {
-		p, _ = decodePayload(e.Data)
+	if e.Object != nil {
+		obj := struct {
+			Temperature         *float32 `json:"temperature,omitempty"`
+			ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
+			Humidity            *int8    `json:"humidity,omitempty"`
+			Light               *uint16  `json:"light,omitempty"`
+			Motion              *uint8   `json:"motion,omitempty"`
+			CO2                 *uint16  `json:"co2,omitempty"`
+			VDD                 *uint16  `json:"vdd,omitempty"`
+			Analog1             *uint16  `json:"analog1,omitempty"`
+			Pulse               *uint16  `json:"pulse1,omitempty"`
+			PulseAbs            *uint32  `json:"pulseAbs,omitempty"`
+			Pressure            *float32 `json:"pressure,omitempty"`
+			Occupancy           *uint8   `json:"occupancy,omitempty"`
+			DigitalInput        *int     `json:"digital,omitempty"`
+			DigitalInput2       *int     `json:"digital2,omitempty"`
+			Waterleak           *uint8   `json:"waterleak,omitempty"`
+		}{}
+		err := json.Unmarshal(e.Object, &obj)
+		if err != nil {
+			return nil, err
+		}
+
+		p.Temperature = obj.Temperature
+		p.ExternalTemperature = obj.ExternalTemperature
+		p.Humidity = obj.Humidity
+		p.Light = obj.Light
+		p.Motion = obj.Motion
+		p.CO2 = obj.CO2
+		p.VDD = obj.VDD
+		p.Analog1 = obj.Analog1
+		p.Pulse = obj.Pulse
+		p.PulseAbs = obj.PulseAbs
+		p.Pressure = obj.Pressure
+		p.Occupancy = obj.Occupancy
+		if obj.DigitalInput != nil {
+			b := *obj.DigitalInput == 1
+			p.DigitalInput = &b
+		}
+		if obj.DigitalInput2 != nil {
+			b := *obj.DigitalInput2 == 1
+			p.DigitalInput2 = &b
+		}
+		p.Waterleak = obj.Waterleak
 	} else {
-		json.Unmarshal(e.Object, &p)
+		p, err = decodePayload(e.Data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp), nil
