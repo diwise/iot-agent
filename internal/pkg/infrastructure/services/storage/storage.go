@@ -10,6 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Config struct {
@@ -63,13 +65,20 @@ func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
 		return err
 	}
 
-	sql := `INSERT INTO agent_sensor_events ("time", sensor_id, payload) VALUES (@ts, @sensor_id, @payload);`
+	sql := `INSERT INTO agent_sensor_events ("time", sensor_id, payload, trace_id) VALUES (@ts, @sensor_id, @payload, @trace_id);`
 
 	args := pgx.NamedArgs{
 		"ts":        se.Timestamp,
 		"sensor_id": se.DevEui,
 		"payload":   payload,
+		"trace_id":  nil,
 	}
+
+	spanCtx := trace.SpanContextFromContext(ctx)
+	if spanCtx.HasTraceID() {
+        traceID := spanCtx.TraceID()
+        args["trace_id"] = traceID.String()
+    }
 
 	_, err = s.conn.Exec(ctx, sql, args)
 
@@ -97,8 +106,10 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 			sensor_id   TEXT NOT NULL,
 			payload     JSONB	NULL,
 			created_on  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY ("time", sensor_id)
-		);`
+			trace_id 	TEXT NULL,
+			PRIMARY KEY ("time", sensor_id));
+			
+			ALTER TABLE agent_sensor_events ADD COLUMN IF NOT EXISTS trace_id TEXT NULL;`
 
 	countHyperTable := `SELECT COUNT(*) n FROM timescaledb_information.hypertables WHERE hypertable_name = 'agent_sensor_events';`
 

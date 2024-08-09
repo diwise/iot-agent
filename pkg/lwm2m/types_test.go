@@ -21,3 +21,13 @@ func TestTemperature(t *testing.T) {
 
 	is.Equal(`[{"bn":"25e185f6-bdba-4c68-b6e8-23ae2bb10254/3303/","bt":1710151647,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":22.5}]`, string(b))
 }
+
+func TestDigitalInput(t *testing.T) {
+	is := is.New(t)
+	deviceID := "25e185f6-bdba-4c68-b6e8-23ae2bb10254"
+	ts := time.Unix(1710151647, 0)
+	digitalInput := NewDigitalInput(deviceID, true, ts)
+	b, err := json.Marshal(digitalInput)
+	is.NoErr(err)
+	is.Equal(`[{"bn":"25e185f6-bdba-4c68-b6e8-23ae2bb10254/3200/","bt":1710151647,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":true}]`, string(b))
+}
