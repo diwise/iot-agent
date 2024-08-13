@@ -124,8 +124,14 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	}
 
 	var errs []error
+
+	types := device.Types()
+	if !slices.Contains(types, "urn:oma:lwm2m:ext:3") { // always handle urn:oma:lwm2m:ext:3 = Device
+		types = append(types, "urn:oma:lwm2m:ext:3")
+	}
+
 	for _, obj := range objects {
-		if !slices.Contains(device.Types(), obj.ObjectURN()) {
+		if !slices.Contains(types, obj.ObjectURN()) {
 			log.Debug("skip object since device should not handle object type", slog.String("object_type", obj.ObjectURN()))
 			continue
 		}
