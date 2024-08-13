@@ -524,7 +524,7 @@ func NewDevice(deviceID string, ts time.Time) Device {
 type Device struct {
 	DeviceInfo
 
-	BatteryLevel       *int    `json:"batteryLevel" lwm2m:"9"`          //Contains the current battery level as a percentage (with a range from 0 to 100).
+	BatteryLevel       *int    `json:"batteryLevel" lwm2m:"9,%"`        //Contains the current battery level as a percentage (with a range from 0 to 100).
 	PowerSourceVoltage *int    `json:"powerSourceVoltage" lwm2m:"7,mV"` //Present voltage for each Available Power Sources Resource Instance. The unit used for this resource is in mV.
 	DeviceType         *string `json:"deviceType" lwm2m:"17"`           //Type of the device (manufacturer specified string: e.g. smart meters / dev Class / ...)
 }
