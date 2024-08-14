@@ -58,6 +58,8 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPayload, _ *AlarmPacketPayload) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
+	log := logging.GetFromContext(ctx)
+
 	contains := func(strs []string, s string) *bool {
 		for _, v := range strs {
 			if strings.EqualFold(v, s) {
@@ -72,6 +74,11 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 		for _, d := range p.Deltas {
 			m3 := d.CumulatedVolume * 0.001
 
+			if d.Timestamp.UTC().After(time.Now().UTC()) {
+				log.Warn("time is in the future!", slog.String("device_id", deviceID), slog.String("type_of_meter", p.Type), slog.Time("timestamp", d.Timestamp))
+				continue
+			}
+
 			wm := lwm2m.NewWaterMeter(deviceID, m3, d.Timestamp)
 			wm.TypeOfMeter = &p.Type
 			wm.LeakDetected = contains(p.Messages, "Leak")
@@ -80,14 +87,18 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 			objects = append(objects, wm)
 		}
 
-		m3 := p.CurrentVolume * 0.001
+		if p.Timestamp.UTC().After(time.Now().UTC()) {
+			log.Warn("time is in the future!", slog.String("device_id", deviceID), slog.String("type_of_meter", p.Type), slog.Time("timestamp", p.Timestamp))
+		} else {
+			m3 := p.CurrentVolume * 0.001
 
-		wm := lwm2m.NewWaterMeter(deviceID, m3, p.Timestamp)
-		wm.TypeOfMeter = &p.Type
-		wm.LeakDetected = contains(p.Messages, "Leak")
-		wm.BackFlowDetected = contains(p.Messages, "Backflow")
+			wm := lwm2m.NewWaterMeter(deviceID, m3, p.Timestamp)
+			wm.TypeOfMeter = &p.Type
+			wm.LeakDetected = contains(p.Messages, "Leak")
+			wm.BackFlowDetected = contains(p.Messages, "Backflow")
 
-		objects = append(objects, wm)
+			objects = append(objects, wm)
+		}
 
 		if p.Temperature != nil {
 			objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Temperature)/10, p.Timestamp))
@@ -106,7 +117,8 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 			})
 		}
 	*/
-	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
+
+	log.Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
 }
