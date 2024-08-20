@@ -65,7 +65,7 @@ func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
 		return err
 	}
 
-	sql := `INSERT INTO agent_sensor_events ("time", sensor_id, payload, trace_id) VALUES (@ts, @sensor_id, @payload, @trace_id);`
+	sql := `INSERT INTO agent_sensor_events ("timestamp", sensor_id, payload, trace_id) VALUES (@ts, @sensor_id, @payload, @trace_id);`
 
 	args := pgx.NamedArgs{
 		"ts":        se.Timestamp,
@@ -102,10 +102,10 @@ func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 	createTable := `
 			CREATE TABLE IF NOT EXISTS agent_sensor_events (
-			time 		TIMESTAMPTZ NOT NULL,
+			time 		TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			timestamp   TIMESTAMPTZ NOT NULL,
 			sensor_id   TEXT NOT NULL,
-			payload     JSONB	NULL,
-			created_on  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			payload     JSONB NULL,			
 			trace_id 	TEXT NULL,
 			PRIMARY KEY ("time", sensor_id));
 			
