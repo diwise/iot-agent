@@ -65,10 +65,9 @@ func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
 		return err
 	}
 
-	sql := `INSERT INTO agent_sensor_events ("timestamp", sensor_id, payload, trace_id) VALUES (@ts, @sensor_id, @payload, @trace_id);`
+	sql := `INSERT INTO agent_sensor_events (sensor_id, payload, trace_id) VALUES (@sensor_id, @payload, @trace_id);`
 
 	args := pgx.NamedArgs{
-		"ts":        se.Timestamp,
 		"sensor_id": se.DevEui,
 		"payload":   payload,
 		"trace_id":  nil,
@@ -76,9 +75,9 @@ func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
 
 	spanCtx := trace.SpanContextFromContext(ctx)
 	if spanCtx.HasTraceID() {
-        traceID := spanCtx.TraceID()
-        args["trace_id"] = traceID.String()
-    }
+		traceID := spanCtx.TraceID()
+		args["trace_id"] = traceID.String()
+	}
 
 	_, err = s.conn.Exec(ctx, sql, args)
 
@@ -102,8 +101,7 @@ func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 	createTable := `
 			CREATE TABLE IF NOT EXISTS agent_sensor_events (
-			time 		TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			timestamp   TIMESTAMPTZ NOT NULL,
+			time 		TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,			
 			sensor_id   TEXT NOT NULL,
 			payload     JSONB NULL,			
 			trace_id 	TEXT NULL,
