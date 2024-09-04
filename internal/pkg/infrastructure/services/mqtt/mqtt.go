@@ -105,7 +105,7 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 		cfg.keepAlive = keepAlive
 	}
 
-	const maxTopicCount int = 10
+	const maxTopicCount int = 25
 
 	for idx := 1; idx < maxTopicCount; idx++ {
 		varName := fmt.Sprintf(topicEnvNamePattern, prefix, idx)
