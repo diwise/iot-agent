@@ -12,12 +12,13 @@ import (
 )
 
 type MilesightPayload struct {
-	Battery     *int
-	CO2         *int
-	Distance    *float64
-	Humidity    *float64
-	Temperature *float64
-	Position    *string
+	Battery      *int
+	CO2          *int
+	Distance     *float64
+	Humidity     *float64
+	Temperature  *float64
+	Position     *string
+	MagnetStatus *string
 }
 
 func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
@@ -54,6 +55,11 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p MilesightPayl
 
 	if p.Temperature != nil {
 		objects = append(objects, lwm2m.NewTemperature(deviceID, *p.Temperature, ts))
+	}
+
+	// TODO: use urn:oma:lwm2m:x:10351?
+	if p.MagnetStatus != nil {
+		objects = append(objects, lwm2m.NewDigitalInput(deviceID, *p.MagnetStatus == "open", ts))
 	}
 
 	//TODO: Position
@@ -96,6 +102,15 @@ func decode(bytes []byte) (MilesightPayload, error) {
 	if co2, ok := m["co2"]; ok {
 		c := int(co2.(uint16))
 		p.CO2 = &c
+	}
+
+	if magnetStatus, ok := m["magnet_status"]; ok {
+		m := magnetStatus.(uint8)
+		status := "open"
+		if m == 0 {
+			status = "close"
+		}
+		p.MagnetStatus = &status
 	}
 
 	return p, nil
@@ -143,6 +158,9 @@ func milesightdecoder(bytes []byte) map[string]any {
 		case channelID == 0x05 && channelType == 0x6a: // PIR (Activity)
 			decoded["activity"] = binary.LittleEndian.Uint16(bytes[i : i+2])
 			i += 2
+		case channelID == 0x06 && channelType == 0x00: // MAGNET STATUS
+			decoded["magnet_status"] = bytes[i]
+			i += 1
 		case channelID == 0x06 && channelType == 0x65: // LIGHT
 			decoded["illumination"] = binary.LittleEndian.Uint16(bytes[i : i+2])
 			decoded["infrared_and_visible"] = binary.LittleEndian.Uint16(bytes[i+2 : i+4])

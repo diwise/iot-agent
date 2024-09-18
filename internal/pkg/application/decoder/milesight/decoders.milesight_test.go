@@ -91,6 +91,22 @@ func TestMilesightDecoderEM400TLD_NegTemp(t *testing.T) {
 	is.Equal(-0.8, temerature.SensorValue)
 }
 
+func TestMilesightEM300Decoder(t *testing.T) {
+	is := is.New(t)
+	ue, _ := application.ChirpStack([]byte(data_em300))
+	m := milesightdecoder(ue.Data)
+	is.True(m != nil)
+}
+
+func TestMilesightEM300DecoderLwm2m(t *testing.T) {
+	is := is.New(t)
+	ue, _ := application.ChirpStack([]byte(data_em300))
+	m, err := Decoder(context.Background(), "device_id", ue)
+	is.NoErr(err)
+
+	is.True(!m[2].(lwm2m.DigitalInput).DigitalInputState)
+}
+
 func TestV4(t *testing.T) {
 	is := is.New(t)
 	ue, _ := application.ChirpStack([]byte(data_em400_tld_neg))
@@ -174,6 +190,33 @@ const data_em400 string = `{
 		"temperature": -0.3
 	}
 }`
+
+const data_em300 string = `{
+	"applicationID":"71",
+	"applicationName":"ncksalnckls",
+	"deviceName":"EM400_TLD",
+	"deviceProfileName":"Milesight EM400",
+	"deviceProfileID":"f865a295-3d90-424e-967c-133c35d5594c",
+	"devEUI":"24e124126d154397",
+	"txInfo":
+	{
+		"frequency":868100000,
+		"dr":5
+	},
+	"adr":true,
+	"fCnt":10901,
+	"fPort":5,
+	"data":"A2fzAARocQYAAA==",
+	"object":
+	{
+		"battery": 98,
+		"distance": 267,
+		"position": "normal",
+		"temperature": -0.3
+	}
+}`
+
+
 
 const data_em400_tld = `{"applicationID":"102","applicationName":"IoT","deviceName":"345","deviceProfileName":"Milesight EM400TLD","deviceProfileID":"c70ad8ac58","devEUI":"24reteyrty8855","rxInfo":[{"gatewayID":"rty","uplinkID":"9767bbed","name":"001","rssi":-111,"loRaSNR":-4.2,"location":{"latitude":62.0,"longitude":17.7,"altitude":0}},{"gatewayID":"tyu","uplinkID":"beaa8e","name":"S47","time":"2024-03-19T12:15:41.681927Z","rssi":-112,"loRaSNR":-0.5,"location":{"latitude":62.0,"longitude":17.9,"altitude":9}}],"txInfo":{"frequency":867900000,"dr":5},"adr":true,"fCnt":263,"fPort":85,"data":"AXVkA2diAASCMgMFAAA=","object":{"battery":100,"distance":818,"position":"normal","temperature":9.8},"tags":{"latitude":"62.9","longitude":"17.9","soptunneid":"xyz","typ":"160"}}`
 
