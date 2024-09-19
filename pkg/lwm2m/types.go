@@ -298,6 +298,7 @@ func NewPeopleCounter(deviceID string, actualNumberOfPersons int, ts time.Time) 
 type PeopleCounter struct {
 	DeviceInfo
 	ActualNumberOfPersons int `lwm2m:"1"`
+	DailyNumberOfPersons  int `lwm2m:"2"`
 }
 
 func (pc PeopleCounter) ID() string {
