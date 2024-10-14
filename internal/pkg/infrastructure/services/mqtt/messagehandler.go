@@ -31,13 +31,13 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 		logger.Error("failed to create otel message counter", "err", err.Error())
 	}
 
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
 	return func(client mqtt.Client, msg mqtt.Message) {
 		go func() {
 			payload := msg.Payload()
-
-			httpClient := http.Client{
-				Transport: otelhttp.NewTransport(http.DefaultTransport),
-			}
 
 			var err error
 
@@ -46,7 +46,7 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 			_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 			messageCounter.Add(ctx, 1)
-			
+
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(payload))
 			if err != nil {
 				log.Error("failed to create http request", "err", err.Error())
@@ -56,12 +56,12 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 			log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", forwardingEndpoint)
 
 			req.Header.Add("Content-Type", "application/json")
-			
+
 			resp, err := httpClient.Do(req)
 			if err != nil {
 				log.Error("forwarding request failed", "err", err.Error())
-			} 
-			
+			}
+
 			if err == nil && resp.StatusCode != http.StatusCreated {
 				err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
 				log.Error("failed to forward message", "err", err.Error())
