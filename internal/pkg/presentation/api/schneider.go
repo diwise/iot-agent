@@ -63,7 +63,7 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 			}
 
 			log.Debug(strings.Join(getDeviceConfigString(id, d), ";"))
-			
+
 			value, err := strconv.ParseFloat(d.Value, 64)
 			if err != nil {
 				log.Error("failed to parse value", "err", err.Error())
@@ -105,7 +105,11 @@ func (a *api) incomingSchneiderMessageHandler(ctx context.Context) http.HandlerF
 				w.Write([]byte(err.Error()))
 				return
 			}
-			defer resp.Body.Close()
+
+			defer func() {
+				io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+			}()
 
 			if resp.StatusCode != http.StatusCreated {
 				log.Error(fmt.Sprintf("request failed, expected status code %d but got status code %d ", http.StatusCreated, resp.StatusCode))
