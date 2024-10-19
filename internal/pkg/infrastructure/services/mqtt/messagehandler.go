@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -37,8 +38,6 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 
 	return func(client mqtt.Client, msg mqtt.Message) {
 		go func() {
-			payload := msg.Payload()
-
 			var err error
 
 			ctx, span := tracer.Start(context.Background(), "forward-message")
@@ -46,6 +45,9 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 			_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 			messageCounter.Add(ctx, 1)
+
+			defer msg.Ack()
+			payload := msg.Payload()
 
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(payload))
 			if err != nil {
@@ -60,14 +62,17 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 			resp, err := httpClient.Do(req)
 			if err != nil {
 				log.Error("forwarding request failed", "err", err.Error())
-			}
+			} else {
+				defer func() {
+					io.Copy(io.Discard, resp.Body)
+					resp.Body.Close()
+				}()
 
-			if err == nil && resp.StatusCode != http.StatusCreated {
-				err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
-				log.Error("failed to forward message", "err", err.Error())
+				if resp.StatusCode != http.StatusCreated {
+					err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
+					log.Error("failed to forward message", "err", err.Error())
+				}
 			}
-
-			msg.Ack()
 		}()
 	}
 }
