@@ -1,9 +1,11 @@
 module github.com/diwise/iot-agent
 
-go 1.22.0
+go 1.23
+
+toolchain go1.23.2
 
 require (
-	github.com/diwise/messaging-golang v0.0.0-20240506092815-fc973e9e4a4f
+	github.com/diwise/messaging-golang v0.0.0-20241021090331-143508a441a2
 	github.com/diwise/service-chassis v0.0.0-20240426080527-94892f253835
 	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/go-chi/chi/v5 v5.1.0
@@ -16,7 +18,7 @@ require (
 
 require (
 	github.com/diwise/iot-core v0.0.0-20240820110040-1c1c69518a83
-	github.com/diwise/iot-device-mgmt v0.0.0-20241019173829-9bded6d7a72c
+	github.com/diwise/iot-device-mgmt v0.0.0-20241020195250-f918e5c28caa
 	github.com/diwise/senml v0.0.0-20240402140901-e4008e065e05
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.1
