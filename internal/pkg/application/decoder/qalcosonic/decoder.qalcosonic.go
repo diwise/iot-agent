@@ -55,7 +55,7 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 	return convertToLwm2mObjects(ctx, deviceID, p, ap), err
 }
 
-func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPayload, _ *AlarmPacketPayload) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPayload, ap *AlarmPacketPayload) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	log := logging.GetFromContext(ctx)
@@ -107,16 +107,15 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 		//TODO: create error objects
 	}
 
-	/*
-		if ap != nil {
-			objects = append(objects, lwm2m.Alarm{
-				ID_:        deviceID,
-				Timestamp_: e.Timestamp,
-				AlarmCode:  ap.StatusCode,
-				AlarmText:  ap.Messages,
-			})
-		}
-	*/
+	if ap != nil {
+		log.Warn("unhandled alarm from device", "code", ap.StatusCode, "messages", ap.Messages)
+		/*objects = append(objects, lwm2m.Alarm{
+			ID_:        deviceID,
+			Timestamp_: e.Timestamp,
+			AlarmCode:  ap.StatusCode,
+			AlarmText:  ap.Messages,
+		})*/
+	}
 
 	log.Debug("converted objects", slog.Int("count", len(objects)))
 
