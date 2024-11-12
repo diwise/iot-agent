@@ -28,9 +28,6 @@ func main() {
 
 	forwardingEndpoint := env.GetVariableOrDie(ctx, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
 
-	dmClient := createDeviceManagementClientOrDie(ctx)
-	defer dmClient.Close(ctx)
-
 	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
 	storage, err := storage.New(ctx, storage.LoadConfiguration(ctx))
 	if err != nil {
@@ -39,6 +36,9 @@ func main() {
 
 	msgCtx := createMessagingContextOrDie(ctx)
 	defer msgCtx.Close()
+
+	dmClient := createDeviceManagementClientOrDie(ctx)
+	defer dmClient.Close(ctx)
 
 	facade := env.GetVariableOrDefault(ctx, "APPSERVER_FACADE", "chirpstack")
 	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, msgCtx, storage)
