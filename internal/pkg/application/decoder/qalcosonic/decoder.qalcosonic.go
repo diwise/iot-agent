@@ -44,7 +44,7 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 		return nil, err
 	}
 
-	if p.StatusCode != 0 {
+	if p != nil && p.StatusCode != 0 {
 		err = &application.DecoderErr{
 			Code:      int(p.StatusCode),
 			Messages:  p.Messages,
@@ -123,7 +123,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 	return objects
 }
 
-func decodePayload(ctx context.Context, ue application.SensorEvent) (*QalcosonicPayload, *AlarmPacketPayload, error) {
+func decodePayload(_ context.Context, ue application.SensorEvent) (*QalcosonicPayload, *AlarmPacketPayload, error) {
 	var err error
 
 	buf := bytes.NewReader(ue.Data)
