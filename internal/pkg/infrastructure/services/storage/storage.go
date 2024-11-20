@@ -65,7 +65,7 @@ func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
 		return err
 	}
 
-	sql := `INSERT INTO agent_sensor_events (sensor_id, payload, trace_id) VALUES (@sensor_id, @payload, @trace_id);`
+	sql := `INSERT INTO sensor_events (sensor_id, payload, trace_id) VALUES (@sensor_id, @payload, @trace_id);`
 
 	args := pgx.NamedArgs{
 		"sensor_id": se.DevEui,
@@ -99,44 +99,43 @@ func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 }
 
 func initialize(ctx context.Context, conn *pgxpool.Pool) error {
-	createTable := `
-			CREATE TABLE IF NOT EXISTS agent_sensor_events (
+	ddl := `
+		CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+		CREATE TABLE IF NOT EXISTS sensor_events (
+			id 			UUID DEFAULT gen_random_uuid(),
 			time 		TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,			
 			sensor_id   TEXT NOT NULL,
 			payload     JSONB NULL,			
 			trace_id 	TEXT NULL,
-			PRIMARY KEY ("time", sensor_id));
+			PRIMARY KEY (time, id)
+		);
+
+		DO $$
+		DECLARE
+			n INTEGER;
+		BEGIN			
+			SELECT COUNT(*) INTO n
+			FROM timescaledb_information.hypertables
+			WHERE hypertable_name = 'sensor_events';
 			
-			ALTER TABLE agent_sensor_events ADD COLUMN IF NOT EXISTS trace_id TEXT NULL;`
+			IF n = 0 THEN				
+				PERFORM create_hypertable('sensor_events', 'time');				
+			END IF;
+		END $$;
 
-	countHyperTable := `SELECT COUNT(*) n FROM timescaledb_information.hypertables WHERE hypertable_name = 'agent_sensor_events';`
-
-	createHyperTable := `SELECT create_hypertable('agent_sensor_events', 'time');`
+		DROP TABLE IF EXISTS agent_sensor_events;
+	`
 
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(ctx, createTable)
+	_, err = tx.Exec(ctx, ddl)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
-	}
-
-	var n int32
-	err = tx.QueryRow(ctx, countHyperTable).Scan(&n)
-	if err != nil {
-		tx.Rollback(ctx)
-		return err
-	}
-
-	if n == 0 {
-		_, err := tx.Exec(ctx, createHyperTable)
-		if err != nil {
-			tx.Rollback(ctx)
-			return err
-		}
 	}
 
 	return tx.Commit(ctx)

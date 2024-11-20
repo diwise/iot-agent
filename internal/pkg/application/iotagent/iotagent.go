@@ -173,6 +173,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEven
 		Name:     se.DeviceName,
 		DeviceProfile: types.DeviceProfile{
 			Name: UNKNOWN,
+			Decoder: UNKNOWN,
 		},
 		Tenant: a.createUnknownDeviceTenant,
 	}

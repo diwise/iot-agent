@@ -26,6 +26,7 @@ type Config struct {
 	user      string
 	password  string
 	topics    []string
+	clientId  string
 }
 
 func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Client, error) {
@@ -37,7 +38,12 @@ func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Clie
 	options.SetUsername(cfg.user)
 	options.SetPassword(cfg.password)
 
-	options.SetClientID("diwise/iot-agent/" + uuid.NewString())
+	clientID := cfg.clientId
+	if clientID == "" {
+		clientID = "diwise/iot-agent/" + uuid.NewString()
+	}
+	options.SetClientID(clientID)
+
 	options.SetDefaultPublishHandler(NewMessageHandler(ctx, forwardingEndpoint))
 
 	options.SetKeepAlive(time.Duration(cfg.keepAlive) * time.Second)
@@ -82,6 +88,7 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 		topics: []string{
 			os.Getenv(fmt.Sprintf(topicEnvNamePattern, prefix, 0)),
 		},
+		clientId: os.Getenv(fmt.Sprintf("%sMQTT_CLIENT_ID", prefix)),
 	}
 
 	if !cfg.enabled {
