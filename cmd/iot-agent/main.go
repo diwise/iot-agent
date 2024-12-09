@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net/http"
 	"os"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
+	devicemgmtclientMock "github.com/diwise/iot-device-mgmt/pkg/test"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
@@ -17,11 +19,18 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/metrics"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 const serviceName string = "iot-agent"
 
+var devmode bool
+
 func main() {
+
+	flag.BoolVar(&devmode, "devmode", false, "enable development mode")
+	flag.Parse()
+
 	serviceVersion := buildinfo.SourceVersion()
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
@@ -86,6 +95,33 @@ func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.Dev
 	tokenURL := env.GetVariableOrDie(ctx, "OAUTH2_TOKEN_URL", "a valid oauth2 token URL")
 	clientID := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_ID", "a valid oauth2 client id")
 	clientSecret := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_SECRET", "a valid oauth2 client secret")
+
+	if devmode {
+		mock := devicemgmtclientMock.DeviceManagementClientMock{
+			FindDeviceFromDevEUIFunc: func(ctx context.Context, devEUI string) (devicemgmtclient.Device, error) {
+				d := &devicemgmtclientMock.DeviceMock{
+					IDFunc: func() string {
+						return uuid.NewString()
+					},
+					SensorTypeFunc: func() string {
+						return "virtual"
+					},
+					TenantFunc: func() string {
+						return "default"
+					},
+					IsActiveFunc: func() bool {
+						return true
+					},
+					TypesFunc: func() []string {
+						return []string{"urn:oma:lwm2m:ext:3"}
+					},
+				}
+
+				return d, nil
+			},
+		}
+		return &mock
+	}
 
 	dmClient, err := devicemgmtclient.New(ctx, dmURL, tokenURL, clientID, clientSecret)
 	if err != nil {

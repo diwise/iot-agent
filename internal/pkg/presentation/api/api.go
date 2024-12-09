@@ -36,6 +36,8 @@ type api struct {
 
 type PayloadStorer interface {
 	Save(ctx context.Context, se application.SensorEvent) error
+	GetSensorEvents(ctx context.Context, params map[string][]string) ([]byte, error)
+	GetSensorEventByID(ctx context.Context, id string) ([]byte, error)
 }
 
 func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, storer PayloadStorer) (API, error) {
@@ -64,6 +66,10 @@ func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string
 	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade, storer))
 	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
 	r.Post("/api/v0/messages/schneider", a.incomingSchneiderMessageHandler(ctx))
+
+	r.Get("/api/v0/sensorevents", a.sensorEventHandler(storer))
+	r.Post("/api/v0/sensorevents", a.sensorEventHandler(storer))
+	r.Post("/api/v0/sensorevents/{id}", a.sensorEventHandler(storer))
 
 	r.Get("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
 	r.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
@@ -115,6 +121,78 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string, 
 		err = a.app.HandleSensorEvent(ctx, sensorEvent)
 		if err != nil {
 			log.Error("failed to handle message", "err", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func (a *api) sensorEventHandler(storer PayloadStorer) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		defer r.Body.Close()
+
+		ctx, span := tracer.Start(r.Context(), "sensor-event-handler")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+		logger := logging.GetFromContext(ctx)
+
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+		if r.Method == http.MethodGet {
+			b, err := storer.GetSensorEvents(ctx, r.URL.Query())
+			if err != nil {
+				err = errors.New("empty sensor event received")
+				log.Error("failed to decode sensor event", "err", err.Error())
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write(b)
+
+			return
+		}
+
+		var b []byte
+		var se application.SensorEvent
+
+		id := chi.URLParam(r, "id")
+		if id != "" {
+			b, err = storer.GetSensorEventByID(ctx, id)
+			if err != nil {
+				log.Error("failed to retrieve sensor event", "err", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+		} else {
+			b, _ = io.ReadAll(r.Body)
+		}
+
+		if len(b) == 0 {
+			err = errors.New("empty sensor event received")
+			log.Error("failed to decode sensor event", "err", err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		err = json.Unmarshal(b, &se)
+		if err != nil {
+			log.Error("failed to unmarshal sensor event", "err", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		err = a.app.HandleSensorEvent(ctx, se)
+		if err != nil {
+			log.Error("failed to handle sensor event", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return

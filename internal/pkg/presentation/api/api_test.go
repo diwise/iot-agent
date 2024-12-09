@@ -83,6 +83,12 @@ type storer struct{}
 func (s storer) Save(ctx context.Context, se application.SensorEvent) error{
 	return nil
 }
+func (s storer) GetSensorEventByID(ctx context.Context, id string) ([]byte, error) {
+	return nil, nil
+}
+func (s storer) GetSensorEvents(ctx context.Context, params map[string][]string) ([]byte, error){
+	return nil, nil
+}
 
 func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, string) {
 	req, _ := http.NewRequest(method, url, body)

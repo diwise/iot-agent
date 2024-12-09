@@ -3,7 +3,10 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
@@ -82,6 +85,141 @@ func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
 	_, err = s.conn.Exec(ctx, sql, args)
 
 	return err
+}
+
+func (s Storage) GetSensorEventByID(ctx context.Context, id string) ([]byte, error) {
+	row := s.conn.QueryRow(ctx, "SELECT payload FROM sensor_events WHERE id = $1", id)
+	var payload json.RawMessage
+	err := row.Scan(&payload)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return payload, nil
+}
+
+type sensorEvent struct {
+	ID       string          `json:"id"`
+	Time     time.Time       `json:"time"`
+	SensorID string          `json:"sensor_id"`
+	Payload  json.RawMessage `json:"payload"`
+	TraceID  *string         `json:"trace_id,omitempty"`
+}
+
+func (s Storage) GetSensorEvents(ctx context.Context, params map[string][]string) ([]byte, error) {
+	sql := `SELECT id, time, sensor_id, payload, trace_id, count(*) OVER () as total FROM sensor_events WHERE 1=1 `
+
+	args := pgx.NamedArgs{}
+
+	if p, ok := params["sensor_id"]; ok {
+		sql += `AND sensor_id = @sensor_id `
+		args["sensor_id"] = p[0]
+	}
+
+	if p, ok := params["trace_id"]; ok {
+		sql += `AND trace_id = @trace_id `
+		args["trace_id"] = p[0]
+	}
+
+	if p, ok := params["timeAt"]; ok {
+		sql += `AND time >= @timeAt `
+		args["timeAt"] = p[0]
+	}
+
+	if p, ok := params["endTimeAt"]; ok {
+		sql += `AND time <= @endTimeAt `
+		args["endTimeAt"] = p[0]
+	}
+
+	sql += `ORDER BY time ASC `
+
+	var offset, limit int
+	var err error
+
+	if p, ok := params["offset"]; ok {
+		offset, err = strconv.Atoi(p[0])
+		if err == nil {
+			sql += `OFFSET @offset `
+			args["offset"] = offset
+		}
+		err = nil
+	}
+
+	if p, ok := params["limit"]; ok {
+		limit, err = strconv.Atoi(p[0])
+		if err == nil {
+			sql += `LIMIT @limit `
+			args["limit"] = limit
+		}
+		err = nil
+	}
+
+	sql += `; `
+
+	rows, err := s.conn.Query(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	se := make([]sensorEvent, 0)
+
+	var id, sensorID string
+	var ts time.Time
+	var payload json.RawMessage
+	var traceID *string
+	var total int64
+
+	for rows.Next() {
+		err = rows.Scan(&id, &ts, &sensorID, &payload, &traceID, &total)
+		if err != nil {
+			return nil, err
+		}
+
+		se = append(se, sensorEvent{
+			ID:       id,
+			Time:     ts,
+			SensorID: sensorID,
+			Payload:  payload,
+			TraceID:  traceID,
+		})
+	}
+
+	if limit == 0 {
+		limit = len(se)
+	}
+
+	res := struct {
+		Meta struct {
+			Total  int64 `json:"total_records"`
+			Offset int   `json:"offset"`
+			Limit  int   `json:"limit"`
+			Count  int   `json:"count"`
+		} `json:"meta"`
+		Data any `json:"data"`
+	}{
+		Meta: struct {
+			Total  int64 `json:"total_records"`
+			Offset int   `json:"offset"`
+			Limit  int   `json:"limit"`
+			Count  int   `json:"count"`
+		}{
+			Total:  total,
+			Offset: offset,
+			Limit:  limit,
+			Count:  len(se),
+		},
+		Data: se,
+	}
+
+	return json.Marshal(res)
+}
+
+func (s Storage) Close() {
+	s.conn.Close()
 }
 
 func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
