@@ -145,8 +145,7 @@ func (a *api) sensorEventHandler(storer PayloadStorer) http.HandlerFunc {
 		if r.Method == http.MethodGet {
 			b, err := storer.GetSensorEvents(ctx, r.URL.Query())
 			if err != nil {
-				err = errors.New("empty sensor event received")
-				log.Error("failed to decode sensor event", "err", err.Error())
+				log.Error("failed to fetch sensor event", "err", err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(err.Error()))
 				return
