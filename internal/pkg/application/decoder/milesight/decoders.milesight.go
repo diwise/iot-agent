@@ -42,7 +42,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p MilesightPayl
 
 	if p.CO2 != nil {
 		co2 := float64(*p.CO2)
-		objects = append(objects, lwm2m.NewAirQuality(deviceID, co2, ts))
+		objects = append(objects, lwm2m.NewAirQuality(deviceID, &co2, nil, nil, nil, ts))
 	}
 
 	if p.Distance != nil {
