@@ -163,10 +163,10 @@ func NewAirQuality(deviceID string, co2, pm10, pm25, no2 *float64, ts time.Time)
 
 type AirQuality struct {
 	DeviceInfo
-	CO2  *float64 `lwm2m:"17,ppm"`
 	PM10 *float64 `lwm2m:"1,ug/m3"`
 	PM25 *float64 `lwm2m:"3,ug/m3"`
 	NO2  *float64 `lwm2m:"15,ppm"`
+	CO2  *float64 `lwm2m:"17,ppm"`
 }
 
 func (aq AirQuality) ID() string {
