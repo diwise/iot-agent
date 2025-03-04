@@ -55,7 +55,7 @@ func convertToLwm2mObjects(deviceID string, p AirQualityPayload, ts time.Time) [
 		aq.PM25 = p.PM25
 	}
 	if p.NO2 != nil {
-		aq.NO2 = p.PM25
+		aq.NO2 = p.NO2
 	}
 
 	objects = append(objects, aq)
