@@ -176,22 +176,6 @@ const elt2hp string = `[{
 	"error":{}
 }]`
 
-const elt2hp_negTemp string = `[{
-	"devEui":"a81758fffe09ec03",
-	"deviceName":"elt_2_hp",
-	"sensorType":"elt_2_hp",
-	"fPort":"5",
-	"payload":"01ffbd0253070e1d0d0014000f63491a00",
-	"timestamp":"2023-10-30T13:57:37.868543Z",
-	"rxInfo":{
-		"gatewayId":"881",
-		"rssi":-117,
-		"snr":-17
-	},
-	"txInfo":{},
-	"error":{}
-}]`
-
 const elsysTemp string = `{
 	"applicationID": "8",
 	"applicationName": "Water-Temperature",

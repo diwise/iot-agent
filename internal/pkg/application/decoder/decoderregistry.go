@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/diwise/iot-agent/internal/pkg/application/decoder/airquality"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/axsensor"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/elsys"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder/enviot"
@@ -26,6 +27,7 @@ type decoderRegistry struct {
 
 func NewDecoderRegistry() DecoderRegistry {
 	Decoders := map[string]MessageDecoderFunc{
+		"airquality":       airquality.Decoder,
 		"axsensor":         axsensor.Decoder,
 		"cube02":           sensefarm.Decoder, // deprecated, use sensefarm
 		"elsys":            elsys.Decoder,

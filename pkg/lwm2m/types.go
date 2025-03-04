@@ -148,19 +148,25 @@ func (i Illuminance) MarshalJSON() ([]byte, error) {
 	return marshalJSON(i)
 }
 
-func NewAirQuality(deviceID string, co2 float64, ts time.Time) AirQuality {
+func NewAirQuality(deviceID string, co2, pm10, pm25, no2 *float64, ts time.Time) AirQuality {
 	return AirQuality{
 		DeviceInfo: DeviceInfo{
 			ID_:        deviceID,
 			Timestamp_: ts,
 		},
-		CO2: &co2,
+		CO2:  co2,
+		PM10: pm10,
+		PM25: pm25,
+		NO2:  no2,
 	}
 }
 
 type AirQuality struct {
 	DeviceInfo
-	CO2 *float64 `lwm2m:"17,ppm"`
+	PM10 *float64 `lwm2m:"1,ug/m3"`
+	PM25 *float64 `lwm2m:"3,ug/m3"`
+	NO2  *float64 `lwm2m:"15,ppm"`
+	CO2  *float64 `lwm2m:"17,ppm"`
 }
 
 func (aq AirQuality) ID() string {

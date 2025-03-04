@@ -101,7 +101,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 		}
 
 		if p.Temperature != nil {
-			objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Temperature)/10, p.Timestamp))
+			objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Temperature)/100, p.Timestamp))
 		}
 
 		//TODO: create error objects
