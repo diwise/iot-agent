@@ -15,7 +15,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/metrics"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -23,7 +22,7 @@ const serviceName string = "iot-agent"
 
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
-	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
+	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
 	defer cleanup()
 
 	forwardingEndpoint := env.GetVariableOrDie(ctx, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
@@ -122,7 +121,7 @@ func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devi
 		return nil, err
 	}
 
-	metrics.AddHandlers(r)
+	//metrics.AddHandlers(r)
 
 	return a, nil
 }
