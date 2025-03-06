@@ -6,6 +6,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/senml"
 	"github.com/matryer/is"
 )
 
@@ -30,8 +31,10 @@ func TestAirQuality(t *testing.T) {
 	is.Equal(*air.NO2, 2.1099999999999954)
 
 	airPack := lwm2m.ToPack(air)
-
-	_ = airPack
+	rec, ok := airPack.GetRecord(senml.FindByName("0"))
+	is.True(ok)
+	is.Equal(rec.Name, "id/3428/0")
+	is.Equal(rec.StringValue, "urn:oma:lwm2m:ext:3428")
 }
 
 const airqualityData string = `
