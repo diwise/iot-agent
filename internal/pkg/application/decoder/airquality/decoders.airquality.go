@@ -47,16 +47,7 @@ func convertToLwm2mObjects(deviceID string, p AirQualityPayload, ts time.Time) [
 		objects = append(objects, lwm2m.NewTemperature(deviceID, *p.Temperature, ts))
 	}
 
-	aq := lwm2m.AirQuality{}
-	if p.PM10 != nil {
-		aq.PM10 = p.PM10
-	}
-	if p.PM25 != nil {
-		aq.PM25 = p.PM25
-	}
-	if p.NO2 != nil {
-		aq.NO2 = p.NO2
-	}
+	aq := lwm2m.NewAirQuality(deviceID, nil, p.PM10, p.PM25, p.NO2, ts)
 
 	objects = append(objects, aq)
 

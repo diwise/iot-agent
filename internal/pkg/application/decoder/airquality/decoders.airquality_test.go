@@ -28,6 +28,10 @@ func TestAirQuality(t *testing.T) {
 	is.Equal(*air.PM10, 10.170945308453014)
 	is.Equal(*air.PM25, 8.457361482209397)
 	is.Equal(*air.NO2, 2.1099999999999954)
+
+	airPack := lwm2m.ToPack(air)
+
+	_ = airPack
 }
 
 const airqualityData string = `
