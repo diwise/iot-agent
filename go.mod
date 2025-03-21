@@ -8,15 +8,15 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/matryer/is v1.4.1
-	github.com/riandyrn/otelchi v0.10.0
+	github.com/riandyrn/otelchi v0.10.1
 	github.com/rs/cors v1.11.1
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.57.0
 	go.opentelemetry.io/otel v1.34.0
 )
 
 require (
 	github.com/diwise/iot-core v0.0.0-20240820110040-1c1c69518a83
-	github.com/diwise/iot-device-mgmt v0.0.0-20241020195250-f918e5c28caa
+	github.com/diwise/iot-device-mgmt v0.0.0-20250321155049-ef0907293927
 	github.com/diwise/senml v0.0.0-20240402140901-e4008e065e05
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.1

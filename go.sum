@@ -9,8 +9,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/diwise/iot-core v0.0.0-20240820110040-1c1c69518a83 h1:uuNO8LZTpMTlbBT5H3LbSDtUWsilS0KxFevMjzmuloo=
 github.com/diwise/iot-core v0.0.0-20240820110040-1c1c69518a83/go.mod h1:DlywCFo+dAxqq2YXTsd7EEE7QLb2aWpZB2WwPJbGFOw=
-github.com/diwise/iot-device-mgmt v0.0.0-20241020195250-f918e5c28caa h1:4buICeIDouBiTK5rWnHGskdrNePrtR6rXpXeaDtjL7E=
-github.com/diwise/iot-device-mgmt v0.0.0-20241020195250-f918e5c28caa/go.mod h1:UeuHJVa/BCVwt4b1w/PCZhKR9fgBFqkg6BxLI1CCFrQ=
+github.com/diwise/iot-device-mgmt v0.0.0-20250321155049-ef0907293927 h1:vLK6VPSGnUKitCVfT04/X/lfg8z9TUEuNHjJ/CWoOaE=
+github.com/diwise/iot-device-mgmt v0.0.0-20250321155049-ef0907293927/go.mod h1:/sYRnuR5Cyl0/xXHgoDOdlcecswES1BIU9rm22K6OZg=
 github.com/diwise/messaging-golang v0.0.0-20241021090331-143508a441a2 h1:OyfHG/OwV9Y+3d6pZFz6J4v8cAQEkjaxyOd70x0mmxI=
 github.com/diwise/messaging-golang v0.0.0-20241021090331-143508a441a2/go.mod h1:oxItnOgjQbbE2Qn2nSC/qNL3eAUGy6lzGZjcjUd7nQY=
 github.com/diwise/senml v0.0.0-20240402140901-e4008e065e05 h1:+SdFJnEPvLR2XOPPR5Q4Wz5t6XQAXE61nnC46H4L6+8=
@@ -67,8 +67,8 @@ github.com/prometheus/procfs v0.15.1 h1:YagwOFzUgYfKKHX6Dr+sHT7km/hxC76UB0leargg
 github.com/prometheus/procfs v0.15.1/go.mod h1:fB45yRUv8NstnjriLhBQLuOUt+WW4BsoGhij/e3PBqk=
 github.com/rabbitmq/amqp091-go v1.10.0 h1:STpn5XsHlHGcecLmMFCtg7mqq0RnD+zFr4uzukfVhBw=
 github.com/rabbitmq/amqp091-go v1.10.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
-github.com/riandyrn/otelchi v0.10.0 h1:QMbR/FMDWBOkej6dfyWteYefUKqIFxnyrpaoWRJ9RPQ=
-github.com/riandyrn/otelchi v0.10.0/go.mod h1:zBaX2FavWMlsvq4GqHit+QXxF1c5wIMZZFaYyW4+7FA=
+github.com/riandyrn/otelchi v0.10.1 h1:x86f8M0pGvjW3tJUxpva4cpdNtMydLPnarIXHssYUy4=
+github.com/riandyrn/otelchi v0.10.1/go.mod h1:SWarhA5rdeiCNq+Ygc4p59ZGM5AtYCiyPU/3Q5rzT0M=
 github.com/rs/cors v1.11.1 h1:eU3gRzXLRK57F5rKMGMZURNdIG4EoAmX8k94r9wXWHA=
 github.com/rs/cors v1.11.1/go.mod h1:XyqrcTp5zjWr1wsJ8PIRZssZ8b/WMcMf71DJnit4EMU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
@@ -80,8 +80,8 @@ go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJyS
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/contrib/bridges/otelslog v0.9.0 h1:N+78eXSlu09kii5nkiM+01YbtWe01oZLPPLhNlEKhus=
 go.opentelemetry.io/contrib/bridges/otelslog v0.9.0/go.mod h1:/2KhfLAhtQpgnhIk1f+dftA3fuuMcZjiz//Dc9yfaEs=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0 h1:ZIg3ZT/aQ7AfKqdwp7ECpOK6vHqquXXuyTjIO8ZdmPs=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0/go.mod h1:DQAwmETtZV00skUwgD6+0U89g80NKsJE3DCKeLLPQMI=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.57.0 h1:DheMAlT6POBP+gh8RUH19EOTnQIor5QE0uSRPtzCpSw=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.57.0/go.mod h1:wZcGmeVO9nzP67aYSLDqXNWK87EZWhi7JWj1v7ZXf94=
 go.opentelemetry.io/otel v1.34.0 h1:zRLXxLCgL1WyKsPVrgbSdMN4c0FMkDAskSTQP+0hdUY=
 go.opentelemetry.io/otel v1.34.0/go.mod h1:OWFPOQ+h4G8xpyjgqo4SxJYdDQ/qmRH+wivy7zzx9oI=
 go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.10.0 h1:q/heq5Zh8xV1+7GoMGJpTxM2Lhq5+bFxB29tshuRuw0=
