@@ -86,7 +86,7 @@ func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.Dev
 	clientID := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_ID", "a valid oauth2 client id")
 	clientSecret := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_SECRET", "a valid oauth2 client secret")
 
-	dmClient, err := devicemgmtclient.New(ctx, dmURL, tokenURL, clientID, clientSecret)
+	dmClient, err := devicemgmtclient.New(ctx, dmURL, tokenURL, false, clientID, clientSecret)
 	if err != nil {
 		fatal(ctx, "failed to create device managagement client", err)
 	}

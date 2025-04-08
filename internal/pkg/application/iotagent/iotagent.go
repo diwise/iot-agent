@@ -221,7 +221,7 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) 
 	log := logging.GetFromContext(ctx)
 	m := core.NewMessageReceived(pack)
 
-	err := a.msgCtx.SendCommandTo(ctx, &m, "iot-core")
+	err := a.msgCtx.SendCommandTo(ctx, m, "iot-core")
 	if err != nil {
 		log.Error("could not send message.received to iot-core", "err", err.Error())
 		return err
