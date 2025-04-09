@@ -6,14 +6,14 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
 func TestMilesightAM100Decoder(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := application.ChirpStack([]byte(data_am100))
+	ue, _ := facades.ChirpStack([]byte(data_am100))
 
 	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
@@ -35,7 +35,7 @@ func TestMilesightAM100Decoder(t *testing.T) {
 func TestMilesightEM500Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(data_em500))
+	ue, _ := facades.ChirpStack([]byte(data_em500))
 
 	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
@@ -48,7 +48,7 @@ func TestMilesightEM500Decoder(t *testing.T) {
 func TestMilesightDecoderEM400TLD(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(data_em400))
+	ue, _ := facades.ChirpStack([]byte(data_em400))
 	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
 	is.Equal(objects[0].ID(), "devid")
@@ -62,7 +62,7 @@ func TestMilesightDecoderEM400TLD(t *testing.T) {
 func TestMilesightDecoderEM400TLD2(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(data_em400_tld))
+	ue, _ := facades.ChirpStack([]byte(data_em400_tld))
 	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
 	is.Equal(objects[0].ID(), "devid")
@@ -78,7 +78,7 @@ func TestMilesightDecoderEM400TLD2(t *testing.T) {
 func TestMilesightDecoderEM400UDL(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(data_em400_udl))
+	ue, _ := facades.ChirpStack([]byte(data_em400_udl))
 	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
 	is.Equal(objects[0].ID(), "devid")
@@ -88,7 +88,7 @@ func TestMilesightDecoderEM400UDL(t *testing.T) {
 
 	distance, _ := objects[1].(lwm2m.Distance)
 	is.Equal(distance.SensorValue, float64(2.322))
-	
+
 	temerature, _ := objects[2].(lwm2m.Temperature)
 	is.Equal(-6.0, temerature.SensorValue)
 }
@@ -96,7 +96,7 @@ func TestMilesightDecoderEM400UDL(t *testing.T) {
 func TestMilesightDecoderEM400TLD_NegTemp(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(data_em400_tld_neg))
+	ue, _ := facades.ChirpStack([]byte(data_em400_tld_neg))
 	objects, err := Decoder(context.Background(), "devid", ue)
 	is.NoErr(err)
 	is.Equal(objects[0].ID(), "devid")
@@ -111,14 +111,14 @@ func TestMilesightDecoderEM400TLD_NegTemp(t *testing.T) {
 
 func TestMilesightEM300Decoder(t *testing.T) {
 	is := is.New(t)
-	ue, _ := application.ChirpStack([]byte(data_em300))
+	ue, _ := facades.ChirpStack([]byte(data_em300))
 	m := milesightdecoder(ue.Data)
 	is.True(m != nil)
 }
 
 func TestMilesightEM300DecoderLwm2m(t *testing.T) {
 	is := is.New(t)
-	ue, _ := application.ChirpStack([]byte(data_em300))
+	ue, _ := facades.ChirpStack([]byte(data_em300))
 	m, err := Decoder(context.Background(), "device_id", ue)
 	is.NoErr(err)
 
@@ -127,7 +127,7 @@ func TestMilesightEM300DecoderLwm2m(t *testing.T) {
 
 func TestV4(t *testing.T) {
 	is := is.New(t)
-	ue, _ := application.ChirpStack([]byte(data_em400_tld_neg))
+	ue, _ := facades.ChirpStack([]byte(data_em400_tld_neg))
 	m := milesightdecoder(ue.Data)
 	is.True(m != nil)
 }
@@ -233,8 +233,6 @@ const data_em300 string = `{
 		"temperature": -0.3
 	}
 }`
-
-
 
 const data_em400_tld = `{"applicationID":"102","applicationName":"IoT","deviceName":"345","deviceProfileName":"Milesight EM400TLD","deviceProfileID":"c70ad8ac58","devEUI":"24reteyrty8855","rxInfo":[{"gatewayID":"rty","uplinkID":"9767bbed","name":"001","rssi":-111,"loRaSNR":-4.2,"location":{"latitude":62.0,"longitude":17.7,"altitude":0}},{"gatewayID":"tyu","uplinkID":"beaa8e","name":"S47","time":"2024-03-19T12:15:41.681927Z","rssi":-112,"loRaSNR":-0.5,"location":{"latitude":62.0,"longitude":17.9,"altitude":9}}],"txInfo":{"frequency":867900000,"dr":5},"adr":true,"fCnt":263,"fPort":85,"data":"AXVkA2diAASCMgMFAAA=","object":{"battery":100,"distance":818,"position":"normal","temperature":9.8},"tags":{"latitude":"62.9","longitude":"17.9","soptunneid":"xyz","typ":"160"}}`
 

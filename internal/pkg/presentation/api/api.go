@@ -4,84 +4,44 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
-	"net/http/pprof"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/go-chi/chi/v5"
-	"github.com/riandyrn/otelchi"
-	"github.com/rs/cors"
+
 	"go.opentelemetry.io/otel"
 )
 
 var tracer = otel.Tracer("iot-agent/api")
 
-type API interface {
-	Router() chi.Router
-	health(w http.ResponseWriter, r *http.Request)
-}
+func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app application.App, facade facades.UplinkASFunc, policies io.Reader) error {
+	const apiPrefix string = "/api/v0"
 
-type api struct {
-	r                  chi.Router
-	app                iotagent.App
-	forwardingEndpoint string
-}
-
-type PayloadStorer interface {
-	Save(ctx context.Context, se application.SensorEvent) error
-}
-
-func New(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, storer PayloadStorer) (API, error) {
-	return newAPI(ctx, r, facade, forwardingEndpoint, app, storer)
-}
-
-func newAPI(ctx context.Context, r chi.Router, facade, forwardingEndpoint string, app iotagent.App, storer PayloadStorer) (*api, error) {
-	a := &api{
-		r:                  r,
-		app:                app,
-		forwardingEndpoint: forwardingEndpoint,
+	authenticator, err := auth.NewAuthenticator(ctx, policies)
+	if err != nil {
+		return fmt.Errorf("failed to create api authenticator: %w", err)
 	}
 
-	r.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-		Debug:            false,
-	}).Handler)
+	mux := http.NewServeMux()
 
-	serviceName := "iot-agent"
+	mux.HandleFunc("POST /messages", NewIncomingMessageHandler(ctx, app, facade))
+	mux.HandleFunc("POST /messages/lwm2m", NewIncomingLWM2MMessageHandler(ctx, app))
 
-	r.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(r)))
+	routeGroup := http.StripPrefix(apiPrefix, mux)
+	rootMux.Handle("GET "+apiPrefix+"/", authenticator(routeGroup))
 
-	r.Get("/health", a.health)
-
-	r.Post("/api/v0/messages", a.incomingMessageHandler(ctx, facade, storer))
-	r.Post("/api/v0/messages/lwm2m", a.incomingLWM2MMessageHandler(ctx))
-	r.Post("/api/v0/messages/schneider", a.incomingSchneiderMessageHandler(ctx))
-
-	r.Get("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
-	r.Get("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
-
-	return a, nil
+	return nil
 }
 
-func (a *api) Router() chi.Router {
-	return a.r
-}
-
-func (a *api) health(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string, storer PayloadStorer) http.HandlerFunc {
-	facade := application.GetFacade(defaultFacade)
+func NewIncomingMessageHandler(ctx context.Context, app application.App, facade facades.UplinkASFunc) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -95,10 +55,6 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string, 
 		msg, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 
-		if r.URL.Query().Has("facade") {
-			facade = application.GetFacade(r.URL.Query().Get("facade"))
-		}
-
 		sensorEvent, err := facade(msg)
 		if err != nil {
 			log.Error("failed to decode sensor event using facade", "err", err.Error())
@@ -107,12 +63,12 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string, 
 			return
 		}
 
-		err = storer.Save(ctx, sensorEvent)
+		err = app.Save(ctx, sensorEvent)
 		if err != nil {
 			log.Warn("could not store sensor event", "err", err.Error())
 		}
 
-		err = a.app.HandleSensorEvent(ctx, sensorEvent)
+		err = app.HandleSensorEvent(ctx, sensorEvent)
 		if err != nil {
 			log.Error("failed to handle message", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -124,7 +80,7 @@ func (a *api) incomingMessageHandler(ctx context.Context, defaultFacade string, 
 	}
 }
 
-func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc {
+func NewIncomingLWM2MMessageHandler(ctx context.Context, app application.App) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -152,7 +108,7 @@ func (a *api) incomingLWM2MMessageHandler(ctx context.Context) http.HandlerFunc 
 		}
 
 		deviceID := lwm2m.DeviceID(pack)
-		err = a.app.HandleSensorMeasurementList(ctx, deviceID, pack)
+		err = app.HandleSensorMeasurementList(ctx, deviceID, pack)
 
 		if err != nil {
 			log.Error("failed to handle measurement list", "err", err.Error())

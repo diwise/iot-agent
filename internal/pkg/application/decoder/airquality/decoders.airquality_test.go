@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
 	"github.com/matryer/is"
@@ -12,7 +12,7 @@ import (
 
 func TestAirQuality(t *testing.T) {
 	is := is.New(t)
-	ue, err := application.ChirpStack([]byte(airqualityData))
+	ue, err := facades.ChirpStack([]byte(airqualityData))
 	is.NoErr(err)
 
 	objects, err := Decoder(context.Background(), "id", ue)

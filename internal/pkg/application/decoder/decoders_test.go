@@ -7,14 +7,14 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/matryer/is"
 )
 
 func TestDefaultDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(data))
+	ue, _ := facades.ChirpStack([]byte(data))
 
 	objects, err := DefaultDecoder(context.Background(), "devID", ue)
 	is.NoErr(err)

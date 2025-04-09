@@ -1,10 +1,10 @@
-package iotagent
+package application
 
 import (
 	"context"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
@@ -17,7 +17,7 @@ func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.Netmore([]byte(senlabT))
+	ue, _ := facades.Netmore([]byte(senlabT))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -31,7 +31,7 @@ func TestStripsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.Netmore([]byte(stripsPayload))
+	ue, _ := facades.Netmore([]byte(stripsPayload))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -45,7 +45,7 @@ func TestElt2HpPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.Netmore([]byte(elt2hp))
+	ue, _ := facades.Netmore([]byte(elt2hp))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -59,7 +59,7 @@ func TestElsysPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.ChirpStack([]byte(elsys))
+	ue, _ := facades.ChirpStack([]byte(elsys))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -73,7 +73,7 @@ func TestElsysDigital1Payload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.ChirpStack([]byte(`
+	ue, _ := facades.ChirpStack([]byte(`
 	{
 		"data": "DQEaAA==",
 		"fPort": 5,
@@ -95,7 +95,7 @@ func TestErsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.ChirpStack([]byte(ers))
+	ue, _ := facades.ChirpStack([]byte(ers))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -115,7 +115,7 @@ func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.ChirpStack([]byte(livboj))
+	ue, _ := facades.ChirpStack([]byte(livboj))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -129,7 +129,7 @@ func TestDistancePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, true, "default").(*app)
-	ue, _ := application.Netmore([]byte(vegapuls))
+	ue, _ := facades.Netmore([]byte(vegapuls))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)

@@ -1,4 +1,4 @@
-package application
+package facades
 
 import (
 	"encoding/base64"
@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	. "github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
 type UplinkASFunc func([]byte) (SensorEvent, error)

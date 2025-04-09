@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
 
@@ -17,7 +17,7 @@ import (
 
 func TestElsysDigital1True(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.ChirpStack([]byte(`{"data": "DQEaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
+	ue, err := facades.ChirpStack([]byte(`{"data": "DQEaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
 	is.NoErr(err)
 	p, err := decodePayload(ue.Data)
 	is.NoErr(err)
@@ -26,7 +26,7 @@ func TestElsysDigital1True(t *testing.T) {
 
 func TestElsysDigital1True_lwm2m(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.ChirpStack([]byte(`
+	ue, err := facades.ChirpStack([]byte(`
 	{
 		"data": "DQEaAA==",
 		"fPort": 5,
@@ -52,7 +52,7 @@ func TestElsysDigital1True_lwm2m(t *testing.T) {
 
 func TestElsysDigital1False(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.ChirpStack([]byte(`{"data": "DQAaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
+	ue, err := facades.ChirpStack([]byte(`{"data": "DQAaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
 	is.NoErr(err)
 	p, err := decodePayload(ue.Data)
 	is.NoErr(err)
@@ -61,7 +61,7 @@ func TestElsysDigital1False(t *testing.T) {
 
 func TestElsysDigital1False_lwm2m(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.ChirpStack([]byte(`{"data": "DQAaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
+	ue, err := facades.ChirpStack([]byte(`{"data": "DQAaAA==", "fPort": 5, "devEui": "abc123", "object": {"digital": 1, "digital2": 0},  "timestamp": "2024-08-05T11:23:45.347949876Z", "deviceName": "abc123", "sensorType": "Elsys"}`))
 	is.NoErr(err)
 	p, err := decodePayload(ue.Data)
 	is.NoErr(err)
@@ -73,7 +73,7 @@ func TestElsysDigital1False_lwm2m(t *testing.T) {
 func TestElsysCO2Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(elsysCO2))
+	ue, _ := facades.ChirpStack([]byte(elsysCO2))
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
 
@@ -83,7 +83,7 @@ func TestElsysCO2Decoder(t *testing.T) {
 func TestElsysTemperatureDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(elsysTemp))
+	ue, _ := facades.ChirpStack([]byte(elsysTemp))
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
 
@@ -93,7 +93,7 @@ func TestElsysTemperatureDecoder(t *testing.T) {
 func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, err := application.Netmore([]byte(elt2hp))
+	ue, err := facades.Netmore([]byte(elt2hp))
 	is.NoErr(err)
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
@@ -105,7 +105,7 @@ func TestElsysPumpbrunnarDecoder(t *testing.T) {
 func TestDecodeElsysPayload(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.Netmore([]byte(elt2hp))
+	ue, _ := facades.Netmore([]byte(elt2hp))
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
 
@@ -131,7 +131,7 @@ func TestDecodeElsysPayload(t *testing.T) {
 func TestElsysElt2hpTrue(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.Netmore([]byte(elt2hp_true))
+	ue, _ := facades.Netmore([]byte(elt2hp_true))
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
 

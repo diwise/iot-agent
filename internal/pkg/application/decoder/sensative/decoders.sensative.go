@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
@@ -23,7 +23,7 @@ type SensativePayload struct {
 	Presence     *bool
 }
 
-func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
 	if len(e.Data) < 2 {
 		return nil, errors.New("payload too short")
 	}

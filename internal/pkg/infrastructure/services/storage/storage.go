@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 
 	"github.com/jackc/pgx/v5"
@@ -24,7 +24,6 @@ type Config struct {
 }
 
 func LoadConfiguration(ctx context.Context) Config {
-
 	return Config{
 		host:     env.GetVariableOrDefault(ctx, "POSTGRES_HOST", ""),
 		user:     env.GetVariableOrDefault(ctx, "POSTGRES_USER", ""),
@@ -39,27 +38,41 @@ func (c Config) ConnStr() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", c.user, c.password, c.host, c.port, c.dbname, c.sslmode)
 }
 
-type Storage struct {
+type Storage interface {
+	Save(ctx context.Context, se types.SensorEvent) error
+}
+
+type postgres struct {
 	conn *pgxpool.Pool
+}
+
+type memory struct{}
+
+func (n memory) Save(ctx context.Context, se types.SensorEvent) error {
+	return nil
+}
+
+func NewInMemory() (Storage, error) {
+	return memory{}, nil
 }
 
 func New(ctx context.Context, config Config) (Storage, error) {
 	pool, err := connect(ctx, config)
 	if err != nil {
-		return Storage{}, err
+		return postgres{}, err
 	}
 
 	err = initialize(ctx, pool)
 	if err != nil {
-		return Storage{}, err
+		return postgres{}, err
 	}
 
-	return Storage{
+	return postgres{
 		conn: pool,
 	}, nil
 }
 
-func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
+func (s postgres) Save(ctx context.Context, se types.SensorEvent) error {
 	payload, err := json.Marshal(se)
 	if err != nil {
 		return err

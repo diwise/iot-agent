@@ -8,7 +8,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 
 	"github.com/matryer/is"
@@ -16,7 +17,7 @@ import (
 
 func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := application.ChirpStack([]byte(livboj))
+	ue, _ := facades.ChirpStack([]byte(livboj))
 
 	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
@@ -26,7 +27,7 @@ func TestPresenceSensorReading(t *testing.T) {
 
 func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	is, _ := testSetup(t)
-	ue := application.SensorEvent{}
+	ue := types.SensorEvent{}
 	err := json.Unmarshal([]byte(livboj_checkin), &ue)
 	is.NoErr(err)
 
@@ -37,7 +38,7 @@ func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 
 func TestDataErrSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
-	ue := application.SensorEvent{}
+	ue := types.SensorEvent{}
 
 	payload := []string{
 		"//9uAxL8UAAAAAA=",

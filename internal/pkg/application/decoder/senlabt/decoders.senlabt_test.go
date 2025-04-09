@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
@@ -15,7 +15,7 @@ import (
 func TestSenlabTBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.Netmore([]byte(senlabT))
+	ue, _ := facades.Netmore([]byte(senlabT))
 
 	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
@@ -27,7 +27,7 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 func TestSenlabTTempDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(senlabTemp))
+	ue, _ := facades.ChirpStack([]byte(senlabTemp))
 	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
 
@@ -38,7 +38,7 @@ func TestSenlabTTempDecoder(t *testing.T) {
 
 func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := application.Netmore([]byte(senlabT_sensorReadingError))
+	ue, _ := facades.Netmore([]byte(senlabT_sensorReadingError))
 
 	_, err := Decoder(context.Background(), "devID", ue)
 

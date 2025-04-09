@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
@@ -14,7 +14,7 @@ import (
 func TestEnviotDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := application.ChirpStack([]byte(enviot))
+	ue, _ := facades.ChirpStack([]byte(enviot))
 	objects, err := Decoder(context.Background(), "devID", ue)
 	is.NoErr(err)
 

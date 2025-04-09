@@ -7,7 +7,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 )
 
@@ -20,7 +20,7 @@ type AxsensorPayload struct {
 	Vbat             *float64 `json:"vbat,omitempty"`
 }
 
-func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
 
 	if e.FPort != 2 {
 		return nil, errors.New("invalid fPort")

@@ -7,14 +7,14 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
 func TestVegapulsSensorPacketIdentifier2(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier2)))
+	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier2)))
 	is.NoErr(err)
 
 	objects, err := Decoder(context.Background(), "devid", ue)
@@ -33,7 +33,7 @@ func TestVegapulsSensorPacketIdentifier2(t *testing.T) {
 
 func TestVegapulsSensorPacketIdentifier8(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier8)))
+	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier8)))
 	is.NoErr(err)
 
 	objects, err := Decoder(context.Background(), "devid", ue)
@@ -52,7 +52,7 @@ func TestVegapulsSensorPacketIdentifier8(t *testing.T) {
 
 func TestVegapulsSensorConvertsFromInchesToMeters(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.Netmore([]byte(fmt.Sprintf(testData, testDataInFeet)))
+	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, testDataInFeet)))
 	is.NoErr(err)
 
 	objects, err := Decoder(context.Background(), "devid", ue)
@@ -65,7 +65,7 @@ func TestVegapulsSensorConvertsFromInchesToMeters(t *testing.T) {
 
 func TestVegapulsSensorConvertsFromFahrenheitToCelsius(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.Netmore([]byte(fmt.Sprintf(testData, testDataFahrenheit)))
+	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, testDataFahrenheit)))
 	is.NoErr(err)
 
 	objects, err := Decoder(context.Background(), "devid", ue)
@@ -78,7 +78,7 @@ func TestVegapulsSensorConvertsFromFahrenheitToCelsius(t *testing.T) {
 
 func TestVegapulsSensorReturnsErrOnIncompletePayload(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.Netmore([]byte(fmt.Sprintf(testData, partialTestData)))
+	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, partialTestData)))
 	is.NoErr(err)
 
 	_, err = Decoder(context.Background(), "devid", ue)
@@ -87,7 +87,7 @@ func TestVegapulsSensorReturnsErrOnIncompletePayload(t *testing.T) {
 
 func TestVegapulsSensorReturnsErrOnUnknownPacketIdentifier(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.Netmore([]byte(fmt.Sprintf(testData, unknownPacketIdentifier)))
+	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, unknownPacketIdentifier)))
 	is.NoErr(err)
 
 	_, err = Decoder(context.Background(), "devid", ue)
@@ -96,7 +96,7 @@ func TestVegapulsSensorReturnsErrOnUnknownPacketIdentifier(t *testing.T) {
 
 func TestVegapulsSensorPacketIdentifier12(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := application.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier12)))
+	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier12)))
 	is.NoErr(err)
 
 	objects, err := Decoder(context.Background(), "devid", ue)

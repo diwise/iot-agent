@@ -6,14 +6,14 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/matryer/is"
 )
 
 func TestAxsensor(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := application.Netmore([]byte(axsensor_input))
+	ue, _ := facades.Netmore([]byte(axsensor_input))
 
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)
@@ -39,7 +39,7 @@ func TestAxsensor(t *testing.T) {
 
 func TestAxsensorDifferentPayload(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := application.Netmore([]byte(input2))
+	ue, _ := facades.Netmore([]byte(input2))
 
 	objects, err := Decoder(context.Background(), "devId", ue)
 	is.NoErr(err)

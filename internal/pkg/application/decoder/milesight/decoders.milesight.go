@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
@@ -21,7 +21,7 @@ type MilesightPayload struct {
 	MagnetStatus *string
 }
 
-func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
 	p, err := decode(e.Data)
 	if err != nil {
 		return nil, err

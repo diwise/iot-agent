@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
@@ -36,7 +36,7 @@ type QalcosonicDeltaVolume struct {
 	Timestamp       time.Time
 }
 
-func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
 	var err error
 
 	p, ap, err := decodePayload(ctx, e)
@@ -45,7 +45,7 @@ func Decoder(ctx context.Context, deviceID string, e application.SensorEvent) ([
 	}
 
 	if p != nil && p.StatusCode != 0 {
-		err = &application.DecoderErr{
+		err = &types.DecoderErr{
 			Code:      int(p.StatusCode),
 			Messages:  p.Messages,
 			Timestamp: p.Timestamp,
@@ -122,7 +122,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 	return objects
 }
 
-func decodePayload(_ context.Context, ue application.SensorEvent) (*QalcosonicPayload, *AlarmPacketPayload, error) {
+func decodePayload(_ context.Context, ue types.SensorEvent) (*QalcosonicPayload, *AlarmPacketPayload, error) {
 	var err error
 
 	buf := bytes.NewReader(ue.Data)

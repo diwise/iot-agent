@@ -1,4 +1,4 @@
-package iotagent
+package application
 
 import (
 	"context"
@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
-	"github.com/diwise/iot-device-mgmt/pkg/types"
+	dmtypes "github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -28,9 +28,10 @@ import (
 const UNKNOWN = "unknown"
 
 type App interface {
-	HandleSensorEvent(ctx context.Context, se application.SensorEvent) error
+	HandleSensorEvent(ctx context.Context, se types.SensorEvent) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
 	GetDevice(ctx context.Context, deviceID string) (dmc.Device, error)
+	Save(ctx context.Context, se types.SensorEvent) error
 }
 
 type app struct {
@@ -57,7 +58,11 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, createUnkn
 	}
 }
 
-func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent) error {
+func (a *app) Save(ctx context.Context, se types.SensorEvent) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error {
 	devEUI := strings.ToLower(se.DevEui)
 
 	log := logging.GetFromContext(ctx)
@@ -102,7 +107,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se application.SensorEvent)
 	decoder := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
 	objects, err := decoder(ctx, device.ID(), se)
 	if err != nil {
-		decoderErr, ok := err.(*application.DecoderErr)
+		decoderErr, ok := err.(*types.DecoderErr)
 
 		if !ok {
 			log.Error("failed to decode message", "err", err.Error())
@@ -165,14 +170,14 @@ func deterministicGUID(input string) string {
 	return fmt.Sprintf("%08x-%04x-%04x-%04x-%12x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
 }
 
-func (a *app) createUnknownDevice(ctx context.Context, se application.SensorEvent) error {
-	d := types.Device{
+func (a *app) createUnknownDevice(ctx context.Context, se types.SensorEvent) error {
+	d := dmtypes.Device{
 		Active:   false,
 		DeviceID: deterministicGUID(se.DevEui),
 		SensorID: se.DevEui,
 		Name:     se.DeviceName,
-		DeviceProfile: types.DeviceProfile{
-			Name: UNKNOWN,
+		DeviceProfile: dmtypes.DeviceProfile{
+			Name:    UNKNOWN,
 			Decoder: UNKNOWN,
 		},
 		Tenant: a.createUnknownDeviceTenant,
