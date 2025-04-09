@@ -3,6 +3,7 @@ package sensative
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -20,6 +21,7 @@ type SensativePayload struct {
 	DoorReport   *bool
 	DoorAlarm    *bool
 	Presence     *bool
+	CheckIn      *bool
 }
 
 func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
@@ -32,30 +34,26 @@ func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 		return nil, err
 	}
 
+	if p.BatteryLevel == nil && p.Temperature == nil && p.Humidity == nil && p.DoorReport == nil && p.DoorAlarm == nil && p.Presence == nil {
+		checkIn := struct {
+			BuildID struct {
+				ID       int  `json:"id"`
+				Modified bool `json:"modified"`
+			} `json:"buildId"`
+			HistorySeqNr   uint16 `json:"historySeqNr"`
+			PrevHistorySeq uint16 `json:"prevHistSeqNr"`
+		}{}
+
+		err = json.Unmarshal(e.Object, &checkIn)
+		if err != nil {
+			return nil, err
+		}
+
+		p.CheckIn = new(bool)
+		*p.CheckIn = true
+	}
+
 	return p, nil
-	/*
-	   objects := convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp)
-
-	   	if len(objects) == 0 {
-	   		checkIn := struct {
-	   			BuildID struct {
-	   				ID       int  `json:"id"`
-	   				Modified bool `json:"modified"`
-	   			} `json:"buildId"`
-	   			HistorySeqNr   uint16 `json:"historySeqNr"`
-	   			PrevHistorySeq uint16 `json:"prevHistSeqNr"`
-	   		}{}
-
-	   		err = json.Unmarshal(e.Object, &checkIn)
-	   		if err != nil {
-	   			return nil, err
-	   		}
-
-	   		objects = append(objects, lwm2m.NewDevice(deviceID, e.Timestamp))
-	   	}
-
-	   return objects, nil
-	*/
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
@@ -101,6 +99,10 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p SensativePayl
 	*/
 	if p.Presence != nil {
 		objects = append(objects, lwm2m.NewPresence(deviceID, *p.Presence, ts))
+	}
+
+	if p.CheckIn != nil  && *p.CheckIn {
+		objects = append(objects, lwm2m.NewDevice(deviceID, ts))
 	}
 
 	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
