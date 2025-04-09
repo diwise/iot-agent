@@ -19,7 +19,7 @@ import (
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 
-type QalcosonicPayload struct {
+type QalcosonicVolumePayload struct {
 	CurrentVolume float64
 	Deltas        []QalcosonicDeltaVolume
 	FrameVersion  uint8
@@ -28,6 +28,17 @@ type QalcosonicPayload struct {
 	Temperature   *uint16
 	Timestamp     time.Time
 	Type          string
+}
+
+type QalcosonicAlarmPayload struct {
+	Timestamp  time.Time
+	StatusCode uint8
+	Messages   []string
+}
+
+type QalcosonicPayload struct {
+	volume QalcosonicVolumePayload
+	alarms QalcosonicAlarmPayload
 }
 
 type QalcosonicDeltaVolume struct {
@@ -55,7 +66,17 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 	return convertToLwm2mObjects(ctx, deviceID, p, ap), err
 }
 
-func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPayload, ap *AlarmPacketPayload) []lwm2m.Lwm2mObject {
+func Converter(ctx context.Context, deviceID string, payload any, _ time.Time) ([]lwm2m.Lwm2mObject, error) {
+	p := payload.(QalcosonicPayload)
+	return convert(ctx, deviceID, p)
+}
+
+func convert(ctx context.Context, deviceID string, p QalcosonicPayload) ([]lwm2m.Lwm2mObject, error) {
+	
+	return convertToLwm2mObjects(ctx, deviceID, &p.volume, &p.alarms), nil
+}
+
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicVolumePayload, ap *QalcosonicAlarmPayload) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	log := logging.GetFromContext(ctx)
@@ -122,7 +143,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicPa
 	return objects
 }
 
-func decodePayload(_ context.Context, ue types.SensorEvent) (*QalcosonicPayload, *AlarmPacketPayload, error) {
+func decodePayload(_ context.Context, ue types.SensorEvent) (*QalcosonicVolumePayload, *QalcosonicAlarmPayload, error) {
 	var err error
 
 	buf := bytes.NewReader(ue.Data)
@@ -131,7 +152,7 @@ func decodePayload(_ context.Context, ue types.SensorEvent) (*QalcosonicPayload,
 		return nil, nil, errors.New("decoder not implemented or payload to short")
 	}
 
-	var p QalcosonicPayload
+	var p QalcosonicVolumePayload
 
 	switch buf.Len() {
 	case 5:
@@ -159,18 +180,14 @@ func decodePayload(_ context.Context, ue types.SensorEvent) (*QalcosonicPayload,
 	return &p, nil, err
 }
 
-type AlarmPacketPayload struct {
-	Timestamp  time.Time
-	StatusCode uint8
-	Messages   []string
-}
 
-func alarmPacketDecoder(buf *bytes.Reader) (AlarmPacketPayload, error) {
+
+func alarmPacketDecoder(buf *bytes.Reader) (QalcosonicAlarmPayload, error) {
 	var err error
 	var epoch uint32
 	var statusCode uint8
 
-	p := AlarmPacketPayload{}
+	p := QalcosonicAlarmPayload{}
 
 	err = binary.Read(buf, binary.LittleEndian, &epoch)
 	if err != nil {
@@ -191,7 +208,7 @@ func alarmPacketDecoder(buf *bytes.Reader) (AlarmPacketPayload, error) {
 }
 
 // Lora Payload (24 hours) “Enhanced”
-func w1e(buf *bytes.Reader) (QalcosonicPayload, error) {
+func w1e(buf *bytes.Reader) (QalcosonicVolumePayload, error) {
 	var err error
 
 	var epoch uint32
@@ -201,7 +218,7 @@ func w1e(buf *bytes.Reader) (QalcosonicPayload, error) {
 	var volumeAtLogDateTime uint32
 	var sensorTime time.Time
 
-	p := QalcosonicPayload{
+	p := QalcosonicVolumePayload{
 		Deltas: make([]QalcosonicDeltaVolume, 0),
 	}
 
@@ -265,7 +282,7 @@ func w1e(buf *bytes.Reader) (QalcosonicPayload, error) {
 	return p, nil
 }
 
-func w1t(buf *bytes.Reader) (QalcosonicPayload, error) {
+func w1t(buf *bytes.Reader) (QalcosonicVolumePayload, error) {
 	var err error
 
 	var epoch uint32
@@ -275,7 +292,7 @@ func w1t(buf *bytes.Reader) (QalcosonicPayload, error) {
 	var logDateTime uint32
 	var volumeAtLogDateTime uint32
 
-	p := QalcosonicPayload{
+	p := QalcosonicVolumePayload{
 		Deltas: make([]QalcosonicDeltaVolume, 0),
 	}
 
@@ -376,7 +393,7 @@ func deltaVolumes(buf *bytes.Reader, lastLogValue uint32, logDateTime time.Time)
 }
 
 // Lora Payload (Long) “Extended”
-func w1h(buf *bytes.Reader) (QalcosonicPayload, error) {
+func w1h(buf *bytes.Reader) (QalcosonicVolumePayload, error) {
 	var err error
 
 	var frameVersion uint8
@@ -384,7 +401,7 @@ func w1h(buf *bytes.Reader) (QalcosonicPayload, error) {
 	var statusCode uint8
 	var logVolumeAtOne uint32
 
-	p := QalcosonicPayload{
+	p := QalcosonicVolumePayload{
 		Deltas: make([]QalcosonicDeltaVolume, 0),
 	}
 

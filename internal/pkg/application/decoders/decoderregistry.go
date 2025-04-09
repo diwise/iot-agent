@@ -3,6 +3,7 @@ package decoders
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders/airquality"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders/axsensor"
@@ -21,6 +22,7 @@ import (
 )
 
 type DecoderFunc func(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error)
+type ConverterFunc func(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error)
 
 type Registry interface {
 	GetDecoderForSensorType(ctx context.Context, sensorType string) DecoderFunc

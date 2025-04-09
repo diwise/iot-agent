@@ -34,6 +34,11 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 	return convertToLwm2mObjects(deviceID, p, e.Timestamp), nil
 }
 
+func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+	p := payload.(AxsensorPayload)
+	return convertToLwm2mObjects(deviceID, p, ts), nil
+}
+
 func decode(b []byte) (AxsensorPayload, error) {
 	p := AxsensorPayload{}
 	slen := len(b)

@@ -33,6 +33,11 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 	return convertToLwm2mObjects(ctx, deviceID, obj, e.Timestamp), nil
 }
 
+func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+	p := payload.(EnviotPayload)
+	return convertToLwm2mObjects(ctx, deviceID, p, ts), nil
+}
+
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p EnviotPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 

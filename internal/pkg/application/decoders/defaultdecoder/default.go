@@ -3,6 +3,7 @@ package defaultdecoder
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -14,4 +15,8 @@ func DefaultDecoder(ctx context.Context, deviceID string, e types.SensorEvent) (
 	log.Info("default decoder used", slog.String("sensor_type", e.SensorType))
 
 	return []lwm2m.Lwm2mObject{lwm2m.NewDevice(deviceID, e.Timestamp)}, nil
+}
+
+func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+	return []lwm2m.Lwm2mObject{lwm2m.NewDevice(deviceID, ts)}, nil
 }

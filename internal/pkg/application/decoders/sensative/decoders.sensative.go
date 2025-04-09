@@ -56,6 +56,13 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 	return objects, nil
 }
 
+func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+	p := payload.(SensativePayload)
+	objects := convertToLwm2mObjects(ctx, deviceID, p, ts)
+
+	return objects, nil	
+}
+
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p SensativePayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
