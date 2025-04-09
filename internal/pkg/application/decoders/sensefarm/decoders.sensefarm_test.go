@@ -16,7 +16,9 @@ func TestSensefarmBasicDecoder(t *testing.T) {
 
 	ue, _ := facades.Netmore([]byte(sensefarm))
 
-	objects, err := Decoder(context.Background(), "devID", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	packs := lwm2m.ToPacks(objects)

@@ -17,7 +17,9 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 
 	ue, _ := facades.Netmore([]byte(senlabT))
 
-	objects, err := Decoder(context.Background(), "devID", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	ts, _ := time.Parse(time.RFC3339Nano, "2022-04-12T05:08:50.301732Z")
@@ -28,7 +30,9 @@ func TestSenlabTTempDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(senlabTemp))
-	objects, err := Decoder(context.Background(), "devID", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	v, ok := objects[1].(lwm2m.Temperature)
@@ -40,7 +44,7 @@ func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := facades.Netmore([]byte(senlabT_sensorReadingError))
 
-	_, err := Decoder(context.Background(), "devID", ue)
+	_, err := Decoder(context.Background(), ue)
 
 	is.True(err != nil)
 }

@@ -35,9 +35,9 @@ type App interface {
 }
 
 type app struct {
-	decoderRegistry        decoders.Registry
-	deviceManagementClient dmc.DeviceManagementClient
-	msgCtx                 messaging.MsgContext
+	registry decoders.Registry
+	client   dmc.DeviceManagementClient
+	msgCtx   messaging.MsgContext
 
 	notFoundDevices            map[string]time.Time
 	notFoundDevicesMu          sync.Mutex
@@ -49,8 +49,8 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, createUnkn
 	d := decoders.NewRegistry()
 
 	return &app{
-		decoderRegistry:            d,
-		deviceManagementClient:     dmc,
+		registry:                   d,
+		client:                     dmc,
 		msgCtx:                     msgCtx,
 		notFoundDevices:            make(map[string]time.Time),
 		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
@@ -70,7 +70,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error
 
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	device, err := a.findDevice(ctx, devEUI, a.deviceManagementClient.FindDeviceFromDevEUI)
+	device, err := a.findDevice(ctx, devEUI, a.client.FindDeviceFromDevEUI)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn("blacklisted", "deviceName", se.DeviceName)
@@ -104,8 +104,19 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error
 		Timestamp:    time.Now().UTC(),
 	}
 
-	decoder := a.decoderRegistry.GetDecoderForSensorType(ctx, device.SensorType())
-	objects, err := decoder(ctx, device.ID(), se)
+	decoder, converter, ok := a.registry.Get(ctx, device.SensorType())
+	if !ok {
+		log.Debug("no decoder found for device type", "device_type", device.SensorType())
+		return nil
+	}
+
+	payload, err := decoder(ctx, se)
+	if err != nil {
+		log.Error("failed to decode message", "err", err.Error())
+		return err
+	}
+
+	objects, err := converter(ctx, device.ID(), payload, se.Timestamp)
 	if err != nil {
 		decoderErr, ok := err.(*types.DecoderErr)
 
@@ -183,7 +194,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.SensorEvent) err
 		Tenant: a.createUnknownDeviceTenant,
 	}
 
-	return a.deviceManagementClient.CreateDevice(ctx, d)
+	return a.client.CreateDevice(ctx, d)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
@@ -192,7 +203,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	log := logging.GetFromContext(ctx).With(slog.String("device_id", deviceID))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	device, err := a.findDevice(ctx, deviceID, a.deviceManagementClient.FindDeviceFromInternalID)
+	device, err := a.findDevice(ctx, deviceID, a.client.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn("blacklisted")
@@ -219,7 +230,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 }
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
-	return a.deviceManagementClient.FindDeviceFromInternalID(ctx, deviceID)
+	return a.client.FindDeviceFromInternalID(ctx, deviceID)
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) error {

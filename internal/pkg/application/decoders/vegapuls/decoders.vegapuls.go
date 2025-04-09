@@ -20,13 +20,8 @@ type VegapulsPayload struct {
 	Unit        *uint32
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
-	p, err := decode(e.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	return convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp), nil
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
+	return decode(e.Data)
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {

@@ -17,7 +17,9 @@ func TestDefaultDecoder(t *testing.T) {
 
 	ue, _ := facades.ChirpStack([]byte(data))
 
-	objects, err := defaultdecoder.DefaultDecoder(context.Background(), "devID", ue)
+	payload, err := defaultdecoder.Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := defaultdecoder.Converter(context.Background(), "devID", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	is.Equal(objects[0].ID(), "devID")

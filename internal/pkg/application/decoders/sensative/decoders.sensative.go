@@ -3,7 +3,6 @@ package sensative
 import (
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,7 +22,7 @@ type SensativePayload struct {
 	Presence     *bool
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 	if len(e.Data) < 2 {
 		return nil, errors.New("payload too short")
 	}
@@ -33,34 +32,37 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 		return nil, err
 	}
 
-	objects := convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp)
+	return p, nil
+	/*
+	   objects := convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp)
 
-	if len(objects) == 0 {
-		checkIn := struct {
-			BuildID struct {
-				ID       int  `json:"id"`
-				Modified bool `json:"modified"`
-			} `json:"buildId"`
-			HistorySeqNr   uint16 `json:"historySeqNr"`
-			PrevHistorySeq uint16 `json:"prevHistSeqNr"`
-		}{}
+	   	if len(objects) == 0 {
+	   		checkIn := struct {
+	   			BuildID struct {
+	   				ID       int  `json:"id"`
+	   				Modified bool `json:"modified"`
+	   			} `json:"buildId"`
+	   			HistorySeqNr   uint16 `json:"historySeqNr"`
+	   			PrevHistorySeq uint16 `json:"prevHistSeqNr"`
+	   		}{}
 
-		err = json.Unmarshal(e.Object, &checkIn)
-		if err != nil {
-			return nil, err
-		}
+	   		err = json.Unmarshal(e.Object, &checkIn)
+	   		if err != nil {
+	   			return nil, err
+	   		}
 
-		objects = append(objects, lwm2m.NewDevice(deviceID, e.Timestamp))
-	}
+	   		objects = append(objects, lwm2m.NewDevice(deviceID, e.Timestamp))
+	   	}
 
-	return objects, nil
+	   return objects, nil
+	*/
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
 	p := payload.(SensativePayload)
 	objects := convertToLwm2mObjects(ctx, deviceID, p, ts)
 
-	return objects, nil	
+	return objects, nil
 }
 
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p SensativePayload, ts time.Time) []lwm2m.Lwm2mObject {

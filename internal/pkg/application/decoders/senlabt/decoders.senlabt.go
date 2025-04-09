@@ -19,7 +19,7 @@ type SenlabPayload struct {
 	Temperature  float64
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 	var d SenlabPayload
 
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
@@ -33,7 +33,7 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 		return nil, err
 	}
 
-	return convertToLwm2mObjects(ctx, deviceID, d, e.Timestamp), nil
+	return d, nil
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {

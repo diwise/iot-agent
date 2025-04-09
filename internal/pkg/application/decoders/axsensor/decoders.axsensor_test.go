@@ -15,10 +15,12 @@ func TestAxsensor(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := facades.Netmore([]byte(axsensor_input))
 
-	objects, err := Decoder(context.Background(), "devId", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
-	is.Equal(objects[0].ID(), "devId")
+	objects, err := Converter(context.Background(), "devId", payload, ue.Timestamp)
+	is.NoErr(err)
 
+	is.Equal(objects[0].ID(), "devId")
 	is.Equal(len(objects), 4)
 
 	distance, _ := objects[0].(lwm2m.Distance)
@@ -41,8 +43,11 @@ func TestAxsensorDifferentPayload(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := facades.Netmore([]byte(input2))
 
-	objects, err := Decoder(context.Background(), "devId", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devId", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devId")
 	is.Equal(len(objects), 4)
 

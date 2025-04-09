@@ -45,7 +45,9 @@ func TestElsysDigital1True_lwm2m(t *testing.T) {
 	}
 	`))
 	is.NoErr(err)
-	objects, err := Decoder(context.Background(), "abc123", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
 	is.NoErr(err)
 	is.Equal(true, objects[3].(lwm2m.DigitalInput).DigitalInputState)
 }
@@ -74,8 +76,11 @@ func TestElsysCO2Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(elsysCO2))
-	objects, err := Decoder(context.Background(), "devId", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
+	is.NoErr(err)
+	
 
 	is.Equal(len(objects), 5)
 }
@@ -84,7 +89,9 @@ func TestElsysTemperatureDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(elsysTemp))
-	objects, err := Decoder(context.Background(), "devId", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)	
 	is.NoErr(err)
 
 	is.Equal(len(objects), 2)
@@ -95,7 +102,9 @@ func TestElsysPumpbrunnarDecoder(t *testing.T) {
 
 	ue, err := facades.Netmore([]byte(elt2hp))
 	is.NoErr(err)
-	objects, err := Decoder(context.Background(), "devId", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	is.NoErr(err)
@@ -106,7 +115,9 @@ func TestDecodeElsysPayload(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.Netmore([]byte(elt2hp))
-	objects, err := Decoder(context.Background(), "devId", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	is.Equal(len(objects), 4)
@@ -132,7 +143,9 @@ func TestElsysElt2hpTrue(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.Netmore([]byte(elt2hp_true))
-	objects, err := Decoder(context.Background(), "devId", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	is.Equal(len(objects), 4)

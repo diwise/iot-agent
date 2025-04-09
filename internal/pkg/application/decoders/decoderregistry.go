@@ -21,15 +21,18 @@ import (
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 )
 
-type DecoderFunc func(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error)
+type DecoderFunc func(ctx context.Context, e types.SensorEvent) (any, error)
 type ConverterFunc func(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error)
 
 type Registry interface {
-	GetDecoderForSensorType(ctx context.Context, sensorType string) DecoderFunc
+	Get(ctx context.Context, sensorType string) (DecoderFunc, ConverterFunc, bool)
+	GetDecoder(ctx context.Context, sensorType string) DecoderFunc
+	GetConverter(ctx context.Context, sensorType string) ConverterFunc
 }
 
 type registryImpl struct {
-	decoders map[string]DecoderFunc
+	decoders   map[string]DecoderFunc
+	converters map[string]ConverterFunc
 }
 
 func NewRegistry() Registry {
@@ -59,15 +62,62 @@ func NewRegistry() Registry {
 		"presence":         sensative.Decoder, // deprecated, use sensative
 	}
 
+	converters := map[string]ConverterFunc{
+		"airquality":      airquality.Converter,
+		"axsensor":        axsensor.Converter,
+		"elt_2_hp":        elsys.Converter,
+		"enviot":          enviot.Converter,
+		"niab-fls":        niab.Converter,
+		"qalcosonic":      qalcosonic.Converter,
+		"vegapuls_air_41": vegapuls.Converter,
+
+		"elsys":       elsys.Converter,
+		"elsys_codec": elsys.Converter, // deprecated, use elsys
+
+		"milesight":       milesight.Converter,
+		"milesight_am100": milesight.Converter, // deprecated, use milesight
+
+		"senlabt":      senlabt.Converter,
+		"tem_lab_14ns": senlabt.Converter, // deprecated, use senlabt
+
+		"cube02":    sensefarm.Converter, // deprecated, use sensefarm
+		"sensefarm": sensefarm.Converter,
+
+		"sensative":        sensative.Converter,
+		"strips_lora_ms_h": sensative.Converter, // deprecated, use sensative
+		"presence":         sensative.Converter, // deprecated, use sensative
+	}
+
 	return &registryImpl{
-		decoders: decoders,
+		decoders:   decoders,
+		converters: converters,
 	}
 }
 
-func (c *registryImpl) GetDecoderForSensorType(ctx context.Context, sensorType string) DecoderFunc {
+func (c *registryImpl) Get(ctx context.Context, sensorType string) (DecoderFunc, ConverterFunc, bool) {
+	if d, ok := c.decoders[strings.ToLower(sensorType)]; ok {
+		if c, ok := c.converters[strings.ToLower(sensorType)]; ok {
+			return d, c, true
+		} else {
+			return d, defaultdecoder.Converter, false
+		}
+	}
+
+	return defaultdecoder.Decoder, defaultdecoder.Converter, false
+}
+
+func (c *registryImpl) GetDecoder(ctx context.Context, sensorType string) DecoderFunc {
 	if d, ok := c.decoders[strings.ToLower(sensorType)]; ok {
 		return d
 	}
 
-	return defaultdecoder.DefaultDecoder
+	return defaultdecoder.Decoder
+}
+
+func (c *registryImpl) GetConverter(ctx context.Context, sensorType string) ConverterFunc {
+	if d, ok := c.converters[strings.ToLower(sensorType)]; ok {
+		return d
+	}
+
+	return defaultdecoder.Converter
 }

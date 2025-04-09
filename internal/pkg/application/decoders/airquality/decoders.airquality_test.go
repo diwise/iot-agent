@@ -15,7 +15,10 @@ func TestAirQuality(t *testing.T) {
 	ue, err := facades.ChirpStack([]byte(airqualityData))
 	is.NoErr(err)
 
-	objects, err := Decoder(context.Background(), "id", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+
+	objects, err := Converter(context.Background(), "id", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	is.Equal(objects[0].ID(), "id")

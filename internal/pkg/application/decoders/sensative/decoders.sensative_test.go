@@ -19,8 +19,11 @@ func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := facades.ChirpStack([]byte(livboj))
 
-	objects, err := Decoder(context.Background(), "devID", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devID")
 	is.Equal(objects[0].(lwm2m.Presence).DigitalInputState, true)
 }
@@ -31,8 +34,11 @@ func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	err := json.Unmarshal([]byte(livboj_checkin), &ue)
 	is.NoErr(err)
 
-	objects, err := Decoder(context.Background(), "devID", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devID")
 }
 
@@ -51,7 +57,7 @@ func TestDataErrSensorReading(t *testing.T) {
 		d := fmt.Sprintf(checkin, p)
 		err := json.Unmarshal([]byte(d), &ue)
 		is.NoErr(err)
-		_, err = Decoder(context.Background(), "devID", ue)
+		_, err = Decoder(context.Background(), ue)
 		is.NoErr(err)
 	}
 }

@@ -89,7 +89,10 @@ func TestQalcosonicW1t_2(t *testing.T) {
 	ue, _ := facades.ChirpStack([]byte(qalcosonic_w1t_2))
 	p, ap, err := decodePayload(context.Background(), ue)
 	is.NoErr(err)
-	objects, err := Decoder(context.Background(), "id", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
 
 	is.NoErr(err)
 	is.True(p != nil)
@@ -104,9 +107,12 @@ func TestDecode(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.Netmore([]byte(qalcosonic_w1t))
-	objects, err := Decoder(context.Background(), "id", ue)
+	payload, err := Decoder(context.Background(), ue)
 	_, ok := err.(*types.DecoderErr)
 	is.True(ok)
+  
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+  is.NoErr(err)
 
 	is.Equal(17, len(objects))
 

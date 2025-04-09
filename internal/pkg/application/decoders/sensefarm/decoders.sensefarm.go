@@ -23,20 +23,13 @@ type SensefarmPayload struct {
 	Temperature        float32 // °C
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
-	var psf SensefarmPayload
-
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 	// At minimum we must receive 2 bytes, one for header type and one for value
 	if len(e.Data) < 2 {
 		return nil, errors.New("payload too short")
 	}
 
-	psf, err := decodeSensefarmPayload(e.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	return convertToLwm2mObjects(ctx, deviceID, psf, e.Timestamp), nil
+	return decodeSensefarmPayload(e.Data)
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {

@@ -10,11 +10,11 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
-func DefaultDecoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 	log := logging.GetFromContext(ctx)
 	log.Info("default decoder used", slog.String("sensor_type", e.SensorType))
 
-	return []lwm2m.Lwm2mObject{lwm2m.NewDevice(deviceID, e.Timestamp)}, nil
+	return nil, nil
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {

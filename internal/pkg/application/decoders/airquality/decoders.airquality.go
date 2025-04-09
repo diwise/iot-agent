@@ -22,18 +22,13 @@ type AirQualityPayload struct {
 	NO2         *float64 `json:"no2"`
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 
 	if e.FPort != 2 {
 		return nil, errors.New("invalid fPort")
 	}
 
-	p, err := decode(e.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	return convertToLwm2mObjects(deviceID, p, e.Timestamp), nil
+	return decode(e.Data)
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {

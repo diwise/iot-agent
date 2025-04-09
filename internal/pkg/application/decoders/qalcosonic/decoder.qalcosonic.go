@@ -37,8 +37,8 @@ type QalcosonicAlarmPayload struct {
 }
 
 type QalcosonicPayload struct {
-	volume QalcosonicVolumePayload
-	alarms QalcosonicAlarmPayload
+	volume *QalcosonicVolumePayload
+	alarms *QalcosonicAlarmPayload
 }
 
 type QalcosonicDeltaVolume struct {
@@ -47,7 +47,7 @@ type QalcosonicDeltaVolume struct {
 	Timestamp       time.Time
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 	var err error
 
 	p, ap, err := decodePayload(ctx, e)
@@ -63,7 +63,10 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 		}
 	}
 
-	return convertToLwm2mObjects(ctx, deviceID, p, ap), err
+	return QalcosonicPayload{
+		volume: p,
+		alarms: ap,
+	}, err
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, _ time.Time) ([]lwm2m.Lwm2mObject, error) {
@@ -72,8 +75,8 @@ func Converter(ctx context.Context, deviceID string, payload any, _ time.Time) (
 }
 
 func convert(ctx context.Context, deviceID string, p QalcosonicPayload) ([]lwm2m.Lwm2mObject, error) {
-	
-	return convertToLwm2mObjects(ctx, deviceID, &p.volume, &p.alarms), nil
+
+	return convertToLwm2mObjects(ctx, deviceID, p.volume, p.alarms), nil
 }
 
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicVolumePayload, ap *QalcosonicAlarmPayload) []lwm2m.Lwm2mObject {
@@ -179,8 +182,6 @@ func decodePayload(_ context.Context, ue types.SensorEvent) (*QalcosonicVolumePa
 
 	return &p, nil, err
 }
-
-
 
 func alarmPacketDecoder(buf *bytes.Reader) (QalcosonicAlarmPayload, error) {
 	var err error

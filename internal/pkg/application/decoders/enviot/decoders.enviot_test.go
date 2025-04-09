@@ -15,7 +15,9 @@ func TestEnviotDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(enviot))
-	objects, err := Decoder(context.Background(), "devID", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	temp, _ := objects[0].(lwm2m.Temperature)

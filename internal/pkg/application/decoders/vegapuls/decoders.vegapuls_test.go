@@ -17,8 +17,11 @@ func TestVegapulsSensorPacketIdentifier2(t *testing.T) {
 	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier2)))
 	is.NoErr(err)
 
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	b, _ := objects[0].(lwm2m.Device)
@@ -36,8 +39,11 @@ func TestVegapulsSensorPacketIdentifier8(t *testing.T) {
 	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier8)))
 	is.NoErr(err)
 
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	b, _ := objects[0].(lwm2m.Device)
@@ -55,8 +61,11 @@ func TestVegapulsSensorConvertsFromInchesToMeters(t *testing.T) {
 	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, testDataInFeet)))
 	is.NoErr(err)
 
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	dist, _ := objects[1].(lwm2m.Distance)
@@ -68,8 +77,11 @@ func TestVegapulsSensorConvertsFromFahrenheitToCelsius(t *testing.T) {
 	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, testDataFahrenheit)))
 	is.NoErr(err)
 
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	temp, _ := objects[2].(lwm2m.Temperature)
@@ -81,7 +93,7 @@ func TestVegapulsSensorReturnsErrOnIncompletePayload(t *testing.T) {
 	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, partialTestData)))
 	is.NoErr(err)
 
-	_, err = Decoder(context.Background(), "devid", ue)
+	_, err = Decoder(context.Background(), ue)
 	is.True(err != nil)
 }
 
@@ -90,7 +102,7 @@ func TestVegapulsSensorReturnsErrOnUnknownPacketIdentifier(t *testing.T) {
 	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, unknownPacketIdentifier)))
 	is.NoErr(err)
 
-	_, err = Decoder(context.Background(), "devid", ue)
+	_, err = Decoder(context.Background(), ue)
 	is.True(err != nil)
 }
 
@@ -99,8 +111,11 @@ func TestVegapulsSensorPacketIdentifier12(t *testing.T) {
 	ue, err := facades.Netmore([]byte(fmt.Sprintf(testData, packetIdentifier12)))
 	is.NoErr(err)
 
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	b, _ := objects[0].(lwm2m.Device)

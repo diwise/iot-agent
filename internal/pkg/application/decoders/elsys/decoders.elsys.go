@@ -40,7 +40,7 @@ type ElsysPayload struct {
 	Waterleak     *uint8   `json:"waterleak,omitempty"`
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 	var p ElsysPayload
 	var err error
 
@@ -95,9 +95,8 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 		}
 	}
 
-	return convertToLwm2mObjects(ctx, deviceID, p, e.Timestamp), nil
+	return p, nil
 }
-
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
 	p := payload.(ElsysPayload)

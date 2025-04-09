@@ -22,7 +22,7 @@ type EnviotPayload struct {
 	} `json:"payload"`
 }
 
-func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
+func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 	obj := EnviotPayload{}
 
 	err := json.Unmarshal(e.Object, &obj)
@@ -30,7 +30,7 @@ func Decoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m
 		return nil, fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
 	}
 
-	return convertToLwm2mObjects(ctx, deviceID, obj, e.Timestamp), nil
+	return obj, nil
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {

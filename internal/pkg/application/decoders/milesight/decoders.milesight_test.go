@@ -15,8 +15,11 @@ func TestMilesightAM100Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 	ue, _ := facades.ChirpStack([]byte(data_am100))
 
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	b, _ := objects[0].(lwm2m.Device)
@@ -37,8 +40,11 @@ func TestMilesightEM500Decoder(t *testing.T) {
 
 	ue, _ := facades.ChirpStack([]byte(data_em500))
 
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	d, _ := objects[0].(lwm2m.Distance)
@@ -49,8 +55,11 @@ func TestMilesightDecoderEM400TLD(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(data_em400))
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	device, _ := objects[0].(lwm2m.Device)
@@ -63,8 +72,11 @@ func TestMilesightDecoderEM400TLD2(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(data_em400_tld))
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	device, _ := objects[0].(lwm2m.Device)
@@ -79,8 +91,11 @@ func TestMilesightDecoderEM400UDL(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(data_em400_udl))
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	device, _ := objects[0].(lwm2m.Device)
@@ -97,8 +112,11 @@ func TestMilesightDecoderEM400TLD_NegTemp(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := facades.ChirpStack([]byte(data_em400_tld_neg))
-	objects, err := Decoder(context.Background(), "devid", ue)
+	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
+	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
 	is.Equal(objects[0].ID(), "devid")
 
 	device, _ := objects[0].(lwm2m.Device)
@@ -119,7 +137,9 @@ func TestMilesightEM300Decoder(t *testing.T) {
 func TestMilesightEM300DecoderLwm2m(t *testing.T) {
 	is := is.New(t)
 	ue, _ := facades.ChirpStack([]byte(data_em300))
-	m, err := Decoder(context.Background(), "device_id", ue)
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	m, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	is.True(!m[2].(lwm2m.DigitalInput).DigitalInputState)
