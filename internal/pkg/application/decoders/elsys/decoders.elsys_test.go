@@ -117,7 +117,7 @@ func TestDecodeElsysPayload(t *testing.T) {
 	ue, _ := facades.Netmore([]byte(elt2hp))
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
-	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
+	objects, err := Converter(context.Background(), "devId", payload, ue.Timestamp)
 	is.NoErr(err)
 
 	is.Equal(len(objects), 4)
