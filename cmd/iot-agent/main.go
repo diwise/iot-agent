@@ -134,12 +134,16 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.
 		),
 		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
 			appCfg.messenger.Start()
-			appCfg.mqttClient.Start()
+			appCfg.mqttClient.Start()			
 
 			return nil
 		}),
-		onshutdown(func(ctx context.Context, svcCfg *appConfig) error {
-			// TODO: Proper cleanup
+		onshutdown(func(ctx context.Context, appCfg *appConfig) error {			
+			appCfg.mqttClient.Stop()
+			appCfg.messenger.Close()
+			appCfg.dmClient.Close(ctx)
+			appCfg.storage.Close()
+
 			return nil
 		}),
 	)

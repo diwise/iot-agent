@@ -40,39 +40,38 @@ func (c Config) ConnStr() string {
 
 type Storage interface {
 	Save(ctx context.Context, se types.SensorEvent) error
+	Close() error
 }
 
 type postgres struct {
 	conn *pgxpool.Pool
 }
 
-type memory struct{}
-
-func (n memory) Save(ctx context.Context, se types.SensorEvent) error {
-	return nil
-}
-
-func NewInMemory() (Storage, error) {
-	return memory{}, nil
-}
-
 func New(ctx context.Context, config Config) (Storage, error) {
 	pool, err := connect(ctx, config)
 	if err != nil {
-		return postgres{}, err
+		return &postgres{}, err
 	}
 
 	err = initialize(ctx, pool)
 	if err != nil {
-		return postgres{}, err
+		return &postgres{}, err
 	}
 
-	return postgres{
+	return &postgres{
 		conn: pool,
 	}, nil
 }
 
-func (s postgres) Save(ctx context.Context, se types.SensorEvent) error {
+func (s *postgres) Close() error {
+	if s.conn != nil {
+		s.conn.Close()
+		return nil
+	}
+	return nil
+}
+
+func (s *postgres) Save(ctx context.Context, se types.SensorEvent) error {
 	payload, err := json.Marshal(se)
 	if err != nil {
 		return err
@@ -152,4 +151,17 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 	}
 
 	return tx.Commit(ctx)
+}
+
+type memory struct{}
+
+func (n memory) Save(ctx context.Context, se types.SensorEvent) error {
+	return nil
+}
+func (n memory) Close() error {
+	return nil
+}
+
+func NewInMemory() (Storage, error) {
+	return memory{}, nil
 }
