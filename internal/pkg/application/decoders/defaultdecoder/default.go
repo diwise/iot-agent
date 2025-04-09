@@ -1,4 +1,4 @@
-package decoder
+package defaultdecoder
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
-
-type MessageDecoderFunc func(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error)
 
 func DefaultDecoder(ctx context.Context, deviceID string, e types.SensorEvent) ([]lwm2m.Lwm2mObject, error) {
 	log := logging.GetFromContext(ctx)

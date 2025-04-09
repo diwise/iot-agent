@@ -13,7 +13,7 @@ import (
 
 type UplinkASFunc func([]byte) (SensorEvent, error)
 
-func GetFacade(as string) UplinkASFunc {
+func New(as string) UplinkASFunc {
 	if strings.EqualFold("chirpstack", as) {
 		return ChirpStack
 	}

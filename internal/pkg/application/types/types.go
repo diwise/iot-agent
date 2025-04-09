@@ -57,3 +57,25 @@ type DecoderErr struct {
 func (e *DecoderErr) Error() string {
 	return fmt.Sprintf("error code %d with messages: %s", e.Code, strings.Join(e.Messages, ", "))
 }
+
+type StatusMessage struct {
+	DeviceID     string    `json:"deviceID"`
+	BatteryLevel int       `json:"batteryLevel"`
+	Code         int       `json:"statusCode"`
+	Messages     []string  `json:"statusMessages,omitempty"`
+	Tenant       string    `json:"tenant"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
+func (m *StatusMessage) ContentType() string {
+	return "application/json"
+}
+
+func (m *StatusMessage) TopicName() string {
+	return "device-status"
+}
+
+func (m *StatusMessage) Body() []byte {
+	b, _ := json.Marshal(m)
+	return b
+}

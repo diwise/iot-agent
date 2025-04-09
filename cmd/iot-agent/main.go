@@ -43,7 +43,7 @@ func defaultFlags() flagMap {
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 
-		forwardingEndpoint: "localhost:1883",
+		forwardingEndpoint: "http://iot-agent/api/v0/messages",
 		appServerFacade:    "chirpstack",
 
 		devmode: "false",
@@ -80,7 +80,7 @@ func main() {
 		dmClient:   dmClient,
 		mqttClient: mqttClient,
 		storage:    storage,
-		facade:     facades.GetFacade(flags[appServerFacade]),
+		facade:     facades.New(flags[appServerFacade]),
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg, policies)
@@ -134,11 +134,11 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.
 		),
 		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
 			appCfg.messenger.Start()
-			appCfg.mqttClient.Start()			
+			appCfg.mqttClient.Start()
 
 			return nil
 		}),
-		onshutdown(func(ctx context.Context, appCfg *appConfig) error {			
+		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
 			appCfg.mqttClient.Stop()
 			appCfg.messenger.Close()
 			appCfg.dmClient.Close(ctx)

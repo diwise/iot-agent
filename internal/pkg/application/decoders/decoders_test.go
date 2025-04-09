@@ -1,4 +1,4 @@
-package decoder
+package decoders
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/diwise/iot-agent/internal/pkg/application/decoders/defaultdecoder"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/matryer/is"
 )
@@ -16,7 +17,7 @@ func TestDefaultDecoder(t *testing.T) {
 
 	ue, _ := facades.ChirpStack([]byte(data))
 
-	objects, err := DefaultDecoder(context.Background(), "devID", ue)
+	objects, err := defaultdecoder.DefaultDecoder(context.Background(), "devID", ue)
 	is.NoErr(err)
 
 	is.Equal(objects[0].ID(), "devID")

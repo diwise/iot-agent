@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/decoder"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoders"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
@@ -35,7 +35,7 @@ type App interface {
 }
 
 type app struct {
-	decoderRegistry        decoder.DecoderRegistry
+	decoderRegistry        decoders.Registry
 	deviceManagementClient dmc.DeviceManagementClient
 	msgCtx                 messaging.MsgContext
 
@@ -46,7 +46,7 @@ type app struct {
 }
 
 func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
-	d := decoder.NewDecoderRegistry()
+	d := decoders.NewRegistry()
 
 	return &app{
 		decoderRegistry:            d,
@@ -95,7 +95,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error
 	log = log.With(slog.String("device_id", device.ID()), slog.String("type", device.SensorType()))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	msg := StatusMessage{
+	msg := types.StatusMessage{
 		DeviceID:     device.ID(),
 		BatteryLevel: 0,
 		Code:         0,
@@ -202,7 +202,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		return err
 	}
 
-	msg := StatusMessage{
+	msg := types.StatusMessage{
 		DeviceID:     device.ID(),
 		BatteryLevel: 0,
 		Code:         0,
@@ -276,7 +276,7 @@ func (a *app) ignoreDeviceFor(id string, period time.Duration) {
 	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, msg StatusMessage, tenant string) bool {
+func (a *app) sendStatusMessage(ctx context.Context, msg types.StatusMessage, tenant string) bool {
 	log := logging.GetFromContext(ctx)
 
 	if msg.Tenant == "" {
@@ -297,26 +297,4 @@ func (a *app) sendStatusMessage(ctx context.Context, msg StatusMessage, tenant s
 
 	log.Debug("status message sent")
 	return true
-}
-
-type StatusMessage struct {
-	DeviceID     string    `json:"deviceID"`
-	BatteryLevel int       `json:"batteryLevel"`
-	Code         int       `json:"statusCode"`
-	Messages     []string  `json:"statusMessages,omitempty"`
-	Tenant       string    `json:"tenant"`
-	Timestamp    time.Time `json:"timestamp"`
-}
-
-func (m *StatusMessage) ContentType() string {
-	return "application/json"
-}
-
-func (m *StatusMessage) TopicName() string {
-	return "device-status"
-}
-
-func (m *StatusMessage) Body() []byte {
-	b, _ := json.Marshal(m)
-	return b
 }
