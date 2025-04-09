@@ -37,6 +37,7 @@ func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app applicati
 
 	routeGroup := http.StripPrefix(apiPrefix, mux)
 	rootMux.Handle("GET "+apiPrefix+"/", authenticator(routeGroup))
+	rootMux.Handle("POST "+apiPrefix+"/", routeGroup)
 
 	return nil
 }
