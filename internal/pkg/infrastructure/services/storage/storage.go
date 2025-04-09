@@ -162,6 +162,6 @@ func (n memory) Close() error {
 	return nil
 }
 
-func NewInMemory() (Storage, error) {
-	return memory{}, nil
+func NewInMemory() Storage {
+	return memory{}
 }

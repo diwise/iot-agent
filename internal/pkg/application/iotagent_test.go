@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"
@@ -16,7 +17,7 @@ import (
 func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.Netmore([]byte(senlabT))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -30,7 +31,7 @@ func TestSenlabTPayload(t *testing.T) {
 func TestStripsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.Netmore([]byte(stripsPayload))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -44,7 +45,7 @@ func TestStripsPayload(t *testing.T) {
 func TestElt2HpPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.Netmore([]byte(elt2hp))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -58,7 +59,7 @@ func TestElt2HpPayload(t *testing.T) {
 func TestElsysPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.ChirpStack([]byte(elsys))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -72,7 +73,7 @@ func TestElsysPayload(t *testing.T) {
 func TestElsysDigital1Payload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.ChirpStack([]byte(`
 	{
 		"data": "DQEaAA==",
@@ -94,7 +95,7 @@ func TestElsysDigital1Payload(t *testing.T) {
 func TestErsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.ChirpStack([]byte(ers))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -114,7 +115,7 @@ func TestErsPayload(t *testing.T) {
 func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.ChirpStack([]byte(livboj))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
@@ -128,7 +129,7 @@ func TestPresencePayload(t *testing.T) {
 func TestDistancePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
 	ue, _ := facades.Netmore([]byte(vegapuls))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 

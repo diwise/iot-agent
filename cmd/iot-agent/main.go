@@ -92,7 +92,7 @@ func main() {
 
 func newStorage(ctx context.Context, flags flagMap) (storage.Storage, error) {
 	if flags[devmode] == "true" {
-		return storage.NewInMemory()
+		return storage.NewInMemory(), nil
 	}
 	return storage.New(ctx, storage.LoadConfiguration(ctx))
 }
@@ -123,6 +123,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.
 				app := application.New(
 					appCfg.dmClient,
 					appCfg.messenger,
+					appCfg.storage,
 					flags[createUnknownDeviceEnabled] == "true",
 					flags[createUnknownDeviceTenant],
 				)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
@@ -38,6 +39,7 @@ type app struct {
 	registry decoders.Registry
 	client   dmc.DeviceManagementClient
 	msgCtx   messaging.MsgContext
+	store    storage.Storage
 
 	notFoundDevices            map[string]time.Time
 	notFoundDevicesMu          sync.Mutex
@@ -45,13 +47,14 @@ type app struct {
 	createUnknownDeviceTenant  string
 }
 
-func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
 	d := decoders.NewRegistry()
 
 	return &app{
 		registry:                   d,
 		client:                     dmc,
 		msgCtx:                     msgCtx,
+		store:                      storage,
 		notFoundDevices:            make(map[string]time.Time),
 		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
 		createUnknownDeviceTenant:  createUnknownDeviceTenant,
@@ -59,7 +62,8 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, createUnkn
 }
 
 func (a *app) Save(ctx context.Context, se types.SensorEvent) error {
-	return fmt.Errorf("not implemented")
+	//TODO: remove from interface and use internal only
+	return a.store.Save(ctx, se)
 }
 
 func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error {
