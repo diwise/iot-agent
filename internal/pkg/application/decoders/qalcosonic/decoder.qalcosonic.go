@@ -41,13 +41,17 @@ type QalcosonicPayload struct {
 	alarms *QalcosonicAlarmPayload
 }
 
+func (a QalcosonicPayload) BatteryLevel() *int {
+	return nil
+}
+
 type QalcosonicDeltaVolume struct {
 	CumulatedVolume float64
 	DeltaVolume     float64
 	Timestamp       time.Time
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var err error
 
 	p, ap, err := decodePayload(ctx, e)

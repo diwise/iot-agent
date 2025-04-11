@@ -109,7 +109,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 		return err
 	}
 
-	err = a.sendStatusMessage(ctx, device, se)
+	err = a.sendStatusMessage(ctx, device, se, payload)
 	if err != nil {
 		log.Warn("failed to send status message", "err", err.Error())
 	}
@@ -228,7 +228,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	return a.client.CreateDevice(ctx, d)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt types.Event) error {
+func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt types.Event, p types.SensorPayload) error {
 	log := logging.GetFromContext(ctx)
 
 	msg := types.StatusMessage{
@@ -238,25 +238,35 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt type
 	}
 
 	if evt.TX != nil {
-		msg.DR = evt.TX.DR
-		msg.Frequency = evt.TX.Frequency
-		msg.SpreadingFactor = evt.TX.SpreadingFactor
+		msg.DR = &evt.TX.DR
+		msg.Frequency = &evt.TX.Frequency
+		msg.SpreadingFactor = &evt.TX.SpreadingFactor
 	}
 
 	if evt.RX != nil {
-		msg.RSSI = evt.RX.RSSI
-		msg.LoRaSNR = evt.RX.LoRaSNR
+		msg.RSSI = &evt.RX.RSSI
+		msg.LoRaSNR = &evt.RX.LoRaSNR
 	}
 
 	if evt.Status != nil {
 		if !evt.Status.BatteryLevelUnavailable {
-			msg.BatteryLevel = int(evt.Status.BatteryLevel)
+			msg.BatteryLevel = &evt.Status.BatteryLevel
+		}
+	}
+
+	if p != nil && msg.BatteryLevel == nil {
+		if bat := p.BatteryLevel(); bat != nil {
+			bat := *p.BatteryLevel()
+			f := float64(bat)
+			msg.BatteryLevel = &f
 		}
 	}
 
 	if evt.Error != nil {
-		msg.Code = evt.Error.Type
-		msg.Messages = []string{evt.Error.Message}
+		msg.Code = &evt.Error.Type
+		if evt.Error.Message != "" {
+			msg.Messages = []string{evt.Error.Message}
+		}
 	}
 
 	err := a.msgCtx.PublishOnTopic(ctx, &msg)

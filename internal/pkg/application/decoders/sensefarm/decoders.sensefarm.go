@@ -23,7 +23,12 @@ type SensefarmPayload struct {
 	Temperature        float32 // °C
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a SensefarmPayload) BatteryLevel() *int {
+	bat := int(a.BatteryVoltage)
+	return &bat
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	// At minimum we must receive 2 bytes, one for header type and one for value
 	if len(e.Payload.Data) < 2 {
 		return nil, errors.New("payload too short")

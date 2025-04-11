@@ -22,7 +22,16 @@ type EnviotPayload struct {
 	} `json:"payload"`
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a EnviotPayload) BatteryLevel() *int {
+	if a.Payload.Battery != nil {
+		bat := int(*a.Payload.Battery)
+		return &bat
+	}
+
+	return nil
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	obj := EnviotPayload{}
 
 	err := json.Unmarshal(e.Payload.Object, &obj)

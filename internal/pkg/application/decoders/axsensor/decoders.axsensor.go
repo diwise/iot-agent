@@ -20,7 +20,16 @@ type AxsensorPayload struct {
 	Vbat             *float64 `json:"vbat,omitempty"`
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a AxsensorPayload) BatteryLevel() *int {
+	if a.Vbat != nil {
+		bat := int(*a.Vbat)
+		return &bat
+	}
+
+	return nil
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 
 	if e.Payload.FPort != 2 {
 		return nil, errors.New("invalid fPort")

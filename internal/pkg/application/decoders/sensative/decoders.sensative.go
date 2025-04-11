@@ -13,7 +13,7 @@ import (
 )
 
 type SensativePayload struct {
-	BatteryLevel *int
+	BatteryLevel_ *int
 	Temperature  *float64
 	Humidity     *float32
 	DoorReport   *bool
@@ -22,7 +22,12 @@ type SensativePayload struct {
 	CheckIn      *bool
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a SensativePayload) BatteryLevel() *int {
+	return a.BatteryLevel_
+}
+
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if e.Payload == nil {
 		return nil, types.ErrPayloadContainsNoData
 	}
@@ -52,9 +57,9 @@ func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) 
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p SensativePayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
-	if p.BatteryLevel != nil {
+	if p.BatteryLevel_ != nil {
 		d := lwm2m.NewDevice(deviceID, ts)
-		bat := int(*p.BatteryLevel)
+		bat := int(*p.BatteryLevel_)
 		d.BatteryLevel = &bat
 		objects = append(objects, d)
 	}
@@ -109,7 +114,7 @@ func decode(b []byte) (SensativePayload, error) {
 		switch channel {
 		case 1: // battery
 			bl := int(b[pos])
-			p.BatteryLevel = &bl
+			p.BatteryLevel_ = &bl
 		case 2: // temp report
 			size = 2
 			t := float64(binary.BigEndian.Uint16(b[pos:pos+2]) / 10)

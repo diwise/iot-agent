@@ -21,7 +21,16 @@ type MilesightPayload struct {
 	MagnetStatus *string
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a MilesightPayload) BatteryLevel() *int {
+	if a.Battery != nil {
+		bat := int(*a.Battery)
+		return &bat
+	}
+
+	return nil
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	return decode(e.Payload.Data)
 }
 

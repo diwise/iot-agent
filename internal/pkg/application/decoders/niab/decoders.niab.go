@@ -19,7 +19,11 @@ type NiabPayload struct {
 	Distance    *float64
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a NiabPayload) BatteryLevel() *int {
+	return &a.Battery
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	return decode(e.Payload.Object)
 }
 

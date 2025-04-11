@@ -20,7 +20,11 @@ type VegapulsPayload struct {
 	Unit        *uint32
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a VegapulsPayload) BatteryLevel() *int {
+	return a.Battery
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	return decode(e.Payload.Data)
 }
 

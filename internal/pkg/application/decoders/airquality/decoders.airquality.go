@@ -22,7 +22,11 @@ type AirQualityPayload struct {
 	NO2         *float64 `json:"no2"`
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a AirQualityPayload) BatteryLevel() *int {
+	return nil
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 
 	if e.Payload.FPort != 2 {
 		return nil, errors.New("invalid fPort")

@@ -21,7 +21,9 @@ import (
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 )
 
-type DecoderFunc func(ctx context.Context, e types.Event) (any, error)
+
+
+type DecoderFunc func(ctx context.Context, e types.Event) (types.SensorPayload, error)
 type ConverterFunc func(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error)
 
 type Registry interface {

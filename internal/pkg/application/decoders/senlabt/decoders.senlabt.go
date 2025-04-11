@@ -15,11 +15,15 @@ import (
 
 type SenlabPayload struct {
 	ID           int
-	BatteryLevel int
+	BatteryLevel_ int
 	Temperature  float64
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a SenlabPayload) BatteryLevel() *int {
+	return &a.BatteryLevel_
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var d SenlabPayload
 
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
@@ -45,7 +49,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p SenlabPayload
 	objects := make([]lwm2m.Lwm2mObject, 0)
 
 	d := lwm2m.NewDevice(deviceID, ts)
-	bat := int(p.BatteryLevel)
+	bat := int(p.BatteryLevel_)
 	d.BatteryLevel = &bat
 	objects = append(objects, d)
 
@@ -87,7 +91,7 @@ func singleProbe(b []byte, p *SenlabPayload) error {
 	}
 
 	p.ID = int(b[0])
-	p.BatteryLevel = (int(b[1]) * 100) / 254
+	p.BatteryLevel_ = (int(b[1]) * 100) / 254
 	p.Temperature = float64(temp) / 16.0
 
 	return nil

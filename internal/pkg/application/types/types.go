@@ -13,6 +13,10 @@ import (
 var ErrPayloadContainsNoData = errors.New("payload contains no data")
 var ErrUnknownMessageType = errors.New("unknown message type")
 
+type SensorPayload interface {
+	BatteryLevel() *int
+}
+
 type Event struct {
 	DevEUI     string   `json:"devEUI"`
 	Name       string   `json:"name,omitempty"`
@@ -97,16 +101,16 @@ func (e *DecoderErr) Error() string {
 type StatusMessage struct {
 	DeviceID string `json:"deviceID"`
 
-	BatteryLevel int `json:"batteryLevel"`
+	BatteryLevel *float64 `json:"batteryLevel,omitempty"`
 
-	Code     string   `json:"statusCode"`
+	Code     *string  `json:"statusCode,omitempty"`
 	Messages []string `json:"statusMessages,omitempty"`
 
-	RSSI            float64 `json:"rssi"`
-	LoRaSNR         float64 `json:"loRaSNR"`
-	Frequency       int64   `json:"frequency"`
-	SpreadingFactor float64 `json:"spreadingFactor"`
-	DR              int     `json:"dr"`
+	RSSI            *float64 `json:"rssi,omitempty"`
+	LoRaSNR         *float64 `json:"loRaSNR,omitempty"`
+	Frequency       *int64   `json:"frequency,omitempty"`
+	SpreadingFactor *float64 `json:"spreadingFactor,omitempty"`
+	DR              *int     `json:"dr,omitempty"`
 
 	Tenant    string    `json:"tenant"`
 	Timestamp time.Time `json:"timestamp"`

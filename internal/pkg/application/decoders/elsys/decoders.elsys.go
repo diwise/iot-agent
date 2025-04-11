@@ -40,7 +40,16 @@ type ElsysPayload struct {
 	Waterleak     *uint8   `json:"waterleak,omitempty"`
 }
 
-func Decoder(ctx context.Context, e types.Event) (any, error) {
+func (a ElsysPayload) BatteryLevel() *int {
+	if a.VDD != nil {
+		bat := int(*a.VDD)
+		return &bat
+	}
+
+	return nil
+}
+
+func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var p ElsysPayload
 	var err error
 
