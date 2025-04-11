@@ -73,7 +73,7 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	}, err
 }
 
-func Converter(ctx context.Context, deviceID string, payload any, _ time.Time) ([]lwm2m.Lwm2mObject, error) {
+func Converter(ctx context.Context, deviceID string, payload types.SensorPayload, _ time.Time) ([]lwm2m.Lwm2mObject, error) {
 	p := payload.(QalcosonicPayload)
 	return convert(ctx, deviceID, p)
 }

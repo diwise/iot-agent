@@ -38,7 +38,7 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	return decode(e.Payload.Data)
 }
 
-func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+func Converter(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
 	p := payload.(AxsensorPayload)
 	return convertToLwm2mObjects(deviceID, p, ts), nil
 }

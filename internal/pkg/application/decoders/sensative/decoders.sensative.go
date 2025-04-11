@@ -14,18 +14,17 @@ import (
 
 type SensativePayload struct {
 	BatteryLevel_ *int
-	Temperature  *float64
-	Humidity     *float32
-	DoorReport   *bool
-	DoorAlarm    *bool
-	Presence     *bool
-	CheckIn      *bool
+	Temperature   *float64
+	Humidity      *float32
+	DoorReport    *bool
+	DoorAlarm     *bool
+	Presence      *bool
+	CheckIn       *bool
 }
 
 func (a SensativePayload) BatteryLevel() *int {
 	return a.BatteryLevel_
 }
-
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if e.Payload == nil {
@@ -47,7 +46,7 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	return p, nil
 }
 
-func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+func Converter(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
 	p := payload.(SensativePayload)
 	objects := convertToLwm2mObjects(ctx, deviceID, p, ts)
 

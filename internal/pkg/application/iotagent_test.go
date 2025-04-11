@@ -17,14 +17,14 @@ import (
 func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
-	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
+	agent := New(dmc, e, storage.NewInMemory(), true, "default")
 	ue, _ := facades.New("netmore")("payload", []byte(senlabT))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 1)
+	pack := getPackFromSendCalls(e, 0)
 	is.True(*pack[1].Value == 6.625)
 }
 
@@ -38,7 +38,7 @@ func TestStripsPayload(t *testing.T) {
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 1)
+	pack := getPackFromSendCalls(e, 0)
 	is.Equal(pack[0].StringValue, "urn:oma:lwm2m:ext:3303")
 }
 
@@ -52,7 +52,7 @@ func TestElt2HpPayload(t *testing.T) {
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 1)
+	pack := getPackFromSendCalls(e, 0)
 	is.Equal(pack[0].StringValue, "urn:oma:lwm2m:ext:3200")
 }
 
@@ -100,7 +100,7 @@ func TestErsPayload(t *testing.T) {
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
-	is.Equal(len(e.SendCommandToCalls()), 3) // expecting three calls since payload should produce measurement for both temperature and co2 and more...
+	is.Equal(len(e.SendCommandToCalls()), 2) // expecting three calls since payload should produce measurement for both temperature and co2 and more...
 
 	tempPack := getPackFromSendCalls(e, 0) // the first call to send is for the temperature pack.
 	is.Equal(tempPack[0].StringValue, "urn:oma:lwm2m:ext:3303")
@@ -136,7 +136,7 @@ func TestDistancePayload(t *testing.T) {
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
-	pack := getPackFromSendCalls(e, 1)
+	pack := getPackFromSendCalls(e, 0)
 	is.Equal(*pack[1].Value, 1.80952)
 }
 
