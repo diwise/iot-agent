@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"crypto/sha1"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -32,7 +31,6 @@ type App interface {
 	HandleSensorEvent(ctx context.Context, se types.Event) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
 	GetDevice(ctx context.Context, deviceID string) (dmc.Device, error)
-	Save(ctx context.Context, se types.Event) error
 }
 
 type app struct {
@@ -61,20 +59,14 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 	}
 }
 
-func (a *app) Save(ctx context.Context, se types.Event) error {
-	//TODO: remove from interface and use internal only
-	return a.store.Save(ctx, se)
+func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
+	return a.client.FindDeviceFromInternalID(ctx, deviceID)
 }
 
 func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
-	devEUI := strings.ToLower(se.DevEUI)
+	log := logging.GetFromContext(ctx).With(slog.String("devEUI", se.DevEUI))
 
-	log := logging.GetFromContext(ctx)
-	log = log.With(slog.String("devEUI", devEUI))
-
-	ctx = logging.NewContextWithLogger(ctx, log)
-
-	device, err := a.findDevice(ctx, devEUI, a.client.FindDeviceFromDevEUI)
+	device, err := a.findDevice(ctx, se.DevEUI, a.client.FindDeviceFromDevEUI)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn("blacklisted", "deviceName", se.Name)
@@ -85,27 +77,18 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 			err := a.createUnknownDevice(ctx, se)
 			if err != nil {
 				log.Error("could not create unknown device", "err", err.Error())
+				return err
 			}
 		}
 
 		return err
 	}
 
-	if a.createUnknownDeviceEnabled && a.isDeviceUnknown(device) {
-		a.ignoreDeviceFor(devEUI, 1*time.Hour)
-		return nil
-	}
-
 	log = log.With(slog.String("device_id", device.ID()), slog.String("type", device.SensorType()))
-	ctx = logging.NewContextWithLogger(ctx, log)
 
-	msg := types.StatusMessage{
-		DeviceID:     device.ID(),
-		BatteryLevel: 0,
-		Code:         0,
-		Messages:     []string{},
-		Tenant:       device.Tenant(),
-		Timestamp:    time.Now().UTC(),
+	if a.createUnknownDeviceEnabled && device.SensorType() == UNKNOWN {
+		a.ignoreDeviceFor(se.DevEUI, 1*time.Hour)
+		return nil
 	}
 
 	decoder, converter, ok := a.registry.Get(ctx, device.SensorType())
@@ -116,28 +99,19 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 
 	payload, err := decoder(ctx, se)
 	if err != nil {
-		decoderErr, ok := err.(*types.DecoderErr)
-		if !ok {
-			log.Error("failed to decode message", "err", err.Error())
-			return err
-		}
-
-		log.Error("failed to decode message", "err", err.Error())
-
-		msg.Code = decoderErr.Code
-		msg.Messages = decoderErr.Messages
-		msg.Timestamp = decoderErr.Timestamp
-
+		log.Error("could not decode payload", "err", err.Error())
 		return err
 	}
 
 	objects, err := converter(ctx, device.ID(), payload, se.Timestamp)
 	if err != nil {
-
+		log.Error("could not convert payload to objects", "err", err.Error())
+		return err
 	}
 
-	if !a.sendStatusMessage(ctx, msg, device.Tenant()) {
-		log.Debug("no status message sent for sensor event")
+	err = a.sendStatusMessage(ctx, device, se)
+	if err != nil {
+		log.Warn("failed to send status message", "err", err.Error())
 	}
 
 	if !device.IsActive() {
@@ -148,9 +122,6 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	var errs []error
 
 	types := device.Types()
-	if !slices.Contains(types, "urn:oma:lwm2m:ext:3") { // always handle urn:oma:lwm2m:ext:3 = Device
-		types = append(types, "urn:oma:lwm2m:ext:3")
-	}
 
 	for _, obj := range objects {
 		if !slices.Contains(types, obj.ObjectURN()) {
@@ -169,47 +140,13 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	return errors.Join(errs...)
 }
 
-func (a *app) isDeviceUnknown(device dmc.Device) bool {
-	return device.SensorType() == UNKNOWN
-}
-
-func DeterministicGUID(input string) string {
-	hasher := sha1.New()
-	hasher.Write([]byte(input))
-	hash := hasher.Sum(nil)
-
-	var uuid [16]byte
-	copy(uuid[:], hash[:16])
-
-	uuid[6] = (uuid[6] & 0x0f) | 0x50
-	uuid[8] = (uuid[8] & 0x3f) | 0x80
-
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%12x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
-}
-
-func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
-	d := dmtypes.Device{
-		Active:   false,
-		DeviceID: DeterministicGUID(se.DevEUI),
-		SensorID: se.DevEUI,
-		Name:     se.Name,
-		DeviceProfile: dmtypes.DeviceProfile{
-			Name:    UNKNOWN,
-			Decoder: UNKNOWN,
-		},
-		Tenant: a.createUnknownDeviceTenant,
-	}
-
-	return a.client.CreateDevice(ctx, d)
-}
-
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {
 	deviceID = strings.ToLower(deviceID)
 
 	log := logging.GetFromContext(ctx).With(slog.String("device_id", deviceID))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	device, err := a.findDevice(ctx, deviceID, a.client.FindDeviceFromInternalID)
+	_, err := a.findDevice(ctx, deviceID, a.client.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn("blacklisted")
@@ -219,24 +156,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		return err
 	}
 
-	msg := types.StatusMessage{
-		DeviceID:     device.ID(),
-		BatteryLevel: 0,
-		Code:         0,
-		Messages:     []string{},
-		Tenant:       device.Tenant(),
-		Timestamp:    time.Now().UTC(),
-	}
-
-	if !a.sendStatusMessage(ctx, msg, device.Tenant()) {
-		log.Debug("no status message sent for measurement list")
-	}
-
 	return a.handleSensorMeasurementList(ctx, pack)
-}
-
-func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
-	return a.client.FindDeviceFromInternalID(ctx, deviceID)
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) error {
@@ -249,28 +169,10 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) 
 		return err
 	}
 
-	b, _ := json.Marshal(m)
-	log.Debug("message received sent to iot-core", "body", string(b))
-
 	return nil
 }
 
 var errDeviceOnBlackList = errors.New("blacklisted")
-
-func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
-	a.notFoundDevicesMu.Lock()
-	defer a.notFoundDevicesMu.Unlock()
-
-	if timeOfNextAllowedRetry, ok := a.notFoundDevices[id]; ok {
-		if !time.Now().UTC().After(timeOfNextAllowedRetry) {
-			return true
-		}
-
-		delete(a.notFoundDevices, id)
-	}
-
-	return false
-}
 
 func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context.Context, id string) (dmc.Device, error)) (dmc.Device, error) {
 	if a.deviceIsCurrentlyIgnored(ctx, id) {
@@ -293,25 +195,89 @@ func (a *app) ignoreDeviceFor(id string, period time.Duration) {
 	a.notFoundDevices[id] = time.Now().UTC().Add(period)
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, msg types.StatusMessage, tenant string) bool {
-	log := logging.GetFromContext(ctx)
+func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
+	a.notFoundDevicesMu.Lock()
+	defer a.notFoundDevicesMu.Unlock()
 
-	if msg.Tenant == "" {
-		log.Warn("tenant information is missing")
-		msg.Tenant = tenant
+	timeOfNextAllowedRetry, ok := a.notFoundDevices[id]
+	if !ok {
+		return false
 	}
 
-	if msg.DeviceID == "" {
-		log.Debug("deviceID is missing from status message")
+	if time.Now().UTC().After(timeOfNextAllowedRetry) {
+		delete(a.notFoundDevices, id)
 		return false
+	}
+
+	return true
+}
+
+func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
+	d := dmtypes.Device{
+		Active:   false,
+		DeviceID: DeterministicGUID(se.DevEUI),
+		SensorID: se.DevEUI,
+		Name:     se.Name,
+		DeviceProfile: dmtypes.DeviceProfile{
+			Name:    UNKNOWN,
+			Decoder: UNKNOWN,
+		},
+		Tenant: a.createUnknownDeviceTenant,
+	}
+
+	return a.client.CreateDevice(ctx, d)
+}
+
+func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt types.Event) error {
+	log := logging.GetFromContext(ctx)
+
+	msg := types.StatusMessage{
+		DeviceID:  device.ID(),
+		Tenant:    device.Tenant(),
+		Timestamp: evt.Timestamp,
+	}
+
+	if evt.TX != nil {
+		msg.DR = evt.TX.DR
+		msg.Frequency = evt.TX.Frequency
+		msg.SpreadingFactor = evt.TX.SpreadingFactor
+	}
+
+	if evt.RX != nil {
+		msg.RSSI = evt.RX.RSSI
+		msg.LoRaSNR = evt.RX.LoRaSNR
+	}
+
+	if evt.Status != nil {
+		if !evt.Status.BatteryLevelUnavailable {
+			msg.BatteryLevel = int(evt.Status.BatteryLevel)
+		}
+	}
+
+	if evt.Error != nil {
+		msg.Code = evt.Error.Type
+		msg.Messages = []string{evt.Error.Message}
 	}
 
 	err := a.msgCtx.PublishOnTopic(ctx, &msg)
 	if err != nil {
 		log.Error("failed to publish status message", "err", err.Error())
-		return false
+		return err
 	}
 
-	log.Debug("status message sent")
-	return true
+	return nil
+}
+
+func DeterministicGUID(input string) string {
+	hasher := sha1.New()
+	hasher.Write([]byte(input))
+	hash := hasher.Sum(nil)
+
+	var uuid [16]byte
+	copy(uuid[:], hash[:16])
+
+	uuid[6] = (uuid[6] & 0x0f) | 0x50
+	uuid[8] = (uuid[8] & 0x3f) | 0x80
+
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%12x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
 }

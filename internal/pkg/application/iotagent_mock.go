@@ -30,9 +30,6 @@ var _ App = &AppMock{}
 //			HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error {
 //				panic("mock out the HandleSensorMeasurementList method")
 //			},
-//			SaveFunc: func(ctx context.Context, se types.Event) error {
-//				panic("mock out the Save method")
-//			},
 //		}
 //
 //		// use mockedApp in code that requires App
@@ -48,9 +45,6 @@ type AppMock struct {
 
 	// HandleSensorMeasurementListFunc mocks the HandleSensorMeasurementList method.
 	HandleSensorMeasurementListFunc func(ctx context.Context, deviceID string, pack senml.Pack) error
-
-	// SaveFunc mocks the Save method.
-	SaveFunc func(ctx context.Context, se types.Event) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -77,18 +71,10 @@ type AppMock struct {
 			// Pack is the pack argument value.
 			Pack senml.Pack
 		}
-		// Save holds details about calls to the Save method.
-		Save []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Se is the se argument value.
-			Se types.Event
-		}
 	}
 	lockGetDevice                   sync.RWMutex
 	lockHandleSensorEvent           sync.RWMutex
 	lockHandleSensorMeasurementList sync.RWMutex
-	lockSave                        sync.RWMutex
 }
 
 // GetDevice calls GetDeviceFunc.
@@ -200,41 +186,5 @@ func (mock *AppMock) HandleSensorMeasurementListCalls() []struct {
 	mock.lockHandleSensorMeasurementList.RLock()
 	calls = mock.calls.HandleSensorMeasurementList
 	mock.lockHandleSensorMeasurementList.RUnlock()
-	return calls
-}
-
-// Save calls SaveFunc.
-func (mock *AppMock) Save(ctx context.Context, se types.Event) error {
-	if mock.SaveFunc == nil {
-		panic("AppMock.SaveFunc: method is nil but App.Save was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		Se  types.Event
-	}{
-		Ctx: ctx,
-		Se:  se,
-	}
-	mock.lockSave.Lock()
-	mock.calls.Save = append(mock.calls.Save, callInfo)
-	mock.lockSave.Unlock()
-	return mock.SaveFunc(ctx, se)
-}
-
-// SaveCalls gets all the calls that were made to Save.
-// Check the length with:
-//
-//	len(mockedApp.SaveCalls())
-func (mock *AppMock) SaveCalls() []struct {
-	Ctx context.Context
-	Se  types.Event
-} {
-	var calls []struct {
-		Ctx context.Context
-		Se  types.Event
-	}
-	mock.lockSave.RLock()
-	calls = mock.calls.Save
-	mock.lockSave.RUnlock()
 	return calls
 }

@@ -57,8 +57,9 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 		defer r.Body.Close()
 
 		messageType := r.URL.Query().Get("type")
+		source := r.URL.Query().Get("source")
 
-		sensorEvent, err := facade(messageType, msg)
+		evt, err := facade(messageType, msg)
 		if err != nil {
 			log.Error("failed to decode sensor event using facade", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -66,12 +67,9 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 			return
 		}
 
-		err = app.Save(ctx, sensorEvent)
-		if err != nil {
-			log.Warn("could not store sensor event", "err", err.Error())
-		}
+		evt.Source = source
 
-		err = app.HandleSensorEvent(ctx, sensorEvent)
+		err = app.HandleSensorEvent(ctx, evt)
 		if err != nil {
 			log.Error("failed to handle message", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
