@@ -44,7 +44,7 @@ func defaultFlags() flagMap {
 		createUnknownDeviceTenant:  "default",
 
 		forwardingEndpoint: "http://iot-agent/api/v0/messages",
-		appServerFacade:    "chirpstack",
+		appServerFacade:    "servanet",
 
 		devmode: "false",
 	}
@@ -88,21 +88,6 @@ func main() {
 
 	err = runner.Run(ctx)
 	exitIf(err, logger, "failed to start service runner")
-}
-
-func newStorage(ctx context.Context, flags flagMap) (storage.Storage, error) {
-	if flags[devmode] == "true" {
-		return storage.NewInMemory(), nil
-	}
-	return storage.New(ctx, storage.LoadConfiguration(ctx))
-}
-
-func newDeviceManagementClient(ctx context.Context, flags flagMap) (devicemgmtclient.DeviceManagementClient, error) {
-	if flags[devmode] == "true" {
-		return &devmodeDeviceMgmtClient{}, nil
-	}
-
-	return devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], false, flags[oauth2ClientId], flags[oauth2ClientSecret])
 }
 
 func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.ReadCloser) (servicerunner.Runner[appConfig], error) {
@@ -150,6 +135,21 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.
 	)
 
 	return runner, nil
+}
+
+func newStorage(ctx context.Context, flags flagMap) (storage.Storage, error) {
+	if flags[devmode] == "true" {
+		return storage.NewInMemory(), nil
+	}
+	return storage.New(ctx, storage.LoadConfiguration(ctx))
+}
+
+func newDeviceManagementClient(ctx context.Context, flags flagMap) (devicemgmtclient.DeviceManagementClient, error) {
+	if flags[devmode] == "true" {
+		return &devmodeDeviceMgmtClient{}, nil
+	}
+
+	return devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], false, flags[oauth2ClientId], flags[oauth2ClientSecret])
 }
 
 func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {

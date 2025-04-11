@@ -15,7 +15,7 @@ import (
 func TestDefaultDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.ChirpStack([]byte(data))
+	ue, _ := facades.New("servanet")([]byte(data))
 
 	payload, err := defaultdecoder.Decoder(context.Background(), ue)
 	is.NoErr(err)

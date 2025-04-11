@@ -17,7 +17,7 @@ import (
 
 func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := facades.ChirpStack([]byte(livboj))
+	ue, _ := facades.New("servanet")([]byte(livboj))
 
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)

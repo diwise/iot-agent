@@ -18,7 +18,7 @@ func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.Netmore([]byte(senlabT))
+	ue, _ := facades.New("netmore")([]byte(senlabT))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -32,7 +32,7 @@ func TestStripsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.Netmore([]byte(stripsPayload))
+	ue, _ := facades.New("netmore")([]byte(stripsPayload))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -46,7 +46,7 @@ func TestElt2HpPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.Netmore([]byte(elt2hp))
+	ue, _ := facades.New("netmore")([]byte(elt2hp))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -60,7 +60,7 @@ func TestElsysPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.ChirpStack([]byte(elsys))
+	ue, _ := facades.New("servanet")([]byte(elsys))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -74,7 +74,7 @@ func TestElsysDigital1Payload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.ChirpStack([]byte(`
+	ue, _ := facades.New("servanet")([]byte(`
 	{
 		"data": "DQEaAA==",
 		"fPort": 5,
@@ -96,7 +96,7 @@ func TestErsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.ChirpStack([]byte(ers))
+	ue, _ := facades.New("servanet")([]byte(ers))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -116,7 +116,7 @@ func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.ChirpStack([]byte(livboj))
+	ue, _ := facades.New("servanet")([]byte(livboj))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -130,7 +130,7 @@ func TestDistancePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.Netmore([]byte(vegapuls))
+	ue, _ := facades.New("netmore")([]byte(vegapuls))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)

@@ -12,7 +12,7 @@ import (
 
 func TestAirQuality(t *testing.T) {
 	is := is.New(t)
-	ue, err := facades.ChirpStack([]byte(airqualityData))
+	ue, err := facades.New("servanet")([]byte(airqualityData))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)

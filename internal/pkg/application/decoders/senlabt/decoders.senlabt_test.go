@@ -15,7 +15,7 @@ import (
 func TestSenlabTBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.Netmore([]byte(senlabT))
+	ue, _ := facades.New("netmore")([]byte(senlabT))
 
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
@@ -29,7 +29,7 @@ func TestSenlabTBasicDecoder(t *testing.T) {
 func TestSenlabTTempDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.ChirpStack([]byte(senlabTemp))
+	ue, _ := facades.New("servanet")([]byte(senlabTemp))
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
 	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)
@@ -42,7 +42,7 @@ func TestSenlabTTempDecoder(t *testing.T) {
 
 func TestSenlabTBasicDecoderSensorReadingError(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := facades.Netmore([]byte(senlabT_sensorReadingError))
+	ue, _ := facades.New("netmore")([]byte(senlabT_sensorReadingError))
 
 	_, err := Decoder(context.Background(), ue)
 

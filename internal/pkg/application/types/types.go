@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -9,15 +10,19 @@ import (
 	"github.com/diwise/senml"
 )
 
+var ErrPayloadContainsNoData = errors.New("payload contains no data")
+
 type RXInfo struct {
-	GatewayId string  `json:"gatewayId,omitempty"`
-	UplinkId  string  `json:"uplinkId,omitempty"`
-	Rssi      int32   `json:"rssi,omitempty"`
-	Snr       float32 `json:"snr,omitempty"`
+	GatewayId       string  `json:"gatewayId,omitempty"`
+	UplinkId        string  `json:"uplinkId,omitempty"`
+	Rssi            float64 `json:"rssi,omitempty"`
+	Snr             float64 `json:"snr,omitempty"`
+	SpreadingFactor float64 `json:"spreadingFactor,omitempty"`
+	DataRate        int     `json:"dr"`
 }
 
 type TXInfo struct {
-	Frequency uint32 `json:"frequency,omitempty"`
+	Frequency int64 `json:"frequency,omitempty"`
 }
 
 type Error struct {
@@ -34,9 +39,9 @@ type SensorEvent struct {
 	Object     json.RawMessage     `json:"object,omitempty"`
 	Tags       map[string][]string `json:"tags,omitempty"`
 	Timestamp  time.Time           `json:"timestamp"`
-	RXInfo     RXInfo              `json:"rxInfo,omitempty"`
-	TXInfo     TXInfo              `json:"txInfo,omitempty"`
-	Error      Error               `json:"error,omitempty"`
+	RXInfo     RXInfo              `json:"rxInfo"`
+	TXInfo     TXInfo              `json:"txInfo"`
+	Error      Error               `json:"error"`
 }
 
 func (s *SensorEvent) HasError() bool {

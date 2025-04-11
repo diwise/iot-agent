@@ -22,7 +22,7 @@ import (
 
 var tracer = otel.Tracer("iot-agent/api")
 
-func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app application.App, facade facades.UplinkASFunc, policies io.Reader) error {
+func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app application.App, facade facades.UplinkEventFunc, policies io.Reader) error {
 	const apiPrefix string = "/api/v0"
 
 	authenticator, err := auth.NewAuthenticator(ctx, policies)
@@ -42,7 +42,7 @@ func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app applicati
 	return nil
 }
 
-func NewIncomingMessageHandler(ctx context.Context, app application.App, facade facades.UplinkASFunc) http.HandlerFunc {
+func NewIncomingMessageHandler(ctx context.Context, app application.App, facade facades.UplinkEventFunc) http.HandlerFunc {
 	logger := logging.GetFromContext(ctx)
 
 	return func(w http.ResponseWriter, r *http.Request) {

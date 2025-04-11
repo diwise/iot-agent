@@ -14,7 +14,7 @@ import (
 func TestEnviotDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.ChirpStack([]byte(enviot))
+	ue, _ := facades.New("servanet")([]byte(enviot))
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
 	objects, err := Converter(context.Background(), "devID", payload, ue.Timestamp)

@@ -116,22 +116,24 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error
 
 	payload, err := decoder(ctx, se)
 	if err != nil {
-		log.Error("failed to decode message", "err", err.Error())
-		return err
-	}
-
-	objects, err := converter(ctx, device.ID(), payload, se.Timestamp)
-	if err != nil {
 		decoderErr, ok := err.(*types.DecoderErr)
-
 		if !ok {
 			log.Error("failed to decode message", "err", err.Error())
 			return err
 		}
 
+		log.Error("failed to decode message", "err", err.Error())
+
 		msg.Code = decoderErr.Code
 		msg.Messages = decoderErr.Messages
 		msg.Timestamp = decoderErr.Timestamp
+
+		return err
+	}
+
+	objects, err := converter(ctx, device.ID(), payload, se.Timestamp)
+	if err != nil {
+
 	}
 
 	if !a.sendStatusMessage(ctx, msg, device.Tenant()) {
