@@ -10,7 +10,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
-func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
+func Decoder(ctx context.Context, e types.Event) (any, error) {
 	log := logging.GetFromContext(ctx)
 	log.Info("default decoder used", slog.String("sensor_type", e.SensorType))
 

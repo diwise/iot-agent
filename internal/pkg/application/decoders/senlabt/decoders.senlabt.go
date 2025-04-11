@@ -19,16 +19,16 @@ type SenlabPayload struct {
 	Temperature  float64
 }
 
-func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
+func Decoder(ctx context.Context, e types.Event) (any, error) {
 	var d SenlabPayload
 
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2) | Temp(2)
-	if len(e.Data) < 4 {
+	if len(e.Payload.Data) < 4 {
 		return nil, errors.New("payload too short")
 	}
 
-	err := decodePayload(e.Data, &d)
+	err := decodePayload(e.Payload.Data, &d)
 	if err != nil {
 		return nil, err
 	}

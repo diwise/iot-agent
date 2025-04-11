@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -49,13 +51,21 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 			defer msg.Ack()
 			payload := msg.Payload()
 
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(payload))
+			parts := strings.Split(msg.Topic(), "/")
+
+			params := url.Values{}
+			params.Add("type", parts[len(parts)-1])
+			params.Add("source", msg.Topic())
+
+			endpoint := fmt.Sprintf("%s?%s", forwardingEndpoint, params.Encode())
+
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(payload))
 			if err != nil {
 				log.Error("failed to create http request", "err", err.Error())
 				return
 			}
 
-			log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", forwardingEndpoint)
+			log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", endpoint)
 
 			req.Header.Add("Content-Type", "application/json")
 

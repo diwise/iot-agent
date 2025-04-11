@@ -11,6 +11,55 @@ import (
 )
 
 var ErrPayloadContainsNoData = errors.New("payload contains no data")
+var ErrUnknownMessageType = errors.New("unknown message type")
+
+type Event struct {
+	DevEUI     string   `json:"devEUI"`
+	Name       string   `json:"name,omitempty"`
+	SensorType string   `json:"sensorType,omitempty"`
+	Source     string   `json:"source,omitempty"`
+	Location   Location `json:"location"`
+
+	RX *RX `json:"rx,omitempty"`
+	TX *TX `json:"tx,omitempty"`
+
+	FCnt int `json:"fCnt"`
+
+	Payload *Payload `json:"payload,omitempty"`
+	Status  *Status  `json:"status,omitempty"`
+	Error   *Error   `json:"error,omitempty"`
+
+	Tags      map[string][]string `json:"tags,omitempty"`
+	Timestamp time.Time           `json:"timestamp"`
+}
+
+type Payload struct {
+	FPort  int             `json:"fPort"`
+	Data   []byte          `json:"data"`
+	Object json.RawMessage `json:"object,omitempty"`
+}
+
+type TX struct {
+	Frequency       int64   `json:"frequency"`
+	SpreadingFactor float64 `json:"spreadingFactor"`
+	DR              int     `json:"dr"`
+}
+
+type RX struct {
+	RSSI    float64 `json:"rssi"`
+	LoRaSNR float64 `json:"loRaSNR"`
+}
+
+type Status struct {
+	Margin                  int     `json:"margin"`
+	BatteryLevelUnavailable bool    `json:"batteryLevelUnavailable"`
+	BatteryLevel            float64 `json:"batteryLevel"`
+}
+
+type Location struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
 
 type RXInfo struct {
 	GatewayId       string  `json:"gatewayId,omitempty"`
@@ -28,24 +77,6 @@ type TXInfo struct {
 type Error struct {
 	Type    string `json:"type,omitempty"`
 	Message string `json:"message,omitempty"`
-}
-
-type SensorEvent struct {
-	DevEui     string              `json:"devEui"`
-	DeviceName string              `json:"deviceName"`
-	SensorType string              `json:"sensorType"`
-	FPort      uint8               `json:"fPort"`
-	Data       []byte              `json:"data"`
-	Object     json.RawMessage     `json:"object,omitempty"`
-	Tags       map[string][]string `json:"tags,omitempty"`
-	Timestamp  time.Time           `json:"timestamp"`
-	RXInfo     RXInfo              `json:"rxInfo"`
-	TXInfo     TXInfo              `json:"txInfo"`
-	Error      Error               `json:"error"`
-}
-
-func (s *SensorEvent) HasError() bool {
-	return s.Error.Type != "" && s.Error.Message != ""
 }
 
 type Measurement struct {

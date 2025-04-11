@@ -23,16 +23,16 @@ func TestUplinkAll(t *testing.T) {
 
 func TestHandleUplinkAll(t *testing.T) {
 	is := is.New(t)
-	ue, err := HandleUplinkEvent([]byte(upall))
+	ue, err := HandleEvent("payload",[]byte(upall))
 	is.NoErr(err)
-	is.Equal(ue.DevEui, "363536305d398e11")
+	is.Equal(ue.DevEUI, "363536305d398e11")
 }
 
 func TestHandleUplink(t *testing.T) {
 	is := is.New(t)
-	ue, err := HandleUplinkEvent([]byte(up))
+	ue, err := HandleEvent("payload",[]byte(up))
 	is.NoErr(err)
-	is.Equal(ue.DevEui, "70b3d554600002e7")
+	is.Equal(ue.DevEUI, "70b3d554600002e7")
 }
 
 const up string = `[{"devEui":"70b3d554600002e7","sensorType":"cube02","timestamp":"2025-04-10T20:48:22.053Z","payload":"b006b800013008cc98000002b8a8000399000000190840e40000","spreadingFactor":"12","dr":0,"rssi":"-104","snr":"-2","gatewayIdentifier":"824","messageType":"payload","fPort":"2"}]`

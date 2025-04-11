@@ -3,8 +3,6 @@ package sensative
 import (
 	"context"
 	"encoding/binary"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -24,33 +22,21 @@ type SensativePayload struct {
 	CheckIn      *bool
 }
 
-func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
-	if len(e.Data) < 2 {
-		return nil, errors.New("payload too short")
+func Decoder(ctx context.Context, e types.Event) (any, error) {
+	if e.Payload == nil {
+		return nil, types.ErrPayloadContainsNoData
 	}
 
-	p, err := decodeSensativeMeasurements(e.Data)
+	if e.Payload.FPort == 2 {
+		t := true
+		return SensativePayload{
+			CheckIn: &t,
+		}, nil
+	}
+
+	p, err := decode(e.Payload.Data)
 	if err != nil {
 		return nil, err
-	}
-
-	if p.BatteryLevel == nil && p.Temperature == nil && p.Humidity == nil && p.DoorReport == nil && p.DoorAlarm == nil && p.Presence == nil {
-		checkIn := struct {
-			BuildID struct {
-				ID       int  `json:"id"`
-				Modified bool `json:"modified"`
-			} `json:"buildId"`
-			HistorySeqNr   uint16 `json:"historySeqNr"`
-			PrevHistorySeq uint16 `json:"prevHistSeqNr"`
-		}{}
-
-		err = json.Unmarshal(e.Object, &checkIn)
-		if err != nil {
-			return nil, err
-		}
-
-		p.CheckIn = new(bool)
-		*p.CheckIn = true
 	}
 
 	return p, nil
@@ -101,7 +87,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p SensativePayl
 		objects = append(objects, lwm2m.NewPresence(deviceID, *p.Presence, ts))
 	}
 
-	if p.CheckIn != nil  && *p.CheckIn {
+	if p.CheckIn != nil && *p.CheckIn {
 		objects = append(objects, lwm2m.NewDevice(deviceID, ts))
 	}
 
@@ -110,7 +96,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p SensativePayl
 	return objects
 }
 
-func decodeSensativeMeasurements(b []byte) (SensativePayload, error) {
+func decode(b []byte) (SensativePayload, error) {
 	p := SensativePayload{}
 
 	pos := 2

@@ -47,7 +47,7 @@ type QalcosonicDeltaVolume struct {
 	Timestamp       time.Time
 }
 
-func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
+func Decoder(ctx context.Context, e types.Event) (any, error) {
 	var err error
 
 	p, ap, err := decodePayload(ctx, e)
@@ -146,10 +146,10 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicVo
 	return objects
 }
 
-func decodePayload(_ context.Context, ue types.SensorEvent) (*QalcosonicVolumePayload, *QalcosonicAlarmPayload, error) {
+func decodePayload(_ context.Context, ue types.Event) (*QalcosonicVolumePayload, *QalcosonicAlarmPayload, error) {
 	var err error
 
-	buf := bytes.NewReader(ue.Data)
+	buf := bytes.NewReader(ue.Payload.Data)
 
 	if buf.Len() < 5 && buf.Len() < 42 {
 		return nil, nil, errors.New("decoder not implemented or payload to short")

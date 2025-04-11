@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	. "github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
-func HandleUplinkEvent(b []byte) (SensorEvent, error) {
-	return SensorEvent{}, errors.New("not implemented")
+func HandleEvent(messageType string, b []byte) (types.Event, error) {
+	return types.Event{}, errors.New("not implemented")
 }
 
 // UplinkEvent motsvarar ett fullständigt uplink-meddelande från ChirpStack v3.

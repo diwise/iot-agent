@@ -40,11 +40,11 @@ type ElsysPayload struct {
 	Waterleak     *uint8   `json:"waterleak,omitempty"`
 }
 
-func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
+func Decoder(ctx context.Context, e types.Event) (any, error) {
 	var p ElsysPayload
 	var err error
 
-	if e.Object != nil {
+	if e.Payload.Object != nil {
 		obj := struct {
 			Temperature         *float32 `json:"temperature,omitempty"`
 			ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
@@ -62,7 +62,7 @@ func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 			DigitalInput2       *int     `json:"digital2,omitempty"`
 			Waterleak           *uint8   `json:"waterleak,omitempty"`
 		}{}
-		err := json.Unmarshal(e.Object, &obj)
+		err := json.Unmarshal(e.Payload.Object, &obj)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
 		}
 		p.Waterleak = obj.Waterleak
 	} else {
-		p, err = decodePayload(e.Data)
+		p, err = decodePayload(e.Payload.Data)
 		if err != nil {
 			return nil, err
 		}

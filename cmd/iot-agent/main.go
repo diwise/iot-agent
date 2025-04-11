@@ -14,6 +14,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
+	"github.com/diwise/iot-device-mgmt/pkg/test"
 	"github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
@@ -203,7 +204,19 @@ func exitIf(err error, logger *slog.Logger, msg string, args ...any) {
 type devmodeDeviceMgmtClient struct{}
 
 func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devEUI string) (devicemgmtclient.Device, error) {
-	return nil, nil
+	device := test.DeviceMock{
+		IDFunc: func() string {
+			return application.DeterministicGUID(devEUI)
+		},
+		SensorTypeFunc: func() string {
+			return "qalcosonic"
+		},
+		TenantFunc: func() string {
+			return "default"
+		},
+	}
+
+	return &device, nil
 }
 func (d *devmodeDeviceMgmtClient) FindDeviceFromInternalID(ctx context.Context, deviceID string) (devicemgmtclient.Device, error) {
 	return nil, nil

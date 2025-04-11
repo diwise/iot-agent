@@ -44,7 +44,7 @@ type appConfig struct {
 	dmClient   devicemgmtclient.DeviceManagementClient
 	mqttClient mqtt.Client
 	storage    storage.Storage
-	facade     facades.UplinkEventFunc
+	facade     facades.EventFunc
 }
 
 var onstarting = servicerunner.OnStarting[appConfig]

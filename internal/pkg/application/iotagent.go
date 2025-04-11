@@ -29,10 +29,10 @@ import (
 const UNKNOWN = "unknown"
 
 type App interface {
-	HandleSensorEvent(ctx context.Context, se types.SensorEvent) error
+	HandleSensorEvent(ctx context.Context, se types.Event) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
 	GetDevice(ctx context.Context, deviceID string) (dmc.Device, error)
-	Save(ctx context.Context, se types.SensorEvent) error
+	Save(ctx context.Context, se types.Event) error
 }
 
 type app struct {
@@ -61,13 +61,13 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 	}
 }
 
-func (a *app) Save(ctx context.Context, se types.SensorEvent) error {
+func (a *app) Save(ctx context.Context, se types.Event) error {
 	//TODO: remove from interface and use internal only
 	return a.store.Save(ctx, se)
 }
 
-func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error {
-	devEUI := strings.ToLower(se.DevEui)
+func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
+	devEUI := strings.ToLower(se.DevEUI)
 
 	log := logging.GetFromContext(ctx)
 	log = log.With(slog.String("devEUI", devEUI))
@@ -77,7 +77,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error
 	device, err := a.findDevice(ctx, devEUI, a.client.FindDeviceFromDevEUI)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
-			log.Warn("blacklisted", "deviceName", se.DeviceName)
+			log.Warn("blacklisted", "deviceName", se.Name)
 			return nil
 		}
 
@@ -173,7 +173,7 @@ func (a *app) isDeviceUnknown(device dmc.Device) bool {
 	return device.SensorType() == UNKNOWN
 }
 
-func deterministicGUID(input string) string {
+func DeterministicGUID(input string) string {
 	hasher := sha1.New()
 	hasher.Write([]byte(input))
 	hash := hasher.Sum(nil)
@@ -187,12 +187,12 @@ func deterministicGUID(input string) string {
 	return fmt.Sprintf("%08x-%04x-%04x-%04x-%12x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
 }
 
-func (a *app) createUnknownDevice(ctx context.Context, se types.SensorEvent) error {
+func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	d := dmtypes.Device{
 		Active:   false,
-		DeviceID: deterministicGUID(se.DevEui),
-		SensorID: se.DevEui,
-		Name:     se.DeviceName,
+		DeviceID: DeterministicGUID(se.DevEUI),
+		SensorID: se.DevEUI,
+		Name:     se.Name,
 		DeviceProfile: dmtypes.DeviceProfile{
 			Name:    UNKNOWN,
 			Decoder: UNKNOWN,

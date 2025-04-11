@@ -17,7 +17,7 @@ import (
 func TestQalcosonic_w1t(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")([]byte(qalcosonic_w1t))
+	ue, _ := facades.New("netmore")("payload", []byte(qalcosonic_w1t))
 	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
@@ -31,7 +31,7 @@ func TestQalcosonic_w1t(t *testing.T) {
 func TestQalcosonic_w1h(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")([]byte(qalcosonic_w1h))
+	ue, _ := facades.New("netmore")("payload", []byte(qalcosonic_w1h))
 	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
@@ -44,7 +44,7 @@ func TestQalcosonic_w1h(t *testing.T) {
 func TestQalcosonic_w1e(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")([]byte(qalcosonic_w1e))
+	ue, _ := facades.New("netmore")("payload", []byte(qalcosonic_w1e))
 	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
@@ -57,7 +57,7 @@ func TestQalcosonic_w1e(t *testing.T) {
 func TestQalcosonic_w1e_lwm2m(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")([]byte(qalcosonic_w1e))
+	ue, _ := facades.New("netmore")("payload", []byte(qalcosonic_w1e))
 	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
@@ -74,7 +74,7 @@ func TestQalcosonic_w1e_lwm2m(t *testing.T) {
 func TestQalcosonicAlarmMessage(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")([]byte(qalcosonicAlarmPacket))
+	ue, _ := facades.New("netmore")("payload", []byte(qalcosonicAlarmPacket))
 	p, ap, err := decodePayload(context.Background(), ue)
 
 	is.NoErr(err)
@@ -86,7 +86,7 @@ func TestQalcosonicAlarmMessage(t *testing.T) {
 func TestQalcosonicW1t_2(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("servanet")([]byte(qalcosonic_w1t_2))
+	ue, _ := facades.New("servanet")("up", []byte(qalcosonic_w1t_2))
 	p, ap, err := decodePayload(context.Background(), ue)
 	is.NoErr(err)
 	payload, err := Decoder(context.Background(), ue)
@@ -106,13 +106,13 @@ func TestQalcosonicW1t_2(t *testing.T) {
 func TestDecode(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")([]byte(qalcosonic_w1t))
+	ue, _ := facades.New("netmore")("payload", []byte(qalcosonic_w1t))
 	payload, err := Decoder(context.Background(), ue)
 	_, ok := err.(*types.DecoderErr)
 	is.True(ok)
-  
+
 	objects, err := Converter(context.Background(), "devid", payload, ue.Timestamp)
-  is.NoErr(err)
+	is.NoErr(err)
 
 	is.Equal(17, len(objects))
 

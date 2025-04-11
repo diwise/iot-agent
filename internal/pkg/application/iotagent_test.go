@@ -18,7 +18,7 @@ func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("netmore")([]byte(senlabT))
+	ue, _ := facades.New("netmore")("payload", []byte(senlabT))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -32,7 +32,7 @@ func TestStripsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("netmore")([]byte(stripsPayload))
+	ue, _ := facades.New("netmore")("payload", []byte(stripsPayload))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -46,7 +46,7 @@ func TestElt2HpPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("netmore")([]byte(elt2hp))
+	ue, _ := facades.New("netmore")("payload", []byte(elt2hp))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -60,7 +60,7 @@ func TestElsysPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("servanet")([]byte(elsys))
+	ue, _ := facades.New("servanet")("up", []byte(elsys))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -74,7 +74,7 @@ func TestElsysDigital1Payload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("servanet")([]byte(`
+	ue, _ := facades.New("servanet")("up", []byte(`
 	{
 		"data": "DQEaAA==",
 		"fPort": 5,
@@ -96,7 +96,7 @@ func TestErsPayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("servanet")([]byte(ers))
+	ue, _ := facades.New("servanet")("up", []byte(ers))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -116,7 +116,7 @@ func TestPresencePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("servanet")([]byte(livboj))
+	ue, _ := facades.New("servanet")("up", []byte(livboj))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -130,7 +130,7 @@ func TestDistancePayload(t *testing.T) {
 	is, dmc, e := testSetup(t)
 
 	agent := New(dmc, e, storage.NewInMemory(), true, "default").(*app)
-	ue, _ := facades.New("netmore")([]byte(vegapuls))
+	ue, _ := facades.New("netmore")("payload", []byte(vegapuls))
 	err := agent.HandleSensorEvent(context.Background(), ue)
 
 	is.NoErr(err)
@@ -142,8 +142,8 @@ func TestDistancePayload(t *testing.T) {
 
 func TestDeterministicGuid(t *testing.T) {
 	is := is.New(t)
-	uuid1 := deterministicGUID("inputstring")
-	uuid2 := deterministicGUID("inputstring")
+	uuid1 := DeterministicGUID("inputstring")
+	uuid2 := DeterministicGUID("inputstring")
 	is.Equal(uuid1, uuid2)
 }
 
@@ -246,7 +246,19 @@ const senlabT string = `[{
     "longitude": 12.07727
 }]`
 
-const stripsPayload string = `[{"devEui":"70b3d52c00019193","sensorType":"strips_lora_ms_h","timestamp":"2022-04-21T09:33:40.713643Z","payload":"ffff01590200d90400d4063c07000008000009000a01","spreadingFactor":"10","rssi":"-108","snr":"-3","gatewayIdentifier":"824","fPort":"1"}]`
+const stripsPayload string = `
+[{
+        "devEui": "70b3d52c00019193",
+        "sensorType": "strips_lora_ms_h",
+        "timestamp": "2022-04-21T09:33:40.713643Z",
+        "payload": "ffff01590200d90400d4063c07000008000009000a01",
+        "spreadingFactor": "10",
+        "rssi": "-108",
+        "snr": "-3",
+        "gatewayIdentifier": "824",
+        "fPort": "1"
+    }
+]`
 
 const elsys string = `{
     "applicationID": "8",

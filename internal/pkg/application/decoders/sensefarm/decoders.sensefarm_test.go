@@ -14,7 +14,7 @@ import (
 func TestSensefarmBasicDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")([]byte(sensefarm))
+	ue, _ := facades.New("netmore")("payload", []byte(sensefarm))
 
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)

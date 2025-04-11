@@ -2,14 +2,12 @@ package sensative
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
-	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 
 	"github.com/matryer/is"
@@ -17,7 +15,7 @@ import (
 
 func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := facades.New("servanet")([]byte(livboj))
+	ue, _ := facades.New("servanet")("up", []byte(livboj))
 
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
@@ -30,8 +28,7 @@ func TestPresenceSensorReading(t *testing.T) {
 
 func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	is, _ := testSetup(t)
-	ue := types.SensorEvent{}
-	err := json.Unmarshal([]byte(livboj_checkin), &ue)
+	ue, err := facades.New("servanet")("up", []byte(livboj_checkin))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)
@@ -44,7 +41,6 @@ func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 
 func TestDataErrSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
-	ue := types.SensorEvent{}
 
 	payload := []string{
 		"//9uAxL8UAAAAAA=",
@@ -55,7 +51,7 @@ func TestDataErrSensorReading(t *testing.T) {
 
 	for _, p := range payload {
 		d := fmt.Sprintf(checkin, p)
-		err := json.Unmarshal([]byte(d), &ue)
+		ue, err := facades.New("servanet")("up", []byte(d))
 		is.NoErr(err)
 		_, err = Decoder(context.Background(), ue)
 		is.NoErr(err)
@@ -90,13 +86,13 @@ const livboj string = `
     }
 }`
 
-const livboj_checkin string = `{"devEui":"3489573498573459","deviceName":"Livboj","sensorType":"Sensative_Codec","fPort":1,"data":"//9uAxL8UAAAAAA=","object":{"buildId":{"id":51575888,"modified":false},"historySeqNr":65535,"prevHistSeqNr":65535},"timestamp":"2022-11-04T06:42:44.274490703Z","rxInfo":{"gatewayId":"fcc23dfffe2ee936","uplinkId":"23bab2ad-f4d0-4175-b09e-d1177dea44e0","rssi":-111,"snr":-8},"txInfo":{}}`
+const livboj_checkin string = `{"devEui":"3489573498573459","deviceName":"Livboj","sensorType":"Sensative_Codec","fPort":2,"data":"//9uAxL8UAAAAAA=","object":{"buildId":{"id":51575888,"modified":false},"historySeqNr":65535,"prevHistSeqNr":65535},"timestamp":"2022-11-04T06:42:44.274490703Z","rxInfo":[{"gatewayId":"fcc23dfffe2ee936","uplinkId":"23bab2ad-f4d0-4175-b09e-d1177dea44e0","rssi":-111,"snr":-8}]}`
 
 const checkin string = `
 {
   "data": "%s",
   "error": {},
-  "fPort": 1,
+  "fPort": 2,
   "devEui": "a4bc",
   "object": {
     "buildId": {
@@ -106,12 +102,12 @@ const checkin string = `
     "historySeqNr": 65535,
     "prevHistSeqNr": 65535
   },
-  "rxInfo": {
+  "rxInfo": [{
     "snr": -14,
     "rssi": -127,
     "uplinkId": "00a2332a-cead-4974-a92f-8ee199747b1a",
     "gatewayId": "0016c001ff10c7f6"
-  },
+  }],
   "txInfo": {},
   "timestamp": "2024-11-12T07:03:37.187954862Z",
   "deviceName": "Livboj-05",

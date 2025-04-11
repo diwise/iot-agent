@@ -6,23 +6,21 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/facades/chirpstack"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades/netmore"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades/servanet"
-	
+
 	. "github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
-type UplinkEventFunc func([]byte) (SensorEvent, error)
-type StatusEventFunc func([]byte) (SensorEvent, error)
-type ErrorEventFunc func([]byte) (SensorEvent, error)
+type EventFunc func(string, []byte) (Event, error)
 
-func New(as string) UplinkEventFunc {
+func New(as string) EventFunc {
 	switch strings.ToLower(as) {
 	case "chirpstack":
-		return chirpstack.HandleUplinkEvent
+		return chirpstack.HandleEvent
 	case "netmore":
-		return netmore.HandleUplinkEvent
+		return netmore.HandleEvent
 	case "servanet":
-		return servanet.HandleUplinkEvent
+		return servanet.HandleEvent
 	default:
-		return chirpstack.HandleUplinkEvent
+		return chirpstack.HandleEvent
 	}
 }

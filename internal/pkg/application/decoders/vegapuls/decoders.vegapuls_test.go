@@ -14,7 +14,7 @@ import (
 
 func TestVegapulsSensorPacketIdentifier2(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("netmore")([]byte(fmt.Sprintf(testData, packetIdentifier2)))
+	ue, err := facades.New("netmore")("payload", []byte(fmt.Sprintf(testData, packetIdentifier2)))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)
@@ -36,7 +36,7 @@ func TestVegapulsSensorPacketIdentifier2(t *testing.T) {
 
 func TestVegapulsSensorPacketIdentifier8(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("netmore")([]byte(fmt.Sprintf(testData, packetIdentifier8)))
+	ue, err := facades.New("netmore")("payload", []byte(fmt.Sprintf(testData, packetIdentifier8)))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)
@@ -58,7 +58,7 @@ func TestVegapulsSensorPacketIdentifier8(t *testing.T) {
 
 func TestVegapulsSensorConvertsFromInchesToMeters(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("netmore")([]byte(fmt.Sprintf(testData, testDataInFeet)))
+	ue, err := facades.New("netmore")("payload", []byte(fmt.Sprintf(testData, testDataInFeet)))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)
@@ -74,7 +74,7 @@ func TestVegapulsSensorConvertsFromInchesToMeters(t *testing.T) {
 
 func TestVegapulsSensorConvertsFromFahrenheitToCelsius(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("netmore")([]byte(fmt.Sprintf(testData, testDataFahrenheit)))
+	ue, err := facades.New("netmore")("payload", []byte(fmt.Sprintf(testData, testDataFahrenheit)))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)
@@ -90,7 +90,7 @@ func TestVegapulsSensorConvertsFromFahrenheitToCelsius(t *testing.T) {
 
 func TestVegapulsSensorReturnsErrOnIncompletePayload(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("netmore")([]byte(fmt.Sprintf(testData, partialTestData)))
+	ue, err := facades.New("netmore")("payload", []byte(fmt.Sprintf(testData, partialTestData)))
 	is.NoErr(err)
 
 	_, err = Decoder(context.Background(), ue)
@@ -99,7 +99,7 @@ func TestVegapulsSensorReturnsErrOnIncompletePayload(t *testing.T) {
 
 func TestVegapulsSensorReturnsErrOnUnknownPacketIdentifier(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("netmore")([]byte(fmt.Sprintf(testData, unknownPacketIdentifier)))
+	ue, err := facades.New("netmore")("payload", []byte(fmt.Sprintf(testData, unknownPacketIdentifier)))
 	is.NoErr(err)
 
 	_, err = Decoder(context.Background(), ue)
@@ -108,7 +108,7 @@ func TestVegapulsSensorReturnsErrOnUnknownPacketIdentifier(t *testing.T) {
 
 func TestVegapulsSensorPacketIdentifier12(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("netmore")([]byte(fmt.Sprintf(testData, packetIdentifier12)))
+	ue, err := facades.New("netmore")("payload", []byte(fmt.Sprintf(testData, packetIdentifier12)))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)

@@ -6,50 +6,62 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
-func HandleUplinkEvent(b []byte) (SensorEvent, error) {
+func HandleEvent(messageType string, b []byte) (types.Event, error) {
+	if messageType == "" {
+		messageType = "payload"
+	}
+
+	if messageType != "payload" {
+		return types.Event{}, types.ErrUnknownMessageType
+	}
+
 	var uplinkEvents []UplinkEvent
 	err := json.Unmarshal(b, &uplinkEvents)
 	if err != nil {
-		return SensorEvent{}, err
+		return types.Event{}, err
 	}
 
 	if len(uplinkEvents) == 0 {
-		return SensorEvent{}, ErrPayloadContainsNoData
+		return types.Event{}, types.ErrPayloadContainsNoData
 	}
 
 	uplinkEvent := uplinkEvents[0]
 
 	var data []byte
 	data, err = hex.DecodeString(uplinkEvent.Payload)
-
 	if err != nil {
-		return SensorEvent{}, err
+		return types.Event{}, err
 	}
 
-	ue := SensorEvent{
-		DevEui:     uplinkEvent.DevEui,
-		DeviceName: uplinkEvent.SensorType, // no DeviceName is received from Netmore
+	e := types.Event{
+		DevEUI:     uplinkEvent.DevEui,
 		SensorType: uplinkEvent.SensorType,
-		FPort:      atoi[uint8](uplinkEvent.FPort),
-		Data:       data,
-		RXInfo: RXInfo{
-			GatewayId:       uplinkEvent.GatewayIdentifier,
-			Rssi:            atof(uplinkEvent.RSSI),
-			Snr:             atof(uplinkEvent.SNR),
-			SpreadingFactor: atof(uplinkEvent.SpreadingFactor),
-			DataRate:        uplinkEvent.DR,
+		FCnt:       uplinkEvent.FCntUp,
+		Location: types.Location{
+			Latitude:  uplinkEvent.Latitude,
+			Longitude: uplinkEvent.Longitude,
 		},
-		TXInfo: TXInfo{
-			Frequency: uplinkEvent.Freq,
+		Payload: &types.Payload{
+			FPort: atoi[int](uplinkEvent.FPort),
+			Data:  data,
+		},
+		RX: &types.RX{
+			RSSI:    atof(uplinkEvent.RSSI),
+			LoRaSNR: atof(uplinkEvent.SNR),
+		},
+		TX: &types.TX{
+			Frequency:       uplinkEvent.Freq,
+			SpreadingFactor: atof(uplinkEvent.SpreadingFactor),
+			DR:              uplinkEvent.DR,
 		},
 		Tags:      uplinkEvent.Tags,
 		Timestamp: uplinkEvent.Timestamp,
 	}
 
-	return ue, nil
+	return e, nil
 }
 
 type UplinkEvent struct {

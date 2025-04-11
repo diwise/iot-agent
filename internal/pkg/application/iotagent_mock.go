@@ -24,13 +24,13 @@ var _ App = &AppMock{}
 //			GetDeviceFunc: func(ctx context.Context, deviceID string) (dmc.Device, error) {
 //				panic("mock out the GetDevice method")
 //			},
-//			HandleSensorEventFunc: func(ctx context.Context, se types.SensorEvent) error {
+//			HandleSensorEventFunc: func(ctx context.Context, se types.Event) error {
 //				panic("mock out the HandleSensorEvent method")
 //			},
 //			HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error {
 //				panic("mock out the HandleSensorMeasurementList method")
 //			},
-//			SaveFunc: func(ctx context.Context, se types.SensorEvent) error {
+//			SaveFunc: func(ctx context.Context, se types.Event) error {
 //				panic("mock out the Save method")
 //			},
 //		}
@@ -44,13 +44,13 @@ type AppMock struct {
 	GetDeviceFunc func(ctx context.Context, deviceID string) (dmc.Device, error)
 
 	// HandleSensorEventFunc mocks the HandleSensorEvent method.
-	HandleSensorEventFunc func(ctx context.Context, se types.SensorEvent) error
+	HandleSensorEventFunc func(ctx context.Context, se types.Event) error
 
 	// HandleSensorMeasurementListFunc mocks the HandleSensorMeasurementList method.
 	HandleSensorMeasurementListFunc func(ctx context.Context, deviceID string, pack senml.Pack) error
 
 	// SaveFunc mocks the Save method.
-	SaveFunc func(ctx context.Context, se types.SensorEvent) error
+	SaveFunc func(ctx context.Context, se types.Event) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -66,7 +66,7 @@ type AppMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Se is the se argument value.
-			Se types.SensorEvent
+			Se types.Event
 		}
 		// HandleSensorMeasurementList holds details about calls to the HandleSensorMeasurementList method.
 		HandleSensorMeasurementList []struct {
@@ -82,7 +82,7 @@ type AppMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Se is the se argument value.
-			Se types.SensorEvent
+			Se types.Event
 		}
 	}
 	lockGetDevice                   sync.RWMutex
@@ -128,13 +128,13 @@ func (mock *AppMock) GetDeviceCalls() []struct {
 }
 
 // HandleSensorEvent calls HandleSensorEventFunc.
-func (mock *AppMock) HandleSensorEvent(ctx context.Context, se types.SensorEvent) error {
+func (mock *AppMock) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	if mock.HandleSensorEventFunc == nil {
 		panic("AppMock.HandleSensorEventFunc: method is nil but App.HandleSensorEvent was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Se  types.SensorEvent
+		Se  types.Event
 	}{
 		Ctx: ctx,
 		Se:  se,
@@ -151,11 +151,11 @@ func (mock *AppMock) HandleSensorEvent(ctx context.Context, se types.SensorEvent
 //	len(mockedApp.HandleSensorEventCalls())
 func (mock *AppMock) HandleSensorEventCalls() []struct {
 	Ctx context.Context
-	Se  types.SensorEvent
+	Se  types.Event
 } {
 	var calls []struct {
 		Ctx context.Context
-		Se  types.SensorEvent
+		Se  types.Event
 	}
 	mock.lockHandleSensorEvent.RLock()
 	calls = mock.calls.HandleSensorEvent
@@ -204,13 +204,13 @@ func (mock *AppMock) HandleSensorMeasurementListCalls() []struct {
 }
 
 // Save calls SaveFunc.
-func (mock *AppMock) Save(ctx context.Context, se types.SensorEvent) error {
+func (mock *AppMock) Save(ctx context.Context, se types.Event) error {
 	if mock.SaveFunc == nil {
 		panic("AppMock.SaveFunc: method is nil but App.Save was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		Se  types.SensorEvent
+		Se  types.Event
 	}{
 		Ctx: ctx,
 		Se:  se,
@@ -227,11 +227,11 @@ func (mock *AppMock) Save(ctx context.Context, se types.SensorEvent) error {
 //	len(mockedApp.SaveCalls())
 func (mock *AppMock) SaveCalls() []struct {
 	Ctx context.Context
-	Se  types.SensorEvent
+	Se  types.Event
 } {
 	var calls []struct {
 		Ctx context.Context
-		Se  types.SensorEvent
+		Se  types.Event
 	}
 	mock.lockSave.RLock()
 	calls = mock.calls.Save

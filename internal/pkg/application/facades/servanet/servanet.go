@@ -5,28 +5,70 @@ import (
 	"encoding/json"
 	"time"
 
-	. "github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
-func HandleUplinkEvent(b []byte) (SensorEvent, error) {
-	mapToMapArr := func(m map[string]string) map[string][]string {
-		ma := make(map[string][]string, 0)
+func HandleEvent(messageType string, b []byte) (types.Event, error) {
+	switch messageType {
+	case "up":
+		return handleUplinkEvent(b)
+	case "error":
+		return handleErrorEvent(b)
+	case "status":
+		return handleStatusEvent(b)
+	default:
+		return handleUplinkEvent(b)
+	}
+}
 
-		if m == nil {
-			return ma
-		}
-
-		for k, v := range m {
-			ma[k] = []string{v}
-		}
-
-		return ma
+func handleErrorEvent(b []byte) (types.Event, error) {
+	var errorEvent ErrorEvent
+	err := json.Unmarshal(b, &errorEvent)
+	if err != nil {
+		return types.Event{}, err
 	}
 
+	e := types.Event{
+		DevEUI:    errorEvent.DevEUI,
+		Name:      errorEvent.DeviceName,
+		Tags:      mapToMapArr(errorEvent.Tags),
+		Timestamp: time.Now().UTC(),
+		Error: &types.Error{
+			Type:    errorEvent.Type,
+			Message: errorEvent.Error,
+		},
+	}
+
+	return e, nil
+}
+
+func handleStatusEvent(b []byte) (types.Event, error) {
+	var statusEvent StatusEvent
+	err := json.Unmarshal(b, &statusEvent)
+	if err != nil {
+		return types.Event{}, err
+	}
+
+	e := types.Event{
+		DevEUI:    statusEvent.DevEUI,
+		Name:      statusEvent.DeviceName,
+		Tags:      mapToMapArr(statusEvent.Tags),
+		Timestamp: time.Now().UTC(),
+		Status: &types.Status{
+			Margin:                  statusEvent.Margin,
+			BatteryLevel:            statusEvent.BatteryLevel,
+			BatteryLevelUnavailable: statusEvent.BatteryLevelUnavailable,
+		},
+	}
+
+	return e, nil
+}
+
+func handleUplinkEvent(b []byte) (types.Event, error) {
 	var uplinkEvent UplinkEvent
 	err := json.Unmarshal(b, &uplinkEvent)
 	if err != nil {
-		return SensorEvent{}, err
+		return types.Event{}, err
 	}
 
 	var data []byte
@@ -34,12 +76,12 @@ func HandleUplinkEvent(b []byte) (SensorEvent, error) {
 	if err != nil {
 		data, err = base64.RawStdEncoding.DecodeString(uplinkEvent.Data)
 		if err != nil {
-			return SensorEvent{}, err
+			return types.Event{}, err
 		}
 	}
 
 	if uplinkEvent.Data == "" && uplinkEvent.Object == nil {
-		return SensorEvent{}, ErrPayloadContainsNoData
+		return types.Event{}, types.ErrPayloadContainsNoData
 	}
 
 	var objectJSON json.RawMessage
@@ -49,28 +91,39 @@ func HandleUplinkEvent(b []byte) (SensorEvent, error) {
 		objectJSON = uplinkEvent.ObjectJSON
 	}
 
-	ue := SensorEvent{
+	e := types.Event{
+		DevEUI:     uplinkEvent.DevEUI,
+		Name:       uplinkEvent.DeviceName,
 		SensorType: uplinkEvent.DeviceProfileName,
-		DeviceName: uplinkEvent.DeviceName,
-		DevEui:     uplinkEvent.DevEUI,
-		FPort:      uint8(uplinkEvent.FPort),
-		Data:       data,
-		Object:     objectJSON,
+		FCnt:       uplinkEvent.FCnt,
 		Tags:       mapToMapArr(uplinkEvent.Tags),
+		Timestamp:  time.Now().UTC(),
+
+		Payload: &types.Payload{
+			FPort:  uplinkEvent.FPort,
+			Data:   data,
+			Object: objectJSON,
+		},
+
+		TX: &types.TX{
+			Frequency: int64(uplinkEvent.TxInfo.Frequency),
+			DR:        uplinkEvent.TxInfo.DR,
+		},
 	}
 
 	if len(uplinkEvent.RxInfo) > 0 {
-		ue.RXInfo = RXInfo{
-			GatewayId: uplinkEvent.RxInfo[0].GatewayID,
-			UplinkId:  uplinkEvent.RxInfo[0].UplinkID,
-			Rssi:      float64(uplinkEvent.RxInfo[0].RSSI),
-			Snr:       uplinkEvent.RxInfo[0].LoRaSNR,
+		e.Location = types.Location{
+			Latitude:  uplinkEvent.RxInfo[0].Location.Latitude,
+			Longitude: uplinkEvent.RxInfo[0].Location.Longitude,
+		}
+
+		e.RX = &types.RX{
+			RSSI:    float64(uplinkEvent.RxInfo[0].RSSI),
+			LoRaSNR: uplinkEvent.RxInfo[0].LoRaSNR,
 		}
 	}
 
-	ue.Timestamp = time.Now().UTC()
-
-	return ue, nil
+	return e, nil
 }
 
 // UplinkEvent representerar hela meddelandet.
@@ -129,12 +182,27 @@ type ErrorEvent struct {
 
 // StatusEvent representerar statusinformation från en enhet.
 type StatusEvent struct {
-	ApplicationID           string  `json:"applicationID"`
-	ApplicationName         string  `json:"applicationName"`
-	DeviceName              string  `json:"deviceName"`
-	DevEUI                  string  `json:"devEUI"`
-	Margin                  int     `json:"margin"`
-	ExternalPowerSource     bool    `json:"externalPowerSource"`
-	BatteryLevel            float64 `json:"batteryLevel"`
-	BatteryLevelUnavailable bool    `json:"batteryLevelUnavailable"`
+	ApplicationID           string            `json:"applicationID"`
+	ApplicationName         string            `json:"applicationName"`
+	DeviceName              string            `json:"deviceName"`
+	DevEUI                  string            `json:"devEUI"`
+	Margin                  int               `json:"margin"`
+	ExternalPowerSource     bool              `json:"externalPowerSource"`
+	BatteryLevel            float64           `json:"batteryLevel"`
+	BatteryLevelUnavailable bool              `json:"batteryLevelUnavailable"`
+	Tags                    map[string]string `json:"tags"`
+}
+
+func mapToMapArr(m map[string]string) map[string][]string {
+	ma := make(map[string][]string, 0)
+
+	if m == nil {
+		return ma
+	}
+
+	for k, v := range m {
+		ma[k] = []string{v}
+	}
+
+	return ma
 }

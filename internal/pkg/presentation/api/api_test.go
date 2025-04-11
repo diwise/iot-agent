@@ -55,9 +55,9 @@ func testSetup(t *testing.T) (*is.I, *application.AppMock, *http.ServeMux) {
 	is := is.New(t)
 
 	app := &application.AppMock{
-		HandleSensorEventFunc:           func(ctx context.Context, se types.SensorEvent) error { return nil },
+		HandleSensorEventFunc:           func(ctx context.Context, se types.Event) error { return nil },
 		HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error { return nil },
-		SaveFunc:                        func(ctx context.Context, se types.SensorEvent) error { return nil },
+		SaveFunc:                        func(ctx context.Context, se types.Event) error { return nil },
 	}
 
 	mux := http.NewServeMux()

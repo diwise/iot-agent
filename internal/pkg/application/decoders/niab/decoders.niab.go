@@ -19,8 +19,8 @@ type NiabPayload struct {
 	Distance    *float64
 }
 
-func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
-	return decode(e.Object)
+func Decoder(ctx context.Context, e types.Event) (any, error) {
+	return decode(e.Payload.Object)
 }
 
 func Converter(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error) {

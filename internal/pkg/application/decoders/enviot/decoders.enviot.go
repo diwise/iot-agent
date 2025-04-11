@@ -22,10 +22,10 @@ type EnviotPayload struct {
 	} `json:"payload"`
 }
 
-func Decoder(ctx context.Context, e types.SensorEvent) (any, error) {
+func Decoder(ctx context.Context, e types.Event) (any, error) {
 	obj := EnviotPayload{}
 
-	err := json.Unmarshal(e.Object, &obj)
+	err := json.Unmarshal(e.Payload.Object, &obj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal enviot payload: %s", err.Error())
 	}

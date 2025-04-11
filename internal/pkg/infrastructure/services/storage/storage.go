@@ -39,7 +39,7 @@ func (c Config) ConnStr() string {
 }
 
 type Storage interface {
-	Save(ctx context.Context, se types.SensorEvent) error
+	Save(ctx context.Context, se types.Event) error
 	Close() error
 }
 
@@ -71,7 +71,7 @@ func (s *postgres) Close() error {
 	return nil
 }
 
-func (s *postgres) Save(ctx context.Context, se types.SensorEvent) error {
+func (s *postgres) Save(ctx context.Context, se types.Event) error {
 	payload, err := json.Marshal(se)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (s *postgres) Save(ctx context.Context, se types.SensorEvent) error {
 	sql := `INSERT INTO sensor_events (sensor_id, payload, trace_id) VALUES (@sensor_id, @payload, @trace_id);`
 
 	args := pgx.NamedArgs{
-		"sensor_id": se.DevEui,
+		"sensor_id": se.DevEUI,
 		"payload":   payload,
 		"trace_id":  nil,
 	}
@@ -155,7 +155,7 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 
 type memory struct{}
 
-func (n memory) Save(ctx context.Context, se types.SensorEvent) error {
+func (n memory) Save(ctx context.Context, se types.Event) error {
 	return nil
 }
 func (n memory) Close() error {
