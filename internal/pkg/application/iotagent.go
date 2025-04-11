@@ -85,6 +85,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	}
 
 	log = log.With(slog.String("device_id", device.ID()), slog.String("type", device.SensorType()))
+	ctx = logging.NewContextWithLogger(ctx, log)
 
 	if a.createUnknownDeviceEnabled && device.SensorType() == UNKNOWN {
 		a.ignoreDeviceFor(se.DevEUI, 1*time.Hour)
@@ -115,7 +116,6 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	}
 
 	if !device.IsActive() {
-		log.Debug("ignored message from inactive device")
 		return nil
 	}
 
@@ -125,7 +125,6 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 
 	for _, obj := range objects {
 		if !slices.Contains(types, obj.ObjectURN()) {
-			log.Debug("skip object since device should not handle object type", slog.String("object_type", obj.ObjectURN()))
 			continue
 		}
 
