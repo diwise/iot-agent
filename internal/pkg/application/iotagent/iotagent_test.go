@@ -150,7 +150,7 @@ func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
 	sendCalls := e.SendCommandToCalls()
 	cmd := sendCalls[i].Command
 	m := cmd.(*iotcore.MessageReceived)
-	return m.Pack
+	return m.Pack()
 }
 
 func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messaging.MsgContextMock) {

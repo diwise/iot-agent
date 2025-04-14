@@ -82,13 +82,13 @@ func TestQalcosonicAlarmMessage(t *testing.T) {
 	is.True(ap.StatusCode == uint8(136))
 }
 
-func TestQalcosonicW1t_2(t *testing.T) {	
+func TestQalcosonicW1t_2(t *testing.T) {
 	is, _ := testSetup(t)
 
 	ue, _ := application.ChirpStack([]byte(qalcosonic_w1t_2))
 	p, ap, err := decodePayload(context.Background(), ue)
-  is.NoErr(err)
-  objects, err := Decoder(context.Background(), "id", ue)
+	is.NoErr(err)
+	objects, err := Decoder(context.Background(), "id", ue)
 
 	is.NoErr(err)
 	is.True(p != nil)
@@ -96,7 +96,7 @@ func TestQalcosonicW1t_2(t *testing.T) {
 
 	is.Equal(*p.Temperature, uint16(915))
 	is.Equal(15, len(p.Deltas))
-  is.Equal(17, len(objects))
+	is.Equal(17, len(objects))
 }
 
 func TestDecode(t *testing.T) {
@@ -280,7 +280,8 @@ const qalcosonic_w1t_2 string = `
 {
   "devEui": "116c52b4274f",
   "timestamp": "2022-08-25T07:35:21.834484Z",
-  "data": "uEJFZwDdiwYAkwPQdERnQYkGAEgAFgAjAEIA0wAZABsACgCMAA4ABwAZAAIACQA="
+  "data": "uEJFZwDdiwYAkwPQdERnQYkGAEgAFgAjAEIA0wAZABsACgCMAA4ABwAZAAIACQA=",
+  "fPort": 100
 }
 `
 
