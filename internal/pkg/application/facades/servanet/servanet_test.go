@@ -30,21 +30,21 @@ func TestStatusEvent(t *testing.T) {
 
 func TestHandleUplinkEvent(t *testing.T) {
 	is := is.New(t)
-	ue, err := HandleEvent("up",[]byte(up))
+	ue, err := HandleEvent("up", []byte(up))
 	is.NoErr(err)
 	is.Equal(ue.DevEUI, "24e124329e090021")
 }
 
 func TestHandleStatusEvent(t *testing.T) {
 	is := is.New(t)
-	ue, err := HandleEvent("status",[]byte(status))
+	ue, err := HandleEvent("status", []byte(status))
 	is.NoErr(err)
 	is.Equal(ue.DevEUI, "8c83fc05007455a5")
 }
 
 func TestHandleErrorEvent(t *testing.T) {
 	is := is.New(t)
-	ue, err := HandleEvent("error",[]byte(err))
+	ue, err := HandleEvent("error", []byte(err))
 	is.NoErr(err)
 	is.Equal(ue.DevEUI, "24e124329e090021")
 }
