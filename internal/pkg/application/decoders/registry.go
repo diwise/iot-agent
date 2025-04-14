@@ -24,7 +24,7 @@ import (
 
 
 type DecoderFunc func(ctx context.Context, e types.Event) (types.SensorPayload, error)
-type ConverterFunc func(ctx context.Context, deviceID string, payload any, ts time.Time) ([]lwm2m.Lwm2mObject, error)
+type ConverterFunc func(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error)
 
 type Registry interface {
 	Get(ctx context.Context, sensorType string) (DecoderFunc, ConverterFunc, bool)
