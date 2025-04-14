@@ -67,6 +67,7 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 			return
 		}
 
+		// add source to event to use for auto create devices (TODO)
 		evt.Source = source
 
 		err = app.HandleSensorEvent(ctx, evt)
