@@ -15,7 +15,7 @@ import (
 
 func TestPresenceSensorReading(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := facades.New("servanet")("up", []byte(livboj))
+	ue, _ := facades.New("servanet")(context.Background(), "up", []byte(livboj))
 
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
@@ -28,7 +28,7 @@ func TestPresenceSensorReading(t *testing.T) {
 
 func TestPresenceSensorPeriodicCheckIn(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, err := facades.New("servanet")("up", []byte(livboj_checkin))
+	ue, err := facades.New("servanet")(context.Background(), "up", []byte(livboj_checkin))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)
@@ -51,7 +51,7 @@ func TestDataErrSensorReading(t *testing.T) {
 
 	for _, p := range payload {
 		d := fmt.Sprintf(checkin, p)
-		ue, err := facades.New("servanet")("up", []byte(d))
+		ue, err := facades.New("servanet")(context.Background(), "up", []byte(d))
 		is.NoErr(err)
 		_, err = Decoder(context.Background(), ue)
 		is.NoErr(err)

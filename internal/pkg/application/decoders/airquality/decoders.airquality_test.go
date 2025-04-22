@@ -12,7 +12,7 @@ import (
 
 func TestAirQuality(t *testing.T) {
 	is := is.New(t)
-	ue, err := facades.New("servanet")("up", []byte(airqualityData))
+	ue, err := facades.New("servanet")(context.Background(), "up", []byte(airqualityData))
 	is.NoErr(err)
 
 	payload, err := Decoder(context.Background(), ue)

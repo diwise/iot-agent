@@ -1,22 +1,34 @@
 package servanet
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
-func HandleEvent(messageType string, b []byte) (types.Event, error) {
+func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event, error) {
+	log := logging.GetFromContext(ctx)
+
 	switch messageType {
 	case "up":
-		return handleUplinkEvent(b)
+		log.Debug("Handling uplink event")
+		evt, err := handleUplinkEvent(b)
+		if err != nil {
+			log.Error("Failed to handle uplink event", "err", err)
+		}
+		return evt, err
 	case "error":
+		log.Debug("Handling error event")
 		return handleErrorEvent(b)
 	case "status":
+		log.Debug("Handling status event")
 		return handleStatusEvent(b)
 	default:
+		log.Debug("Handling unknown event type as uplink event", "type", messageType)
 		return handleUplinkEvent(b)
 	}
 }

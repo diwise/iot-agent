@@ -1,6 +1,7 @@
 package netmore
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"strconv"
@@ -9,7 +10,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
-func HandleEvent(messageType string, b []byte) (types.Event, error) {
+func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event, error) {
 	if messageType == "" {
 		messageType = "payload"
 	}

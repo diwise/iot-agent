@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -35,7 +36,16 @@ func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T)
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
-	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer([]byte(msgfromMQTT)))
+	im := types.IncomingMessage{
+		ID:     "123",
+		Type:   "up",
+		Source: "/topic/456/up",
+		Data:   []byte(msgfromMQTT),
+	}
+
+	b, _ := json.Marshal(im)
+
+	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer(b))
 	is.Equal(resp.StatusCode, http.StatusCreated)
 	is.Equal(len(app.HandleSensorEventCalls()), 1)
 }

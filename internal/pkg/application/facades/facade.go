@@ -1,6 +1,7 @@
 package facades
 
 import (
+	"context"
 	"strings"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/facades/chirpstack"
@@ -10,7 +11,7 @@ import (
 	. "github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
-type EventFunc func(string, []byte) (Event, error)
+type EventFunc func(context.Context, string, []byte) (Event, error)
 
 func New(as string) EventFunc {
 	switch strings.ToLower(as) {

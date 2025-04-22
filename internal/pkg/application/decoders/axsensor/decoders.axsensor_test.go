@@ -13,7 +13,7 @@ import (
 
 func TestAxsensor(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := facades.New("netmore")("payload", []byte(axsensor_input))
+	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(axsensor_input))
 
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)
@@ -41,7 +41,7 @@ func TestAxsensor(t *testing.T) {
 
 func TestAxsensorDifferentPayload(t *testing.T) {
 	is, _ := testSetup(t)
-	ue, _ := facades.New("netmore")("payload", []byte(input2))
+	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(input2))
 
 	payload, err := Decoder(context.Background(), ue)
 	is.NoErr(err)

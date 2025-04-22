@@ -1,6 +1,7 @@
 package netmore
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -23,14 +24,14 @@ func TestUplinkAll(t *testing.T) {
 
 func TestHandleUplinkAll(t *testing.T) {
 	is := is.New(t)
-	ue, err := HandleEvent("payload", []byte(upall))
+	ue, err := HandleEvent(context.Background(), "payload", []byte(upall))
 	is.NoErr(err)
 	is.Equal(ue.DevEUI, "363536305d398e11")
 }
 
 func TestHandleUplink(t *testing.T) {
 	is := is.New(t)
-	ue, err := HandleEvent("payload", []byte(up))
+	ue, err := HandleEvent(context.Background(), "payload", []byte(up))
 	is.NoErr(err)
 	is.Equal(ue.DevEUI, "70b3d554600002e7")
 }

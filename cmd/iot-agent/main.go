@@ -150,7 +150,7 @@ func newDeviceManagementClient(ctx context.Context, flags flagMap) (devicemgmtcl
 		return &devmodeDeviceMgmtClient{}, nil
 	}
 
-	return devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], false, flags[oauth2ClientId], flags[oauth2ClientSecret])
+	return devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], true, flags[oauth2ClientId], flags[oauth2ClientSecret])
 }
 
 func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {

@@ -1,6 +1,7 @@
 package chirpstack
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -8,7 +9,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 )
 
-func HandleEvent(messageType string, b []byte) (types.Event, error) {
+func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event, error) {
 	return types.Event{}, errors.New("not implemented")
 }
 

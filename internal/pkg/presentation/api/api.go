@@ -10,6 +10,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
@@ -53,13 +54,18 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		msg, _ := io.ReadAll(r.Body)
+		b, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 
-		messageType := r.URL.Query().Get("type")
-		source := r.URL.Query().Get("source")
+		var im types.IncomingMessage
+		err = json.Unmarshal(b, &im)
+		if err != nil {
+			log.Error("failed to unmarshal incoming message", "err", err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-		evt, err := facade(messageType, msg)
+		evt, err := facade(ctx, im.Type, im.Data)
 		if err != nil {
 			log.Error("failed to decode sensor event using facade", "err", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -68,7 +74,7 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 		}
 
 		// add source to event to use for auto create devices (TODO)
-		evt.Source = source
+		evt.Source = im.Source
 
 		err = app.HandleSensorEvent(ctx, evt)
 		if err != nil {

@@ -128,3 +128,10 @@ func (m *StatusMessage) Body() []byte {
 	b, _ := json.Marshal(m)
 	return b
 }
+
+type IncomingMessage struct {
+	ID     string `json:"id"`
+	Type   string `json:"type"`
+	Source string `json:"source,omitempty"`
+	Data   []byte `json:"data"`
+}

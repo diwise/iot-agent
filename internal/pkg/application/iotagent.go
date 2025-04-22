@@ -92,48 +92,49 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 		return nil
 	}
 
-	decoder, converter, ok := a.registry.Get(ctx, device.SensorType())
-	if !ok {
-		log.Debug("no decoder found for device type", "device_type", device.SensorType())
-		return nil
-	}
+	var errs []error
+	var payload types.SensorPayload
 
-	payload, err := decoder(ctx, se)
-	if err != nil {
-		log.Error("could not decode payload", "err", err.Error())
-		return err
-	}
+	if se.Payload != nil {
+		decoder, converter, ok := a.registry.Get(ctx, device.SensorType())
+		if !ok {
+			log.Debug("no decoder found for device type", "device_type", device.SensorType())
+			return nil
+		}
 
-	objects, err := converter(ctx, device.ID(), payload, se.Timestamp)
-	if err != nil {
-		log.Error("could not convert payload to objects", "err", err.Error())
-		return err
+		payload, err = decoder(ctx, se)
+		if err != nil {
+			log.Error("could not decode payload", "err", err.Error())
+			return err
+		}
+
+		objects, err := converter(ctx, device.ID(), payload, se.Timestamp)
+		if err != nil {
+			log.Error("could not convert payload to objects", "err", err.Error())
+			return err
+		}
+
+		if device.IsActive() {
+			types := device.Types()
+
+			for _, obj := range objects {
+				if !slices.Contains(types, obj.ObjectURN()) {
+					continue
+				}
+
+				err := a.handleSensorMeasurementList(ctx, lwm2m.ToPack(obj))
+				if err != nil {
+					log.Error("could not handle measurement", "err", err.Error())
+					errs = append(errs, err)
+					continue
+				}
+			}
+		}
 	}
 
 	err = a.sendStatusMessage(ctx, device, se, payload)
 	if err != nil {
 		log.Warn("failed to send status message", "err", err.Error())
-	}
-
-	if !device.IsActive() {
-		return nil
-	}
-
-	var errs []error
-
-	types := device.Types()
-
-	for _, obj := range objects {
-		if !slices.Contains(types, obj.ObjectURN()) {
-			continue
-		}
-
-		err := a.handleSensorMeasurementList(ctx, lwm2m.ToPack(obj))
-		if err != nil {
-			log.Error("could not handle measurement", "err", err.Error())
-			errs = append(errs, err)
-			continue
-		}
 	}
 
 	return errors.Join(errs...)

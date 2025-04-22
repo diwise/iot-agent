@@ -53,7 +53,7 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var p ElsysPayload
 	var err error
 
-	if e.Payload.Object != nil {
+	if e.Payload != nil && e.Payload.Object != nil {
 		obj := struct {
 			Temperature         *float32 `json:"temperature,omitempty"`
 			ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
