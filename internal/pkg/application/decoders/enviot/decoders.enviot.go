@@ -30,6 +30,9 @@ func (a EnviotPayload) BatteryLevel() *int {
 
 	return nil
 }
+func (a EnviotPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	obj := EnviotPayload{}

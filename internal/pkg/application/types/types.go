@@ -15,6 +15,7 @@ var ErrUnknownMessageType = errors.New("unknown message type")
 
 type SensorPayload interface {
 	BatteryLevel() *int
+	Error() (string, []string)
 }
 
 type Event struct {

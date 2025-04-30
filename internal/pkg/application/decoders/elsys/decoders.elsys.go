@@ -48,6 +48,9 @@ func (a ElsysPayload) BatteryLevel() *int {
 
 	return nil
 }
+func (a ElsysPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var p ElsysPayload

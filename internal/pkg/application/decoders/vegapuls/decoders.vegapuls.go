@@ -23,6 +23,9 @@ type VegapulsPayload struct {
 func (a VegapulsPayload) BatteryLevel() *int {
 	return a.Battery
 }
+func (a VegapulsPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	return decode(e.Payload.Data)

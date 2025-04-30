@@ -25,6 +25,9 @@ type SensativePayload struct {
 func (a SensativePayload) BatteryLevel() *int {
 	return a.BatteryLevel_
 }
+func (a SensativePayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if e.Payload == nil {

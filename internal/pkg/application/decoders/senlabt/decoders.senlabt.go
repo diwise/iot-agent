@@ -22,6 +22,9 @@ type SenlabPayload struct {
 func (a SenlabPayload) BatteryLevel() *int {
 	return &a.BatteryLevel_
 }
+func (a SenlabPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var d SenlabPayload

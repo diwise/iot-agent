@@ -19,6 +19,8 @@ import (
 
 var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 
+const NoError = 0x00
+
 type QalcosonicVolumePayload struct {
 	CurrentVolume float64
 	Deltas        []QalcosonicDeltaVolume
@@ -44,6 +46,19 @@ type QalcosonicPayload struct {
 func (a QalcosonicPayload) BatteryLevel() *int {
 	return nil
 }
+func (a QalcosonicPayload) Error() (string, []string) {
+	if len(a.volume.Messages) > 0 {
+		m := []string{}
+		for _, v := range a.volume.Messages {
+			if v != "No error" {
+				m = append(m, v)
+			}
+		}
+
+		return "", m
+	}
+	return "", []string{}
+}
 
 type QalcosonicDeltaVolume struct {
 	CumulatedVolume float64
@@ -58,15 +73,15 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if p != nil && p.StatusCode != 0 {
-		err = &types.DecoderErr{
-			Code:      int(p.StatusCode),
-			Messages:  p.Messages,
-			Timestamp: p.Timestamp,
+	/*
+		if p != nil && p.StatusCode != 0 {
+			err = &types.DecoderErr{
+				Code:      int(p.StatusCode),
+				Messages:  p.Messages,
+				Timestamp: p.Timestamp,
+			}
 		}
-	}
-
+	*/
 	return QalcosonicPayload{
 		volume: p,
 		alarms: ap,

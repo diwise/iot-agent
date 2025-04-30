@@ -28,6 +28,9 @@ func (a AxsensorPayload) BatteryLevel() *int {
 
 	return nil
 }
+func (a AxsensorPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 

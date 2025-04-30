@@ -73,7 +73,7 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 				return
 			}
 
-			log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", forwardingEndpoint)
+			//log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", forwardingEndpoint)
 
 			req.Header.Add("Content-Type", "application/json")
 

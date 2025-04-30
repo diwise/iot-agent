@@ -73,12 +73,16 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 			return nil
 		}
 
-		if a.createUnknownDeviceEnabled {
-			err := a.createUnknownDevice(ctx, se)
-			if err != nil {
-				log.Error("could not create unknown device", "err", err.Error())
-				return err
+		if errors.Is(err, errDeviceNotFound) {
+			if a.createUnknownDeviceEnabled {
+				err := a.createUnknownDevice(ctx, se)
+				if err != nil {
+					log.Error("could not create unknown device", "err", err.Error())
+					return err
+				}
 			}
+
+			return nil
 		}
 
 		return err
@@ -173,6 +177,7 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) 
 }
 
 var errDeviceOnBlackList = errors.New("blacklisted")
+var errDeviceNotFound = errors.New("device not found")
 
 func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context.Context, id string) (dmc.Device, error)) (dmc.Device, error) {
 	if a.deviceIsCurrentlyIgnored(ctx, id) {
@@ -182,7 +187,7 @@ func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context
 	device, err := finder(ctx, id)
 	if err != nil {
 		a.ignoreDeviceFor(id, 1*time.Hour)
-		return nil, fmt.Errorf("device lookup failure (%w)", err)
+		return nil, errDeviceNotFound
 	}
 
 	return device, nil
@@ -235,6 +240,7 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt type
 		DeviceID:  device.ID(),
 		Tenant:    device.Tenant(),
 		Timestamp: evt.Timestamp,
+		Messages:  []string{},
 	}
 
 	if evt.TX != nil {
@@ -254,18 +260,27 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt type
 		}
 	}
 
-	if p != nil && msg.BatteryLevel == nil {
-		if bat := p.BatteryLevel(); bat != nil {
-			bat := *p.BatteryLevel()
-			f := float64(bat)
-			msg.BatteryLevel = &f
+	if p != nil {
+		if msg.BatteryLevel == nil {
+			if bat := p.BatteryLevel(); bat != nil {
+				bat := *p.BatteryLevel()
+				f := float64(bat)
+				msg.BatteryLevel = &f
+			}
+		}
+
+		c, messages := p.Error()
+		log.Debug("status code from payload", "code", c, "messages", messages)
+
+		if len(messages) > 0 {
+			msg.Messages = append(msg.Messages, messages...)
 		}
 	}
 
 	if evt.Error != nil {
 		msg.Code = &evt.Error.Type
 		if evt.Error.Message != "" {
-			msg.Messages = []string{evt.Error.Message}
+			msg.Messages = append(msg.Messages, evt.Error.Message)
 		}
 	}
 

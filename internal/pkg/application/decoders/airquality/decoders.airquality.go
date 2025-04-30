@@ -25,6 +25,9 @@ type AirQualityPayload struct {
 func (a AirQualityPayload) BatteryLevel() *int {
 	return nil
 }
+func (a AirQualityPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 

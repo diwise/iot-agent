@@ -27,6 +27,9 @@ func (a SensefarmPayload) BatteryLevel() *int {
 	bat := int(a.BatteryVoltage)
 	return &bat
 }
+func (a SensefarmPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	// At minimum we must receive 2 bytes, one for header type and one for value

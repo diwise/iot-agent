@@ -22,6 +22,9 @@ type NiabPayload struct {
 func (a NiabPayload) BatteryLevel() *int {
 	return &a.Battery
 }
+func (a NiabPayload) Error() (string, []string) {
+	return "", []string{}
+}
 
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	return decode(e.Payload.Object)
