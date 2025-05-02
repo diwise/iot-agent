@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,6 +17,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	core "github.com/diwise/iot-core/pkg/messaging/events"
+	"github.com/diwise/iot-device-mgmt/pkg/client"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	dmtypes "github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/messaging-golang/pkg/messaging"
@@ -77,7 +79,6 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 			if a.createUnknownDeviceEnabled {
 				err := a.createUnknownDevice(ctx, se)
 				if err != nil {
-					log.Error("could not create unknown device", "err", err.Error())
 					return err
 				}
 			}
@@ -218,6 +219,7 @@ func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
 }
 
 func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
+	log := logging.GetFromContext(ctx)
 	d := dmtypes.Device{
 		Active:   false,
 		DeviceID: DeterministicGUID(se.DevEUI),
@@ -230,7 +232,18 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		Tenant: a.createUnknownDeviceTenant,
 	}
 
-	return a.client.CreateDevice(ctx, d)
+	err := a.client.CreateDevice(ctx, d)
+	if err != nil {
+		if errors.Is(err, client.ErrDeviceExist) {
+			return nil
+		}
+
+		b, _ := json.Marshal(d)
+		log.Debug("could not create new device", slog.String("json", string(b)), "err", err.Error())
+		return err
+	}
+
+	return nil
 }
 
 func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt types.Event, p types.SensorPayload) error {
@@ -269,8 +282,7 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt type
 			}
 		}
 
-		c, messages := p.Error()
-		log.Debug("status code from payload", "code", c, "messages", messages)
+		_, messages := p.Error()
 
 		if len(messages) > 0 {
 			msg.Messages = append(msg.Messages, messages...)
