@@ -12,9 +12,10 @@ import (
 )
 
 type ElsysPayload struct {
-	Temperature         *float32 `json:"temperature,omitempty"`
-	ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
-	Humidity            *int8    `json:"humidity,omitempty"`
+	Temperature          *float32 `json:"temperature,omitempty"`
+	ExternalTemperature  *float32 `json:"externalTemperature,omitempty"`
+	ExternalTemperature2 *float32 `json:"externalTemperature2,omitempty"`
+	Humidity             *int8    `json:"humidity,omitempty"`
 
 	//Acceleration
 	X *int8 `json:"x,omitempty"`
@@ -58,21 +59,22 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 
 	if e.Payload != nil && e.Payload.Object != nil {
 		obj := struct {
-			Temperature         *float32 `json:"temperature,omitempty"`
-			ExternalTemperature *float32 `json:"externalTemperature,omitempty"`
-			Humidity            *int8    `json:"humidity,omitempty"`
-			Light               *uint16  `json:"light,omitempty"`
-			Motion              *uint8   `json:"motion,omitempty"`
-			CO2                 *uint16  `json:"co2,omitempty"`
-			VDD                 *uint16  `json:"vdd,omitempty"`
-			Analog1             *uint16  `json:"analog1,omitempty"`
-			Pulse               *uint16  `json:"pulse1,omitempty"`
-			PulseAbs            *uint32  `json:"pulseAbs,omitempty"`
-			Pressure            *float32 `json:"pressure,omitempty"`
-			Occupancy           *uint8   `json:"occupancy,omitempty"`
-			DigitalInput        *int     `json:"digital,omitempty"`
-			DigitalInput2       *int     `json:"digital2,omitempty"`
-			Waterleak           *uint8   `json:"waterleak,omitempty"`
+			Temperature          *float32 `json:"temperature,omitempty"`
+			ExternalTemperature  *float32 `json:"externalTemperature,omitempty"`
+			ExternalTemperature2 *float32 `json:"externalTemperature2,omitempty"`
+			Humidity             *int8    `json:"humidity,omitempty"`
+			Light                *uint16  `json:"light,omitempty"`
+			Motion               *uint8   `json:"motion,omitempty"`
+			CO2                  *uint16  `json:"co2,omitempty"`
+			VDD                  *uint16  `json:"vdd,omitempty"`
+			Analog1              *uint16  `json:"analog1,omitempty"`
+			Pulse                *uint16  `json:"pulse1,omitempty"`
+			PulseAbs             *uint32  `json:"pulseAbs,omitempty"`
+			Pressure             *float32 `json:"pressure,omitempty"`
+			Occupancy            *uint8   `json:"occupancy,omitempty"`
+			DigitalInput         *int     `json:"digital,omitempty"`
+			DigitalInput2        *int     `json:"digital2,omitempty"`
+			Waterleak            *uint8   `json:"waterleak,omitempty"`
 		}{}
 		err := json.Unmarshal(e.Payload.Object, &obj)
 		if err != nil {
@@ -81,6 +83,7 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 
 		p.Temperature = obj.Temperature
 		p.ExternalTemperature = obj.ExternalTemperature
+		p.ExternalTemperature2 = obj.ExternalTemperature2
 		p.Humidity = obj.Humidity
 		p.Light = obj.Light
 		p.Motion = obj.Motion
@@ -118,12 +121,31 @@ func Converter(ctx context.Context, deviceID string, payload types.SensorPayload
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
+	// TODO: better solution for multiple values of same type
+
 	if p.Temperature != nil {
-		objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Temperature), ts))
+		del := ""
+		if p.ExternalTemperature != nil || p.ExternalTemperature2 != nil {
+			del = "/0"
+		}
+
+		objects = append(objects, lwm2m.NewTemperature(deviceID+del, float64(*p.Temperature), ts))
 	}
 
 	if p.ExternalTemperature != nil {
-		objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.ExternalTemperature), ts))
+		del := ""
+		if p.Temperature != nil {
+			del = "/1"
+		}
+		objects = append(objects, lwm2m.NewTemperature(deviceID+del, float64(*p.ExternalTemperature), ts))
+	}
+
+	if p.ExternalTemperature2 != nil {
+		del := ""
+		if p.Temperature != nil {
+			del = "/2"
+		}
+		objects = append(objects, lwm2m.NewTemperature(deviceID+del, float64(*p.ExternalTemperature2), ts))
 	}
 
 	if p.Humidity != nil {
@@ -269,6 +291,10 @@ func decodePayload(data []byte) (ElsysPayload, error) {
 		case TYPE_EXT_TEMP1:
 			result := float32(neg16(int(data[i+1])<<8|int(data[i+2]))) / 10
 			p.ExternalTemperature = &result
+			i += 2
+		case TYPE_EXT_TEMP2:
+			result := float32(neg16(int(data[i+1])<<8|int(data[i+2]))) / 10
+			p.ExternalTemperature2 = &result
 			i += 2
 		case TYPE_PRESSURE:
 			pressure := float32(int(data[i+1])<<24|int(data[i+2])<<16|int(data[i+3])<<8|int(data[i+4])) / 1000

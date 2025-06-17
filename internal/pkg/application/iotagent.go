@@ -119,11 +119,14 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 			return err
 		}
 
+		log.Debug(fmt.Sprintf("%d object converted, device is active %t", len(objects), device.IsActive()))
+
 		if device.IsActive() {
 			types := device.Types()
 
 			for _, obj := range objects {
 				if !slices.Contains(types, obj.ObjectURN()) {
+					log.Debug(fmt.Sprintf("%s is not in device types list %s", obj.ObjectURN(), strings.Join(types, ", ")))
 					continue
 				}
 
@@ -133,6 +136,8 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 					errs = append(errs, err)
 					continue
 				}
+
+				log.Debug("object is handled", "object_id", obj.ID())
 			}
 		}
 	}
@@ -173,6 +178,8 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) 
 		log.Error("could not send message.received to iot-core", "err", err.Error())
 		return err
 	}
+
+	log.Debug("send to iot-core", "device_id", m.DeviceID(), "object_id", m.ObjectID(), "tenant", m.Tenant())
 
 	return nil
 }

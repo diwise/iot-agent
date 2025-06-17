@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
@@ -27,6 +28,9 @@ func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event
 	case "status":
 		log.Debug("Handling status event")
 		return handleStatusEvent(b)
+	case "join":
+		log.Debug("Handling join event (NOP)")
+		return types.Event{}, fmt.Errorf("join events not supported")
 	default:
 		log.Debug("Handling unknown event type as uplink event", "type", messageType)
 		return handleUplinkEvent(b)
