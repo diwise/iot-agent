@@ -34,6 +34,7 @@ func (c *mqttClient) run() {
 	client := mqtt.NewClient(c.options)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		c.log.Error("connection error", "err", token.Error())
+		time.Sleep(2 * time.Second)
 		os.Exit(1)
 	}
 
