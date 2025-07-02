@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
@@ -221,6 +222,12 @@ func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devE
 func (d *devmodeDeviceMgmtClient) FindDeviceFromInternalID(ctx context.Context, deviceID string) (devicemgmtclient.Device, error) {
 	return nil, nil
 }
+
+func fatal(ctx context.Context, msg string, err error) {
+	logger := logging.GetFromContext(ctx)
+	logger.Error(msg, "err", err.Error())
+	time.Sleep(2 * time.Second)
+	os.Exit(1)
 func (d *devmodeDeviceMgmtClient) Close(ctx context.Context) {
 }
 func (d *devmodeDeviceMgmtClient) CreateDevice(ctx context.Context, device types.Device) error {

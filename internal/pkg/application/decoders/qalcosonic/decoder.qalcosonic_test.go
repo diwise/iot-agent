@@ -289,7 +289,8 @@ const qalcosonic_w1t_2 string = `
 {
   "devEui": "116c52b4274f",
   "timestamp": "2022-08-25T07:35:21.834484Z",
-  "data": "uEJFZwDdiwYAkwPQdERnQYkGAEgAFgAjAEIA0wAZABsACgCMAA4ABwAZAAIACQA="
+  "data": "uEJFZwDdiwYAkwPQdERnQYkGAEgAFgAjAEIA0wAZABsACgCMAA4ABwAZAAIACQA=",
+  "fPort": 100
 }
 `
 

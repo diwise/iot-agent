@@ -69,6 +69,10 @@ type QalcosonicDeltaVolume struct {
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var err error
 
+	if e.FPort != 100 {
+		return []lwm2m.Lwm2mObject{}, fmt.Errorf("unsupported fPort %d", e.FPort)
+	}
+
 	p, ap, err := decodePayload(ctx, e)
 	if err != nil {
 		return nil, err

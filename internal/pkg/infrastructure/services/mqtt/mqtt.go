@@ -61,6 +61,7 @@ func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Clie
 
 	options.OnConnectionLost = func(mc mqtt.Client, err error) {
 		log.Error("connection lost", "err", err.Error())
+		time.Sleep(2 * time.Second)
 		os.Exit(1)
 	}
 
