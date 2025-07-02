@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
@@ -129,5 +130,6 @@ func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devi
 func fatal(ctx context.Context, msg string, err error) {
 	logger := logging.GetFromContext(ctx)
 	logger.Error(msg, "err", err.Error())
+	time.Sleep(2 * time.Second)
 	os.Exit(1)
 }
