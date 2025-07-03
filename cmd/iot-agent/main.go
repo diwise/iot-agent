@@ -15,14 +15,11 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
-	"github.com/diwise/iot-device-mgmt/pkg/test"
-	"github.com/diwise/iot-device-mgmt/pkg/types"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	k8shandlers "github.com/diwise/service-chassis/pkg/infrastructure/net/http/handlers"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
 )
 
@@ -46,7 +43,7 @@ func defaultFlags() flagMap {
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 
-		forwardingEndpoint: "http://iot-agent/api/v0/messages",
+		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
 		appServerFacade:    "servanet",
 
 		devmode: "false",
@@ -199,41 +196,7 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 func exitIf(err error, logger *slog.Logger, msg string, args ...any) {
 	if err != nil {
 		logger.With(args...).Error(msg, "err", err.Error())
+		time.Sleep(2 * time.Second)
 		os.Exit(1)
 	}
-}
-
-type devmodeDeviceMgmtClient struct{}
-
-func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devEUI string) (devicemgmtclient.Device, error) {
-	device := test.DeviceMock{
-		IDFunc: func() string {
-			return application.DeterministicGUID(devEUI)
-		},
-		SensorTypeFunc: func() string {
-			return "qalcosonic"
-		},
-		TenantFunc: func() string {
-			return "default"
-		},
-	}
-
-	return &device, nil
-}
-
-func fatal(ctx context.Context, msg string, err error) {
-	logger := logging.GetFromContext(ctx)
-	logger.Error(msg, "err", err.Error())
-	time.Sleep(2 * time.Second)
-	os.Exit(1)
-}
-
-func (d *devmodeDeviceMgmtClient) FindDeviceFromInternalID(ctx context.Context, deviceID string) (devicemgmtclient.Device, error) {
-	return nil, nil
-}
-func (d *devmodeDeviceMgmtClient) Close(ctx context.Context) {
-}
-
-func (d *devmodeDeviceMgmtClient) CreateDevice(ctx context.Context, device types.Device) error {
-	return nil
 }

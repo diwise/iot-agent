@@ -77,7 +77,7 @@ func testSetup(t *testing.T) (*is.I, *application.AppMock, *http.ServeMux) {
 
 func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, string) {
 	req, _ := http.NewRequest(method, url, body)
-	//	req.Header.Set("Authorization", "Bearer token")
+	req.Header.Set("Authorization", "Bearer token")
 	resp, _ := http.DefaultClient.Do(req)
 	respBody, _ := io.ReadAll(resp.Body)
 	defer resp.Body.Close()

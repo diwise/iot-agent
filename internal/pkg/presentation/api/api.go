@@ -14,6 +14,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
+	"github.com/diwise/service-chassis/pkg/infrastructure/net/http/router"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -31,14 +32,13 @@ func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app applicati
 		return fmt.Errorf("failed to create api authenticator: %w", err)
 	}
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("POST /messages", NewIncomingMessageHandler(ctx, app, facade))
-	mux.HandleFunc("POST /messages/lwm2m", NewIncomingLWM2MMessageHandler(ctx, app))
-
-	routeGroup := http.StripPrefix(apiPrefix, mux)
-	rootMux.Handle("GET "+apiPrefix+"/", authenticator(routeGroup))
-	rootMux.Handle("POST "+apiPrefix+"/", routeGroup)
+	r := router.New(rootMux, router.WithPrefix(apiPrefix))
+	r.Group(func(sm router.ServeMux) {
+		sm.Use(authenticator)
+		
+		sm.Post("/messages", NewIncomingMessageHandler(ctx, app, facade))
+		sm.Post("/messages/lwm2m", NewIncomingLWM2MMessageHandler(ctx, app))
+	})
 
 	return nil
 }
