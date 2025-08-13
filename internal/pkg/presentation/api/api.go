@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+
+	//"fmt"
 	"io"
 	"net/http"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
-	"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
+
+	//"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/net/http/router"
@@ -27,18 +29,10 @@ var tracer = otel.Tracer("iot-agent/api")
 func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app application.App, facade facades.EventFunc, policies io.Reader) error {
 	const apiPrefix string = "/api/v0"
 
-	authenticator, err := auth.NewAuthenticator(ctx, policies)
-	if err != nil {
-		return fmt.Errorf("failed to create api authenticator: %w", err)
-	}
+	r := router.New(rootMux, router.WithPrefix(apiPrefix), router.WithTaggedRoutes(true))
 
-	r := router.New(rootMux, router.WithPrefix(apiPrefix))
-	r.Group(func(sm router.ServeMux) {
-		sm.Use(authenticator)
-		
-		sm.Post("/messages", NewIncomingMessageHandler(ctx, app, facade))
-		sm.Post("/messages/lwm2m", NewIncomingLWM2MMessageHandler(ctx, app))
-	})
+	r.Post("/messages", NewIncomingMessageHandler(ctx, app, facade))
+	r.Post("/messages/lwm2m", NewIncomingLWM2MMessageHandler(ctx, app))
 
 	return nil
 }

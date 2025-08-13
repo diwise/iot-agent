@@ -103,7 +103,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.
 		webserver("control", listen(flags[listenAddress]), port(flags[controlPort]),
 			pprof(), liveness(func() error { return nil }), readiness(probes),
 		),
-		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]),
+		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]), tracing(true),
 			muxinit(func(ctx context.Context, identifier string, port string, appCfg *appConfig, handler *http.ServeMux) error {
 				app := application.New(
 					appCfg.dmClient,
