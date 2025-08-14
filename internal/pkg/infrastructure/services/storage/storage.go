@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 
 	"github.com/jackc/pgx/v5"
@@ -24,7 +24,6 @@ type Config struct {
 }
 
 func LoadConfiguration(ctx context.Context) Config {
-
 	return Config{
 		host:     env.GetVariableOrDefault(ctx, "POSTGRES_HOST", ""),
 		user:     env.GetVariableOrDefault(ctx, "POSTGRES_USER", ""),
@@ -39,27 +38,40 @@ func (c Config) ConnStr() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", c.user, c.password, c.host, c.port, c.dbname, c.sslmode)
 }
 
-type Storage struct {
+type Storage interface {
+	Save(ctx context.Context, se types.Event) error
+	Close() error
+}
+
+type postgres struct {
 	conn *pgxpool.Pool
 }
 
 func New(ctx context.Context, config Config) (Storage, error) {
 	pool, err := connect(ctx, config)
 	if err != nil {
-		return Storage{}, err
+		return &postgres{}, err
 	}
 
 	err = initialize(ctx, pool)
 	if err != nil {
-		return Storage{}, err
+		return &postgres{}, err
 	}
 
-	return Storage{
+	return &postgres{
 		conn: pool,
 	}, nil
 }
 
-func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
+func (s *postgres) Close() error {
+	if s.conn != nil {
+		s.conn.Close()
+		return nil
+	}
+	return nil
+}
+
+func (s *postgres) Save(ctx context.Context, se types.Event) error {
 	payload, err := json.Marshal(se)
 	if err != nil {
 		return err
@@ -68,7 +80,7 @@ func (s Storage) Save(ctx context.Context, se application.SensorEvent) error {
 	sql := `INSERT INTO sensor_events (sensor_id, payload, trace_id) VALUES (@sensor_id, @payload, @trace_id);`
 
 	args := pgx.NamedArgs{
-		"sensor_id": se.DevEui,
+		"sensor_id": se.DevEUI,
 		"payload":   payload,
 		"trace_id":  nil,
 	}
@@ -139,4 +151,17 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 	}
 
 	return tx.Commit(ctx)
+}
+
+type memory struct{}
+
+func (n memory) Save(ctx context.Context, se types.Event) error {
+	return nil
+}
+func (n memory) Close() error {
+	return nil
+}
+
+func NewInMemory() Storage {
+	return memory{}
 }
