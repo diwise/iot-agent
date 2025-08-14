@@ -41,6 +41,9 @@ Support for Chirpstack v3 payloads.
 
 Support for payloads from [netmore](https://netmoregroup.com/iot-network/)
 
+### Servanet
+...
+
 # Decoders
 Decoder implementations for sensors
 
