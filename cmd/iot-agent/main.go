@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -72,8 +73,8 @@ func main() {
 	dmClient, err := newDeviceManagementClient(ctx, flags)
 	exitIf(err, logger, "failed to create device managagement client")
 
-	policies, err := os.Open(flags[policiesFile])
-	exitIf(err, logger, "unable to open opa policy file")
+	//policies, err := os.Open(flags[policiesFile])
+	//exitIf(err, logger, "unable to open opa policy file")
 
 	appCfg := appConfig{
 		messenger:  messenger,
@@ -83,7 +84,7 @@ func main() {
 		facade:     facades.New(flags[appServerFacade]),
 	}
 
-	runner, err := initialize(ctx, flags, &appCfg, policies)
+	runner, err := initialize(ctx, flags, &appCfg, io.NopCloser(strings.NewReader("")))
 	exitIf(err, logger, "failed to initialize service runner")
 
 	err = runner.Run(ctx)
