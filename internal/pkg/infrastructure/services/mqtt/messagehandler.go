@@ -3,10 +3,13 @@ package mqtt
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -49,13 +52,28 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 			defer msg.Ack()
 			payload := msg.Payload()
 
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(payload))
+			parts := strings.Split(msg.Topic(), "/")
+
+			im := types.IncomingMessage{
+				ID:     fmt.Sprintf("mqtt-%d", msg.MessageID()),
+				Type:   parts[len(parts)-1],
+				Source: msg.Topic(),
+				Data:   payload,
+			}
+
+			b, err := json.Marshal(im)
+			if err != nil {
+				log.Error("failed to marshal incoming message", "err", err.Error())
+				return
+			}
+
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(b))
 			if err != nil {
 				log.Error("failed to create http request", "err", err.Error())
 				return
 			}
 
-			log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", forwardingEndpoint)
+			//log.Debug("forwarding received payload", "topic", msg.Topic(), "endpoint", forwardingEndpoint)
 
 			req.Header.Add("Content-Type", "application/json")
 

@@ -3,57 +3,57 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	"github.com/diwise/iot-agent/internal/pkg/application"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/senml"
 )
 
+/*
 func TestHealthEndpointReturns204StatusNoContent(t *testing.T) {
-	is, a, _ := testSetup(t)
+	is, _, mux := testSetup(t)
 
-	server := httptest.NewServer(a.r)
+	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	resp, _ := testRequest(is, http.MethodGet, server.URL+"/health", nil)
 	is.Equal(resp.StatusCode, http.StatusNoContent)
 }
-
-func TestDebugPprofHeapEndpointReturns200OK(t *testing.T) {
-	is, a, _ := testSetup(t)
-
-	server := httptest.NewServer(a.r)
-	defer server.Close()
-
-	resp, _ := testRequest(is, http.MethodGet, server.URL+"/debug/pprof/heap", nil)
-	is.Equal(resp.StatusCode, http.StatusOK)
-}
-
-
+*/
 
 func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T) {
-	is, api, app := testSetup(t)
+	is, app, mux := testSetup(t)
 
-	server := httptest.NewServer(api.r)
+	server := httptest.NewServer(mux)
 	defer server.Close()
 
-	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer([]byte(msgfromMQTT)))
+	im := types.IncomingMessage{
+		ID:     "123",
+		Type:   "up",
+		Source: "/topic/456/up",
+		Data:   []byte(msgfromMQTT),
+	}
+
+	b, _ := json.Marshal(im)
+
+	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer(b))
 	is.Equal(resp.StatusCode, http.StatusCreated)
 	is.Equal(len(app.HandleSensorEventCalls()), 1)
 }
 
 func TestSenMLPayload(t *testing.T) {
-	is, api, app := testSetup(t)
+	is, app, mux := testSetup(t)
 
-	server := httptest.NewServer(api.r)
+	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages/lwm2m", bytes.NewBuffer([]byte(senMLPayload)))
@@ -61,31 +61,23 @@ func TestSenMLPayload(t *testing.T) {
 	is.Equal(len(app.HandleSensorMeasurementListCalls()), 1)
 }
 
-func testSetup(t *testing.T) (*is.I, *api, *iotagent.AppMock) {
+func testSetup(t *testing.T) (*is.I, *application.AppMock, *http.ServeMux) {
 	is := is.New(t)
-	r := chi.NewRouter()
 
-	app := &iotagent.AppMock{
-		HandleSensorEventFunc: func(ctx context.Context, se application.SensorEvent) error {
-			return nil
-		},
-		HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error {
-			return nil
-		},
+	app := &application.AppMock{
+		HandleSensorEventFunc:           func(ctx context.Context, se types.Event) error { return nil },
+		HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error { return nil },
 	}
 
-	a, _ := newAPI(context.Background(), r, "chirpstack", "", app, storer{})
+	mux := http.NewServeMux()
+	RegisterHandlers(context.Background(), mux, app, facades.New("servanet"), bytes.NewReader([]byte(policy)))
 
-	return is, a, app
-}
-
-type storer struct{}
-func (s storer) Save(ctx context.Context, se application.SensorEvent) error{
-	return nil
+	return is, app, mux
 }
 
 func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, string) {
 	req, _ := http.NewRequest(method, url, body)
+	req.Header.Set("Authorization", "Bearer token")
 	resp, _ := http.DefaultClient.Do(req)
 	respBody, _ := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
@@ -94,49 +86,16 @@ func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, s
 }
 
 const senMLPayload string = `[{"bn": "urn:oma:lwm2m:ext:3303", "bt": 1677079794, "n": "0", "vs": "net:serva:iot:a81758fffe051d02"}, {"n": "5700", "v": -4.5}, {"u": "lat", "v": 62.36956}, {"u": "lon", "v": 17.31984}, {"n": "env", "vs": "air"}, {"n": "tenant", "vs": "default"}]`
-const msgfromMQTT string = `{"level":"info","service":"iot-agent","version":"","mqtt-host":"iot.serva.net","timestamp":"2022-03-28T14:39:11.695538+02:00","message":"received payload: {\"applicationID\":\"8\",\"applicationName\":\"Water-Temperature\",\"deviceName\":\"sk-elt-temp-16\",\"deviceProfileName\":\"Elsys_Codec\",\"deviceProfileID\":\"xxxxxxxxxxxx\",\"devEUI\":\"xxxxxxxxxxxxxx\",\"rxInfo\":[{\"gatewayID\":\"xxxxxxxxxxx\",\"uplinkID\":\"xxxxxxxxxxx\",\"name\":\"SN-LGW-047\",\"time\":\"2022-03-28T12:40:40.653515637Z\",\"rssi\":-105,\"loRaSNR\":8.5,\"location\":{\"latitude\":62.36956091265246,\"longitude\":17.319844410529534,\"altitude\":0}}],\"txInfo\":{\"frequency\":867700000,\"dr\":5},\"adr\":true,\"fCnt\":10301,\"fPort\":5,\"data\":\"Bw2KDADB\",\"object\":{\"externalTemperature\":19.3,\"vdd\":3466},\"tags\":{\"Location\":\"Vangen\"}}"}`
-const schneiderDataPointId = `
-[
-    {
-        "name": "/MQTT-klient/!UC_Testvägen 17C/UC_Testvägen_17C_VS2_EM01-POWER/Value",
-        "value": "11000",
-        "unit": "W",
-        "description": "Momentaneffekt VS2",
-        "pointID": "nspg:xxyyzz.7ofmFSyvPEvCxiyquQ/Value"
-    },
-    {
-        "name": "/Enterprise Server Mitthem/IoT-gränssnitt/MQTT-klient/!UC_Testvägen/UC_Testvägen_EM01-ENERGY/Value",
-        "value": "448000000",
-        "unit": "Wh",
-        "description": "Mätarställning VS2",
-        "pointID": "nspg:xxyyzz.puNUCJWo0gB3ycKMNQ/Value"
-    },
-    {
-        "name": "/MQTT-klient/!LB02 Testvägen 17C/LB02_Testvägen_17C_SV21/Value",
-        "value": "38.159999847412109",
-        "unit": "%",
-        "description": "Styrsignal värmeventil batteri",
-        "pointID": "nspg:xxyyzz.uNjNSgzbEeLWpQ/Value"
-    },
-    {
-        "name": "/MQTT-klient/!LB02 Testvägen 17C/LB02_Testvägen_17C_GP12_BB/Value",
-        "value": "220",
-        "unit": "Pa",
-        "description": "Börvärde tryck frånluft",
-        "pointID": "nspg:xxyyzz.eYytQMqHt/0eJ227IQ/Value"
-    },
-    {
-        "name": "/MQTT-klient/!LB02 Testvägen 17C/LB02_Testvägen_17C_GF12/Value",
-        "value": "626.46917724609375",
-        "unit": "l/s",
-        "description": "Flöde frånluft",
-        "pointID": "nspg:xxyyzz.oV7vQTCB8oVvXiUe5w/Value"
-    },
-	{
-		"name":"/MQTT-klient/!UC_Test/UC_TEST_VP1_EM01-T2/Value",
-		"value":"41",
-		"unit":"°C",
-		"description":"Returtemperatur Värme Primär",
-		"pointID":"nspg:xxyyzz.3TKO9xncT5Q8F9w/Value"
+const msgfromMQTT string = `{"applicationID":"102","applicationName":"3_IoT-For-Klimat","deviceName":"TLD-01","deviceProfileName":"Milesight EM400TLD","deviceProfileID":"c70ad992-b55e-4f40-804b-2ebfec18ac58","devEUI":"24e124329e090021","rxInfo":[{"gatewayID":"24e124fffef477f6","uplinkID":"68bae122-70fd-4487-866d-49ccf45e9ab4","name":"SN-LGW-047","time":"2025-04-10T11:44:01.912259Z","rssi":-110,"loRaSNR":-5.8,"location":{"latitude":62.36951,"longitude":17.32014,"altitude":273}},{"gatewayID":"fcc23dfffe0a752b","uplinkID":"058471f1-3076-47a3-9ef1-6d1ad5bd248f","name":"SN-LGW-001","rssi":-104,"loRaSNR":1.2,"location":{"latitude":62.39466886148298,"longitude":17.34076023101807,"altitude":0}}],"txInfo":{"frequency":868500000,"dr":5},"adr":true,"fCnt":45797,"fPort":85,"data":"AXVXA2c4AASCXAgFAAA=","object":{"battery":87,"distance":2140,"position":"normal","temperature":5.6},"tags":{"x_typ":"mr_hushall"}}`
+const policy string = `
+package example.authz
+
+# See https://www.openpolicyagent.org/docs/latest/policy-reference/ to learn more about rego
+
+default allow := false
+
+allow = response {
+	response := {
+		"tenants": ["default"]
 	}
-]`
+}`

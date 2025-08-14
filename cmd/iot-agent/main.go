@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"flag"
+	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/iotagent"
+	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
@@ -14,122 +18,185 @@ import (
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
+	k8shandlers "github.com/diwise/service-chassis/pkg/infrastructure/net/http/handlers"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/go-chi/chi/v5"
+	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
 )
 
 const serviceName string = "iot-agent"
 
+func defaultFlags() flagMap {
+	return flagMap{
+		listenAddress: "0.0.0.0",
+		servicePort:   "8080",
+		controlPort:   "8000",
+
+		policiesFile: "/opt/diwise/config/authz.rego",
+
+		dbHost:     "",
+		dbUser:     "",
+		dbPassword: "",
+		dbPort:     "5432",
+		dbName:     "diwise",
+		dbSSLMode:  "disable",
+
+		createUnknownDeviceEnabled: "false",
+		createUnknownDeviceTenant:  "default",
+
+		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
+		appServerFacade:    "servanet",
+
+		devmode: "false",
+	}
+}
+
 func main() {
+	ctx, flags := parseExternalConfig(context.Background(), defaultFlags())
+
 	serviceVersion := buildinfo.SourceVersion()
-	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
+	ctx, logger, cleanup := o11y.Init(ctx, serviceName, serviceVersion, "json")
 	defer cleanup()
 
-	forwardingEndpoint := env.GetVariableOrDie(ctx, "MSG_FWD_ENDPOINT", "endpoint that incoming packages should be forwarded to")
+	storage, err := newStorage(ctx, flags)
+	exitIf(err, logger, "could not create or connect to database")
 
-	mqttClient := createMQTTClientOrDie(ctx, forwardingEndpoint, "")
-	storage, err := storage.New(ctx, storage.LoadConfiguration(ctx))
-	if err != nil {
-		fatal(ctx, "could not create or connect to database", err)
+	mqttConfig, err := mqtt.NewConfigFromEnvironment("")
+	exitIf(err, logger, "mqtt configuration error")
+
+	mqttClient, err := mqtt.NewClient(ctx, mqttConfig, flags[forwardingEndpoint])
+	exitIf(err, logger, "failed to create mqtt client")
+
+	messenger, err := messaging.Initialize(ctx, messaging.LoadConfiguration(ctx, serviceName, logger))
+	exitIf(err, logger, "failed to init messenger")
+
+	dmClient, err := newDeviceManagementClient(ctx, flags)
+	exitIf(err, logger, "failed to create device managagement client")
+
+	policies, err := os.Open(flags[policiesFile])
+	exitIf(err, logger, "unable to open opa policy file")
+
+	appCfg := appConfig{
+		messenger:  messenger,
+		dmClient:   dmClient,
+		mqttClient: mqttClient,
+		storage:    storage,
+		facade:     facades.New(flags[appServerFacade]),
 	}
 
-	msgCtx := createMessagingContextOrDie(ctx)
-	defer msgCtx.Close()
+	runner, err := initialize(ctx, flags, &appCfg, policies)
+	exitIf(err, logger, "failed to initialize service runner")
 
-	dmClient := createDeviceManagementClientOrDie(ctx)
-	defer dmClient.Close(ctx)
-
-	facade := env.GetVariableOrDefault(ctx, "APPSERVER_FACADE", "chirpstack")
-	svcAPI, err := initialize(ctx, facade, forwardingEndpoint, dmClient, msgCtx, storage)
-
-	if err != nil {
-		fatal(ctx, "failed to setup iot agent", err)
-	}
-
-	mqttClient.Start()
-	defer mqttClient.Stop()
-
-	schneiderEnabled := env.GetVariableOrDefault(ctx, "SCHNEIDER_ENABLED", "false")
-
-	if schneiderEnabled == "true" {
-		schneiderClient := createMQTTClientOrDie(ctx, forwardingEndpoint+"/schneider", "SCHNEIDER_")
-		schneiderClient.Start()
-		defer schneiderClient.Stop()
-	}
-
-	apiPort := env.GetVariableOrDefault(ctx, "SERVICE_PORT", "8080")
-	logger.Info("starting to listen for incoming connections", "port", apiPort)
-	err = http.ListenAndServe(":"+apiPort, svcAPI.Router())
-
-	if err != nil {
-		fatal(ctx, "failed to start request router", err)
-	}
+	err = runner.Run(ctx)
+	exitIf(err, logger, "failed to start service runner")
 }
 
-func createMessagingContextOrDie(ctx context.Context) messaging.MsgContext {
-	log := logging.GetFromContext(ctx)
+func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.ReadCloser) (servicerunner.Runner[appConfig], error) {
+	defer policies.Close()
 
-	msgCfg := messaging.LoadConfiguration(ctx, serviceName, log)
-	msgCtx, err := messaging.Initialize(ctx, msgCfg)
-	if err != nil {
-		fatal(ctx, "failed to initialize messaging context", err)
+	probes := map[string]k8shandlers.ServiceProber{
+		"rabbitmq":  func(context.Context) (string, error) { return "ok", nil },
+		"timescale": func(context.Context) (string, error) { return "ok", nil },
+		"mqtt":      func(context.Context) (string, error) { return "ok", nil },
 	}
 
-	msgCtx.Start()
+	_, runner := servicerunner.New(ctx, *cfg,
+		webserver("control", listen(flags[listenAddress]), port(flags[controlPort]),
+			pprof(), liveness(func() error { return nil }), readiness(probes),
+		),
+		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]), tracing(true),
+			muxinit(func(ctx context.Context, identifier string, port string, appCfg *appConfig, handler *http.ServeMux) error {
+				app := application.New(
+					appCfg.dmClient,
+					appCfg.messenger,
+					appCfg.storage,
+					flags[createUnknownDeviceEnabled] == "true",
+					flags[createUnknownDeviceTenant],
+				)
 
-	return msgCtx
+				api.RegisterHandlers(ctx, handler, app, appCfg.facade, policies)
+
+				return nil
+			}),
+		),
+		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
+			appCfg.messenger.Start()
+			appCfg.mqttClient.Start()
+
+			return nil
+		}),
+		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
+			appCfg.mqttClient.Stop()
+			appCfg.messenger.Close()
+			appCfg.dmClient.Close(ctx)
+			appCfg.storage.Close()
+
+			return nil
+		}),
+	)
+
+	return runner, nil
 }
 
-func createDeviceManagementClientOrDie(ctx context.Context) devicemgmtclient.DeviceManagementClient {
-	dmURL := env.GetVariableOrDie(ctx, "DEV_MGMT_URL", "url to iot-device-mgmt")
-	tokenURL := env.GetVariableOrDie(ctx, "OAUTH2_TOKEN_URL", "a valid oauth2 token URL")
-	clientID := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_ID", "a valid oauth2 client id")
-	clientSecret := env.GetVariableOrDie(ctx, "OAUTH2_CLIENT_SECRET", "a valid oauth2 client secret")
-
-	dmClient, err := devicemgmtclient.New(ctx, dmURL, tokenURL, false, clientID, clientSecret)
-	if err != nil {
-		fatal(ctx, "failed to create device managagement client", err)
+func newStorage(ctx context.Context, flags flagMap) (storage.Storage, error) {
+	if flags[devmode] == "true" {
+		return storage.NewInMemory(), nil
 	}
-
-	return dmClient
+	return storage.New(ctx, storage.LoadConfiguration(ctx))
 }
 
-func createMQTTClientOrDie(ctx context.Context, forwardingEndpoint, prefix string) mqtt.Client {
-	mqttConfig, err := mqtt.NewConfigFromEnvironment(prefix)
-
-	if err != nil {
-		fatal(ctx, "mqtt configuration error", err)
+func newDeviceManagementClient(ctx context.Context, flags flagMap) (devicemgmtclient.DeviceManagementClient, error) {
+	if flags[devmode] == "true" {
+		return &devmodeDeviceMgmtClient{}, nil
 	}
 
-	mqttClient, err := mqtt.NewClient(ctx, mqttConfig, forwardingEndpoint)
-	if err != nil {
-		fatal(ctx, "failed to create mqtt client", err)
-	}
-
-	return mqttClient
+	return devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], true, flags[oauth2ClientId], flags[oauth2ClientSecret])
 }
 
-func initialize(ctx context.Context, facade, forwardingEndpoint string, dmc devicemgmtclient.DeviceManagementClient, msgCtx messaging.MsgContext, s storage.Storage) (api.API, error) {
-	createUnknownDeviceEnabled := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", "false") == "true"
-	createUnknownDeviceTenant := env.GetVariableOrDefault(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", "default")
+func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {
+	// Allow environment variables to override certain defaults
+	envOrDef := env.GetVariableOrDefault
+	flags[listenAddress] = envOrDef(ctx, "LISTEN_ADDRESS", flags[listenAddress])
+	flags[controlPort] = envOrDef(ctx, "CONTROL_PORT", flags[controlPort])
+	flags[servicePort] = envOrDef(ctx, "SERVICE_PORT", flags[servicePort])
 
-	app := iotagent.New(dmc, msgCtx, createUnknownDeviceEnabled, createUnknownDeviceTenant)
+	flags[policiesFile] = envOrDef(ctx, "POLICIES_FILE", flags[policiesFile])
 
-	r := chi.NewRouter()
-	a, err := api.New(ctx, r, facade, forwardingEndpoint, app, s)
-	if err != nil {
-		return nil, err
+	flags[dbHost] = envOrDef(ctx, "POSTGRES_HOST", flags[dbHost])
+	flags[dbPort] = envOrDef(ctx, "POSTGRES_PORT", flags[dbPort])
+	flags[dbName] = envOrDef(ctx, "POSTGRES_DBNAME", flags[dbName])
+	flags[dbUser] = envOrDef(ctx, "POSTGRES_USER", flags[dbUser])
+	flags[dbPassword] = envOrDef(ctx, "POSTGRES_PASSWORD", flags[dbPassword])
+	flags[dbSSLMode] = envOrDef(ctx, "POSTGRES_SSLMODE", flags[dbSSLMode])
+
+	flags[createUnknownDeviceEnabled] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", flags[createUnknownDeviceEnabled])
+	flags[createUnknownDeviceTenant] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", flags[createUnknownDeviceTenant])
+	flags[forwardingEndpoint] = envOrDef(ctx, "MSG_FWD_ENDPOINT", flags[forwardingEndpoint])
+	flags[appServerFacade] = envOrDef(ctx, "APPSERVER_FACADE", flags[appServerFacade])
+	flags[devMgmtUrl] = envOrDef(ctx, "DEV_MGMT_URL", flags[devMgmtUrl])
+
+	flags[oauth2TokenUrl] = envOrDef(ctx, "OAUTH2_TOKEN_URL", flags[oauth2TokenUrl])
+	flags[oauth2ClientId] = envOrDef(ctx, "OAUTH2_CLIENT_ID", flags[oauth2ClientId])
+	flags[oauth2ClientSecret] = envOrDef(ctx, "OAUTH2_CLIENT_SECRET", flags[oauth2ClientSecret])
+
+	apply := func(f flagType) func(string) error {
+		return func(value string) error {
+			flags[f] = value
+			return nil
+		}
 	}
 
-	//metrics.AddHandlers(r)
+	// Allow command line arguments to override defaults and environment variables
+	flag.Func("policies", "an authorization policy file", apply(policiesFile))
+	flag.Func("devmode", "enable dev mode", apply(devmode))
+	flag.Parse()
 
-	return a, nil
+	return ctx, flags
 }
 
-func fatal(ctx context.Context, msg string, err error) {
-	logger := logging.GetFromContext(ctx)
-	logger.Error(msg, "err", err.Error())
-	time.Sleep(2 * time.Second)
-	os.Exit(1)
+func exitIf(err error, logger *slog.Logger, msg string, args ...any) {
+	if err != nil {
+		logger.With(args...).Error(msg, "err", err.Error())
+		time.Sleep(2 * time.Second)
+		os.Exit(1)
+	}
 }

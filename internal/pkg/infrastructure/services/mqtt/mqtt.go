@@ -80,6 +80,8 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 
 	const topicEnvNamePattern string = "%sMQTT_TOPIC_%d"
 
+	//TODO: clientID should be <username>-<uuid>
+
 	cfg := Config{
 		enabled:   os.Getenv(fmt.Sprintf("%sMQTT_DISABLED", prefix)) != "true",
 		host:      os.Getenv(fmt.Sprintf("%sMQTT_HOST", prefix)),
