@@ -173,9 +173,11 @@ curl -X POST http://localhost:8080/api/v0/messages
 ```
 
 ## CLI flags
+
 none
 
 ## Configuration files
+
 none
 
 # Links
