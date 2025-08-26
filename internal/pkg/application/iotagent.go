@@ -142,7 +142,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 		}
 	}
 
-	err = a.sendStatusMessage(ctx, device, se, payload)
+	err = a.sendStatusMessage(ctx, device, &se, payload)
 	if err != nil {
 		log.Warn("failed to send status message", "err", err.Error())
 	}
@@ -156,7 +156,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	log := logging.GetFromContext(ctx).With(slog.String("device_id", deviceID))
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	_, err := a.findDevice(ctx, deviceID, a.client.FindDeviceFromInternalID)
+	d, err := a.findDevice(ctx, deviceID, a.client.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
 			log.Warn("blacklisted")
@@ -166,7 +166,18 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 		return err
 	}
 
-	return a.handleSensorMeasurementList(ctx, pack)
+	err = a.handleSensorMeasurementList(ctx, pack)
+	if err != nil {
+		log.Error("could not handle measurement list", "err", err.Error())
+		return err
+	}
+
+	err = a.sendStatusMessage(ctx, d, nil, nil)
+	if err != nil {
+		log.Warn("failed to send status message", "err", err.Error())
+	}
+
+	return nil
 }
 
 func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) error {
@@ -253,28 +264,34 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	return nil
 }
 
-func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt types.Event, p types.SensorPayload) error {
+func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt *types.Event, p types.SensorPayload) error {
 	log := logging.GetFromContext(ctx)
+
+	ts := time.Now().UTC()
+
+	if evt != nil && !evt.Timestamp.IsZero() {
+		ts = evt.Timestamp.UTC()
+	}
 
 	msg := types.StatusMessage{
 		DeviceID:  device.ID(),
 		Tenant:    device.Tenant(),
-		Timestamp: evt.Timestamp,
+		Timestamp: ts,
 		Messages:  []string{},
 	}
 
-	if evt.TX != nil {
+	if evt != nil && evt.TX != nil {
 		msg.DR = &evt.TX.DR
 		msg.Frequency = &evt.TX.Frequency
 		msg.SpreadingFactor = &evt.TX.SpreadingFactor
 	}
 
-	if evt.RX != nil {
+	if evt != nil && evt.RX != nil {
 		msg.RSSI = &evt.RX.RSSI
 		msg.LoRaSNR = &evt.RX.LoRaSNR
 	}
 
-	if evt.Status != nil {
+	if evt != nil && evt.Status != nil {
 		if !evt.Status.BatteryLevelUnavailable {
 			msg.BatteryLevel = &evt.Status.BatteryLevel
 		}
@@ -296,13 +313,16 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt type
 		}
 	}
 
-	if evt.Error != nil {
+	if evt != nil && evt.Error != nil {
 		msg.Code = &evt.Error.Type
 		if evt.Error.Message != "" {
 			msg.Messages = append(msg.Messages, evt.Error.Message)
 		}
 	}
 
+	
+	log.Debug("publish device-status message", slog.String("device_id", msg.DeviceID), slog.Any("status", msg))
+	
 	err := a.msgCtx.PublishOnTopic(ctx, &msg)
 	if err != nil {
 		log.Error("failed to publish status message", "err", err.Error())
