@@ -66,12 +66,12 @@ func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error
 }
 
 func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
-	log := logging.GetFromContext(ctx).With(slog.String("devEUI", se.DevEUI))
+	log := logging.GetFromContext(ctx).With(slog.String("dev_eui", se.DevEUI))
 
 	device, err := a.findDevice(ctx, se.DevEUI, a.client.FindDeviceFromDevEUI)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
-			log.Warn("blacklisted", "deviceName", se.Name)
+			log.Info("blacklisted", "dev_eui", se.DevEUI, "device_name", se.Name)
 			return nil
 		}
 
@@ -79,6 +79,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 			if a.createUnknownDeviceEnabled {
 				err := a.createUnknownDevice(ctx, se)
 				if err != nil {
+					log.Error("could not create new device of unknown type", "dev_eui", se.DevEUI, "err", err.Error())
 					return err
 				}
 			}
@@ -159,7 +160,7 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 	d, err := a.findDevice(ctx, deviceID, a.client.FindDeviceFromInternalID)
 	if err != nil {
 		if errors.Is(err, errDeviceOnBlackList) {
-			log.Warn("blacklisted")
+			log.Info("blacklisted", "device_id", deviceID)
 			return nil
 		}
 
@@ -238,6 +239,7 @@ func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
 
 func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	log := logging.GetFromContext(ctx)
+
 	d := dmtypes.Device{
 		Active:   false,
 		DeviceID: DeterministicGUID(se.DevEUI),
@@ -250,14 +252,18 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		Tenant: a.createUnknownDeviceTenant,
 	}
 
+	log.Debug("create new device", "dev_eui", se.DevEUI, "sensor_id", d.SensorID, "device_id", d.DeviceID, "name", d.Name, "tenant", d.Tenant)
+
 	err := a.client.CreateDevice(ctx, d)
 	if err != nil {
 		if errors.Is(err, client.ErrDeviceExist) {
+			log.Debug("device already exists", "dev_eui", se.DevEUI)
 			return nil
 		}
 
-		b, _ := json.Marshal(d)
+		b, _ := json.MarshalIndent(d, "", "  ")
 		log.Debug("could not create new device", slog.String("json", string(b)), "err", err.Error())
+
 		return err
 	}
 
@@ -320,9 +326,8 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt *typ
 		}
 	}
 
-	
 	log.Debug("publish device-status message", slog.String("device_id", msg.DeviceID), slog.Any("status", msg))
-	
+
 	err := a.msgCtx.PublishOnTopic(ctx, &msg)
 	if err != nil {
 		log.Error("failed to publish status message", "err", err.Error())
