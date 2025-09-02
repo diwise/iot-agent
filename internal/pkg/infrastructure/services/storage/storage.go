@@ -75,7 +75,7 @@ func (s *postgres) Close() error {
 	return nil
 }
 
-func (s *postgres) Save(ctx context.Context, se types.Event, device dmc.Device, payload types.SensorPayload, objects []lwm2m.Lwm2mObject, err error) error {
+func (s *postgres) Save(ctx context.Context, se types.Event, device dmc.Device, payload types.SensorPayload, objects []lwm2m.Lwm2mObject, e error) error {
 	log := logging.GetFromContext(ctx)
 
 	evt, err := json.Marshal(se)
@@ -108,8 +108,8 @@ func (s *postgres) Save(ctx context.Context, se types.Event, device dmc.Device, 
 		args["objects"] = o
 	}
 
-	if err != nil {
-		args["error"] = err.Error()
+	if e != nil {
+		args["error"] = e.Error()
 	}
 
 	spanCtx := trace.SpanContextFromContext(ctx)
