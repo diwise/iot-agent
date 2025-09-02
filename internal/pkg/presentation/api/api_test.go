@@ -70,7 +70,7 @@ func testSetup(t *testing.T) (*is.I, *application.AppMock, *http.ServeMux) {
 	}
 
 	mux := http.NewServeMux()
-	RegisterHandlers(context.Background(), mux, app, facades.New("servanet"), bytes.NewReader([]byte(policy)))
+	RegisterHandlers(context.Background(), mux, app, facades.New("servanet"))
 
 	return is, app, mux
 }
