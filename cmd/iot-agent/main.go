@@ -81,7 +81,7 @@ func main() {
 		dmClient:   dmClient,
 		mqttClient: mqttClient,
 		storage:    storage,
-		facade:     facades.New(flags[appServerFacade]),
+		facade: facades.New(flags[appServerFacade]),
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg, io.NopCloser(strings.NewReader("")))
@@ -139,9 +139,6 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.
 }
 
 func newStorage(ctx context.Context, flags flagMap) (storage.Storage, error) {
-	if flags[devmode] == "true" {
-		return storage.NewInMemory(), nil
-	}
 	return storage.New(ctx, storage.LoadConfiguration(ctx))
 }
 

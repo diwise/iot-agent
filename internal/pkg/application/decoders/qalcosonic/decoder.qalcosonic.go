@@ -22,34 +22,34 @@ var ErrTimeTooFarOff = fmt.Errorf("sensor time is too far off in the future")
 const NoError = 0x00
 
 type QalcosonicVolumePayload struct {
-	CurrentVolume float64
-	Deltas        []QalcosonicDeltaVolume
-	FrameVersion  uint8
-	Messages      []string
-	StatusCode    uint8
-	Temperature   *uint16
-	Timestamp     time.Time
-	Type          string
+	CurrentVolume float64                 `json:"current_volume,omitempty"`
+	Deltas        []QalcosonicDeltaVolume `json:"deltas,omitempty"`
+	FrameVersion  uint8                   `json:"frame_version,omitempty"`
+	Messages      []string                `json:"messages,omitempty"`
+	StatusCode    uint8                   `json:"status_code,omitempty"`
+	Temperature   *uint16                 `json:"temperature,omitempty"`
+	Timestamp     time.Time               `json:"timestamp,omitempty"`
+	Type          string                  `json:"type,omitempty"`
 }
 
 type QalcosonicAlarmPayload struct {
-	Timestamp  time.Time
-	StatusCode uint8
-	Messages   []string
+	Timestamp  time.Time `json:"timestamp,omitempty"`
+	StatusCode uint8     `json:"status_code,omitempty"`
+	Messages   []string  `json:"messages,omitempty"`
 }
 
 type QalcosonicPayload struct {
-	volume *QalcosonicVolumePayload
-	alarms *QalcosonicAlarmPayload
+	Volume *QalcosonicVolumePayload `json:"volume,omitempty"`
+	Alarms *QalcosonicAlarmPayload  `json:"alarms,omitempty"`
 }
 
 func (a QalcosonicPayload) BatteryLevel() *int {
 	return nil
 }
 func (a QalcosonicPayload) Error() (string, []string) {
-	if len(a.volume.Messages) > 0 {
+	if len(a.Volume.Messages) > 0 {
 		m := []string{}
-		for _, v := range a.volume.Messages {
+		for _, v := range a.Volume.Messages {
 			if v != "No error" {
 				m = append(m, v)
 			}
@@ -87,8 +87,8 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 		}
 	*/
 	return QalcosonicPayload{
-		volume: p,
-		alarms: ap,
+		Volume: p,
+		Alarms: ap,
 	}, err
 }
 
@@ -99,7 +99,7 @@ func Converter(ctx context.Context, deviceID string, payload types.SensorPayload
 
 func convert(ctx context.Context, deviceID string, p QalcosonicPayload) ([]lwm2m.Lwm2mObject, error) {
 
-	return convertToLwm2mObjects(ctx, deviceID, p.volume, p.alarms), nil
+	return convertToLwm2mObjects(ctx, deviceID, p.Volume, p.Alarms), nil
 }
 
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicVolumePayload, ap *QalcosonicAlarmPayload) []lwm2m.Lwm2mObject {
