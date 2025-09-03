@@ -108,7 +108,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 		),
 		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]), tracing(true),
 			muxinit(func(ctx context.Context, identifier string, port string, appCfg *appConfig, handler *http.ServeMux) error {
-				logger.Debug("Initializing public webserver")
+				logger.Debug("initializing public webserver")
 
 				app := application.New(
 					dmClient,
@@ -125,7 +125,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 			}),
 		),
 		oninit(func(ctx context.Context, ac *appConfig) error {
-			logger.Debug("Initializing servicerunner")
+			logger.Debug("initializing servicerunner")
 
 			var err error
 
@@ -154,14 +154,14 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 			return nil
 		}),
 		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
-			logger.Debug("Starting servicerunner")
+			logger.Debug("starting servicerunner")
 			messenger.Start()
 			mqttClient.Start()
 
 			return nil
 		}),
 		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
-			logger.Debug("Shutting down servicerunner")
+			logger.Debug("shutting down servicerunner")
 			mqttClient.Stop()
 			messenger.Close()
 			dmClient.Close(ctx)
