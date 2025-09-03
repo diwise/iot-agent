@@ -74,6 +74,10 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 	}
 
 	for _, config := range dpCfg.Profiles {
+		if config.Tenant == "" {
+			config.Tenant = createUnknownDeviceTenant
+		}
+
 		a.dpCfg[strings.ToLower(config.SensorType)] = profile{
 			Cfg:   config,
 			Types: []string{},
