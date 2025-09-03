@@ -20,6 +20,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 WORKDIR /opt/diwise
 
+COPY --chown=1001 assets/config/deviceprofiles.yaml /opt/diwise/config/deviceprofiles.yaml
 COPY --from=builder --chown=1001 /app/cmd/iot-agent/iot-agent /opt/diwise
 
 RUN chown 1001 /opt/diwise

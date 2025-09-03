@@ -46,16 +46,23 @@ type app struct {
 	msgCtx   messaging.MsgContext
 	store    storage.Storage
 
-	notFoundDevices            map[string]time.Time
-	notFoundDevicesMu          sync.Mutex
+	notFoundDevices   map[string]time.Time
+	notFoundDevicesMu sync.Mutex
+
 	createUnknownDeviceEnabled bool
 	createUnknownDeviceTenant  string
+	dpCfg                      map[string]profile
 }
 
-func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string) App {
+type profile struct {
+	Cfg   DeviceProfileConfig
+	Types []string
+}
+
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string, dpCfg *DeviceProfileConfigs) App {
 	d := decoders.NewRegistry()
 
-	return &app{
+	a := &app{
 		registry:                   d,
 		client:                     dmc,
 		msgCtx:                     msgCtx,
@@ -63,7 +70,31 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		notFoundDevices:            make(map[string]time.Time),
 		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
 		createUnknownDeviceTenant:  createUnknownDeviceTenant,
+		dpCfg:                      make(map[string]profile),
 	}
+
+	for _, config := range dpCfg.Profiles {
+		a.dpCfg[strings.ToLower(config.SensorType)] = profile{
+			Cfg:   config,
+			Types: []string{},
+		}
+	}
+
+	if _, ok := a.dpCfg[UNKNOWN]; !ok {
+		a.dpCfg[UNKNOWN] = profile{
+			Cfg: DeviceProfileConfig{
+				SensorType:  UNKNOWN,
+				ProfileName: UNKNOWN,
+				Tenant:      createUnknownDeviceTenant,
+				Activate:    false,
+				Location:    false,
+				Tags:        false,
+			},
+			Types: []string{},
+		}
+	}
+
+	return a
 }
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {
@@ -143,8 +174,6 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 					log.Error("could not create new device of unknown type", "err", err.Error())
 					return err
 				}
-
-				a.ignoreDeviceFor(se.DevEUI, 1*time.Hour)
 
 				return nil
 			}
@@ -242,7 +271,6 @@ func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context
 
 	device, err := finder(ctx, id)
 	if err != nil {
-		a.ignoreDeviceFor(id, 1*time.Hour)
 		return nil, errDeviceNotFound
 	}
 
@@ -273,31 +301,88 @@ func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
 	return true
 }
 
+type DeviceProfileConfigs struct {
+	Profiles []DeviceProfileConfig `json:"profiles" yaml:"profiles"`
+}
+
+type DeviceProfileConfig struct {
+	SensorType  string `json:"sensor_type" yaml:"sensor_type"`
+	ProfileName string `json:"profile_name" yaml:"profile_name"`
+	Tenant      string `json:"tenant" yaml:"tenant"`
+	Activate    bool   `json:"activate" yaml:"activate"`
+	Location    bool   `json:"location" yaml:"location"`
+	Tags        bool   `json:"tags" yaml:"tags"`
+}
+
+func (a *app) getDeviceProfile(ctx context.Context, sensorType string) profile {
+	var dp profile
+	var ok bool
+
+	sensorType = strings.ToLower(sensorType)
+
+	if dp, ok = a.dpCfg[sensorType]; !ok {
+		return a.dpCfg[UNKNOWN]
+	}
+
+	if len(dp.Types) > 0 {
+		return dp
+	}
+
+	p, err := a.client.GetDeviceProfile(ctx, dp.Cfg.ProfileName)
+	if err != nil {
+		return a.dpCfg[UNKNOWN]
+	}
+
+	dp.Types = p.Types
+
+	a.dpCfg[sensorType] = dp
+
+	return dp
+}
+
 func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	log := logging.GetFromContext(ctx)
 
-	d := dmtypes.Device{
-		Active:      false,
+	var d dmtypes.Device
+
+	p := a.getDeviceProfile(ctx, se.SensorType)
+
+	d = dmtypes.Device{
+		Active:      p.Cfg.Activate,
 		DeviceID:    DeterministicGUID(se.DevEUI),
 		SensorID:    se.DevEUI,
 		Name:        se.Name,
 		Description: se.SensorType,
-		Location: dmtypes.Location{
-			Latitude:  se.Location.Latitude,
-			Longitude: se.Location.Longitude,
-		},
+
 		DeviceProfile: dmtypes.DeviceProfile{
-			Name:    UNKNOWN,
-			Decoder: UNKNOWN,
+			Name:    p.Cfg.ProfileName,
+			Decoder: p.Cfg.ProfileName,
+			Types:   p.Types,
 		},
-		Tenant: a.createUnknownDeviceTenant,
+
+		Tenant: p.Cfg.Tenant,
 	}
 
-	if len(se.Tags) > 0 {
-		for k, v := range se.Tags {
-			d.Tags = append(d.Tags, dmtypes.Tag{
-				Name: fmt.Sprintf("%s=%s", k, v),
-			})
+	if p.Cfg.Location {
+		d.Location = dmtypes.Location{
+			Latitude:  se.Location.Latitude,
+			Longitude: se.Location.Longitude,
+		}
+	}
+
+	if p.Cfg.Tags {
+		if len(se.Tags) > 0 {
+			for k, v := range se.Tags {
+				tag := k
+
+				if len(v) > 0 {
+					tag = fmt.Sprintf("%s=%s", k, v[0])
+				}
+
+				d.Tags = append(d.Tags, dmtypes.Tag{
+					Name: tag,
+				})
+			}
 		}
 	}
 
@@ -310,7 +395,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		return err
 	}
 
-	log.Debug("new device created", "sensor_id", se.DevEUI, "device_id", d.DeviceID, "name", d.Name, "tenant", d.Tenant)
+	log.Debug("new device created", "sensor_id", se.DevEUI, "device_id", d.DeviceID, "profile_name", d.DeviceProfile.Name, "name", d.Name, "tenant", d.Tenant)
 
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
+	"gopkg.in/yaml.v3"
 )
 
 const serviceName string = "iot-agent"
@@ -43,6 +45,7 @@ func defaultFlags() flagMap {
 
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
+		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
 
 		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
 		appServerFacade:    "servanet",
@@ -52,19 +55,29 @@ func defaultFlags() flagMap {
 }
 
 func main() {
-	ctx, flags := parseExternalConfig(context.Background(), defaultFlags())
-
 	serviceVersion := buildinfo.SourceVersion()
-	ctx, logger, cleanup := o11y.Init(ctx, serviceName, serviceVersion, "json")
+	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
 	defer cleanup()
+
+	ctx, flags := parseExternalConfig(ctx, defaultFlags())
+
+	f, err := os.Open(flags[deviceprofileFile])
+	exitIf(err, logger, "failed to open device profile configuration file")	
+
+	dpCfg, err := parseExternalConfigFile(ctx, f)
+	exitIf(err, logger, "failed to parse device profile configuration")
 
 	mqttConfig, err := mqtt.NewConfigFromEnvironment("")
 	exitIf(err, logger, "mqtt configuration error")
 
+	messengerConfig := messaging.LoadConfiguration(ctx, serviceName, logger)
+	storageConfig := storage.LoadConfiguration(ctx)
+
 	appCfg := appConfig{
-		mqttCfg:      mqttConfig,
-		messengerCfg: messaging.LoadConfiguration(ctx, serviceName, logger),
-		storageCfg:   storage.LoadConfiguration(ctx),
+		mqttCfg:      &mqttConfig,
+		messengerCfg: &messengerConfig,
+		storageCfg:   &storageConfig,
+		dpCfg:        dpCfg,
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg)
@@ -103,6 +116,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 					store,
 					flags[createUnknownDeviceEnabled] == "true",
 					flags[createUnknownDeviceTenant],
+					appCfg.dpCfg,
 				)
 
 				api.RegisterHandlers(ctx, handler, app, facade)
@@ -115,17 +129,17 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 
 			var err error
 
-			store, err = storage.New(ctx, ac.storageCfg)
+			store, err = storage.New(ctx, *ac.storageCfg)
 			if err != nil {
 				return fmt.Errorf("failed to create storage: %w", err)
 			}
 
-			mqttClient, err = mqtt.NewClient(ctx, ac.mqttCfg, flags[forwardingEndpoint])
+			mqttClient, err = mqtt.NewClient(ctx, *ac.mqttCfg, flags[forwardingEndpoint])
 			if err != nil {
 				return fmt.Errorf("failed to create mqtt client: %w", err)
 			}
 
-			messenger, err = messaging.Initialize(ctx, ac.messengerCfg)
+			messenger, err = messaging.Initialize(ctx, *ac.messengerCfg)
 			if err != nil {
 				return fmt.Errorf("failed to init messenger: %w", err)
 			}
@@ -195,10 +209,27 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 
 	// Allow command line arguments to override defaults and environment variables
 	flag.Func("policies", "an authorization policy file", apply(policiesFile))
+	flag.Func("deviceprofiles", "a device profile configuration file", apply(deviceprofileFile))
 	flag.Func("devmode", "enable dev mode", apply(devmode))
 	flag.Parse()
 
 	return ctx, flags
+}
+
+func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (*application.DeviceProfileConfigs, error) {
+	defer f.Close()
+
+	var cfg application.DeviceProfileConfigs
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read device profile file: %w", err)
+	}
+
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
+	}
+
+	return &cfg, nil
 }
 
 func exitIf(err error, logger *slog.Logger, msg string, args ...any) {

@@ -19,7 +19,7 @@ import (
 func TestSenlabTPayload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default")
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{})
 	ue, _ := facades.New("netmore")(ctx, "payload", []byte(senlabT))
 	err := agent.HandleSensorEvent(ctx, ue)
 
@@ -33,7 +33,7 @@ func TestSenlabTPayload(t *testing.T) {
 func TestStripsPayload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{})
 	ue, _ := facades.New("netmore")(ctx, "payload", []byte(stripsPayload))
 	err := agent.HandleSensorEvent(ctx, ue)
 
@@ -47,7 +47,7 @@ func TestStripsPayload(t *testing.T) {
 func TestElt2HpPayload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
 	ue, _ := facades.New("netmore")(ctx, "payload", []byte(elt2hp))
 	err := agent.HandleSensorEvent(ctx, ue)
 
@@ -61,7 +61,7 @@ func TestElt2HpPayload(t *testing.T) {
 func TestElsysPayload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
 	ue, _ := facades.New("servanet")(ctx, "up", []byte(elsys))
 	err := agent.HandleSensorEvent(ctx, ue)
 
@@ -75,7 +75,7 @@ func TestElsysPayload(t *testing.T) {
 func TestElsysDigital1Payload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
 	ue, _ := facades.New("servanet")(ctx, "up", []byte(`
 	{
 		"data": "DQEaAA==",
@@ -97,7 +97,7 @@ func TestElsysDigital1Payload(t *testing.T) {
 func TestErsPayload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
 	ue, _ := facades.New("servanet")(ctx, "up", []byte(ers))
 	err := agent.HandleSensorEvent(ctx, ue)
 
@@ -117,7 +117,7 @@ func TestErsPayload(t *testing.T) {
 func TestPresencePayload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
 	ue, _ := facades.New("servanet")(ctx, "up", []byte(livboj))
 	err := agent.HandleSensorEvent(ctx, ue)
 
@@ -131,7 +131,7 @@ func TestPresencePayload(t *testing.T) {
 func TestDistancePayload(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default").(*app)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
 	ue, _ := facades.New("netmore")(ctx, "payload", []byte(vegapuls))
 	err := agent.HandleSensorEvent(ctx, ue)
 

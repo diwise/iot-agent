@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/messaging-golang/pkg/messaging"
@@ -26,6 +27,8 @@ const (
 
 	createUnknownDeviceEnabled
 	createUnknownDeviceTenant
+	deviceprofileFile
+
 	forwardingEndpoint
 	appServerFacade
 	devMgmtUrl
@@ -44,9 +47,10 @@ type appConfig struct {
 	//	storage    storage.Storage
 	//	facade     facades.EventFunc
 
-	mqttCfg      mqtt.Config
-	messengerCfg messaging.Config
-	storageCfg   storage.Config	
+	mqttCfg      *mqtt.Config
+	messengerCfg *messaging.Config
+	storageCfg   *storage.Config
+	dpCfg        *application.DeviceProfileConfigs
 }
 
 var oninit = servicerunner.OnInit[appConfig]
