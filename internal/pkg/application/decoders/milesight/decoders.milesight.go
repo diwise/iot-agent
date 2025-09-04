@@ -12,13 +12,13 @@ import (
 )
 
 type MilesightPayload struct {
-	Battery      *int
-	CO2          *int
-	Distance     *float64
-	Humidity     *float64
-	Temperature  *float64
-	Position     *string
-	MagnetStatus *string
+	Battery      *int     `json:"battery,omitempty"`
+	CO2          *int     `json:"co2,omitempty"`
+	Distance     *float64 `json:"distance,omitempty"`
+	Humidity     *float64 `json:"humidity,omitempty"`
+	Temperature  *float64 `json:"temperature,omitempty"`
+	Position     *string  `json:"position,omitempty"`
+	MagnetStatus *string  `json:"magnet_status,omitempty"`
 }
 
 func (a MilesightPayload) BatteryLevel() *int {

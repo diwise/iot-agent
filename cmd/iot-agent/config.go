@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
-	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
 )
@@ -28,6 +27,8 @@ const (
 
 	createUnknownDeviceEnabled
 	createUnknownDeviceTenant
+	deviceprofileFile
+
 	forwardingEndpoint
 	appServerFacade
 	devMgmtUrl
@@ -40,13 +41,19 @@ const (
 )
 
 type appConfig struct {
-	messenger  messaging.MsgContext
-	dmClient   devicemgmtclient.DeviceManagementClient
-	mqttClient mqtt.Client
-	storage    storage.Storage
-	facade     facades.EventFunc
+	//	messenger  messaging.MsgContext
+	//	dmClient   devicemgmtclient.DeviceManagementClient
+	//	mqttClient mqtt.Client
+	//	storage    storage.Storage
+	//	facade     facades.EventFunc
+
+	mqttCfg      *mqtt.Config
+	messengerCfg *messaging.Config
+	storageCfg   *storage.Config
+	dpCfg        *application.DeviceProfileConfigs
 }
 
+var oninit = servicerunner.OnInit[appConfig]
 var onstarting = servicerunner.OnStarting[appConfig]
 var onshutdown = servicerunner.OnShutdown[appConfig]
 var webserver = servicerunner.WithHTTPServeMux[appConfig]

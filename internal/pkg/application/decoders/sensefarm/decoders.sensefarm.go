@@ -15,12 +15,12 @@ import (
 )
 
 type SensefarmPayload struct {
-	TransmissionReason int8    // 0 = unknown reset, 1 = POR/PDR reset, 2 = Independt watchdog reset, 3 = windows watchdog reset, 4 = low power reset, 5 = POR/PDR reset, 6 = Normal transmission, 7 = Button reset
-	ProtocolVersion    int16   // Version 0 -> 65535
-	BatteryVoltage     int16   // 0 -> 65535 mV
-	Resistances        []int32 // 0 -> 4294967295 Ohm
-	SoilMoistures      []int16 // 0 -> 65535 kPa. If value is too low or too high (sensor not placed outdoors, cable broke, etc), the sensor data is considered invalid and may not be sent./
-	Temperature        float32 // °C
+	TransmissionReason int8    `json:"transmission_reason"` // 0 = unknown reset, 1 = POR/PDR reset, 2 = Independt watchdog reset, 3 = windows watchdog reset, 4 = low power reset, 5 = POR/PDR reset, 6 = Normal transmission, 7 = Button reset
+	ProtocolVersion    int16   `json:"protocol_version"`    // Version 0 -> 65535
+	BatteryVoltage     int16   `json:"battery_voltage"`     // 0 -> 65535 mV
+	Resistances        []int32 `json:"resistances"`         // 0 -> 4294967295 Ohm
+	SoilMoistures      []int16 `json:"soil_moistures"`      // 0 -> 65535 kPa. If value is too low or too high (sensor not placed outdoors, cable broke, etc), the sensor data is considered invalid and may not be sent./
+	Temperature        float32 `json:"temperature"`         // °C
 }
 
 func (a SensefarmPayload) BatteryLevel() *int {

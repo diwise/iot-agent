@@ -87,6 +87,10 @@ func handleUplinkEvent(b []byte) (types.Event, error) {
 		return types.Event{}, err
 	}
 
+	if uplinkEvent.DevEUI == "" {
+		return types.Event{}, types.ErrDevEUIMissing
+	}
+
 	var data []byte
 	data, err = base64.StdEncoding.DecodeString(uplinkEvent.Data)
 	if err != nil {

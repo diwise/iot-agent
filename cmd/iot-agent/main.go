@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -21,7 +21,9 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	k8shandlers "github.com/diwise/service-chassis/pkg/infrastructure/net/http/handlers"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
+	"gopkg.in/yaml.v3"
 )
 
 const serviceName string = "iot-agent"
@@ -43,6 +45,7 @@ func defaultFlags() flagMap {
 
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
+		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
 
 		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
 		appServerFacade:    "servanet",
@@ -52,47 +55,40 @@ func defaultFlags() flagMap {
 }
 
 func main() {
-	ctx, flags := parseExternalConfig(context.Background(), defaultFlags())
-
 	serviceVersion := buildinfo.SourceVersion()
-	ctx, logger, cleanup := o11y.Init(ctx, serviceName, serviceVersion, "json")
+	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
 	defer cleanup()
 
-	storage, err := newStorage(ctx, flags)
-	exitIf(err, logger, "could not create or connect to database")
+	ctx, flags := parseExternalConfig(ctx, defaultFlags())
+
+	f, err := os.Open(flags[deviceprofileFile])
+	exitIf(err, logger, "failed to open device profile configuration file")	
+
+	dpCfg, err := parseExternalConfigFile(ctx, f)
+	exitIf(err, logger, "failed to parse device profile configuration")
 
 	mqttConfig, err := mqtt.NewConfigFromEnvironment("")
 	exitIf(err, logger, "mqtt configuration error")
 
-	mqttClient, err := mqtt.NewClient(ctx, mqttConfig, flags[forwardingEndpoint])
-	exitIf(err, logger, "failed to create mqtt client")
-
-	messenger, err := messaging.Initialize(ctx, messaging.LoadConfiguration(ctx, serviceName, logger))
-	exitIf(err, logger, "failed to init messenger")
-
-	dmClient, err := newDeviceManagementClient(ctx, flags)
-	exitIf(err, logger, "failed to create device managagement client")
-
-	//policies, err := os.Open(flags[policiesFile])
-	//exitIf(err, logger, "unable to open opa policy file")
+	messengerConfig := messaging.LoadConfiguration(ctx, serviceName, logger)
+	storageConfig := storage.LoadConfiguration(ctx)
 
 	appCfg := appConfig{
-		messenger:  messenger,
-		dmClient:   dmClient,
-		mqttClient: mqttClient,
-		storage:    storage,
-		facade:     facades.New(flags[appServerFacade]),
+		mqttCfg:      &mqttConfig,
+		messengerCfg: &messengerConfig,
+		storageCfg:   &storageConfig,
+		dpCfg:        dpCfg,
 	}
 
-	runner, err := initialize(ctx, flags, &appCfg, io.NopCloser(strings.NewReader("")))
+	runner, err := initialize(ctx, flags, &appCfg)
 	exitIf(err, logger, "failed to initialize service runner")
 
 	err = runner.Run(ctx)
 	exitIf(err, logger, "failed to start service runner")
 }
 
-func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.ReadCloser) (servicerunner.Runner[appConfig], error) {
-	defer policies.Close()
+func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunner.Runner[appConfig], error) {
+	logger := logging.GetFromContext(ctx)
 
 	probes := map[string]k8shandlers.ServiceProber{
 		"rabbitmq":  func(context.Context) (string, error) { return "ok", nil },
@@ -100,57 +96,82 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig, policies io.
 		"mqtt":      func(context.Context) (string, error) { return "ok", nil },
 	}
 
+	var dmClient devicemgmtclient.DeviceManagementClient
+	var messenger messaging.MsgContext
+	var mqttClient mqtt.Client
+	var store storage.Storage
+	var facade facades.EventFunc
+
 	_, runner := servicerunner.New(ctx, *cfg,
 		webserver("control", listen(flags[listenAddress]), port(flags[controlPort]),
 			pprof(), liveness(func() error { return nil }), readiness(probes),
 		),
 		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]), tracing(true),
 			muxinit(func(ctx context.Context, identifier string, port string, appCfg *appConfig, handler *http.ServeMux) error {
+				logger.Debug("initializing public webserver")
+
 				app := application.New(
-					appCfg.dmClient,
-					appCfg.messenger,
-					appCfg.storage,
+					dmClient,
+					messenger,
+					store,
 					flags[createUnknownDeviceEnabled] == "true",
 					flags[createUnknownDeviceTenant],
+					appCfg.dpCfg,
 				)
 
-				api.RegisterHandlers(ctx, handler, app, appCfg.facade, policies)
+				api.RegisterHandlers(ctx, handler, app, facade)
 
 				return nil
 			}),
 		),
+		oninit(func(ctx context.Context, ac *appConfig) error {
+			logger.Debug("initializing servicerunner")
+
+			var err error
+
+			store, err = storage.New(ctx, *ac.storageCfg)
+			if err != nil {
+				return fmt.Errorf("failed to create storage: %w", err)
+			}
+
+			mqttClient, err = mqtt.NewClient(ctx, *ac.mqttCfg, flags[forwardingEndpoint])
+			if err != nil {
+				return fmt.Errorf("failed to create mqtt client: %w", err)
+			}
+
+			messenger, err = messaging.Initialize(ctx, *ac.messengerCfg)
+			if err != nil {
+				return fmt.Errorf("failed to init messenger: %w", err)
+			}
+
+			dmClient, err = devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], true, flags[oauth2ClientId], flags[oauth2ClientSecret])
+			if err != nil {
+				return fmt.Errorf("failed to create device management client: %w", err)
+			}
+
+			facade = facades.New(flags[appServerFacade])
+
+			return nil
+		}),
 		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
-			appCfg.messenger.Start()
-			appCfg.mqttClient.Start()
+			logger.Debug("starting servicerunner")
+			messenger.Start()
+			mqttClient.Start()
 
 			return nil
 		}),
 		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
-			appCfg.mqttClient.Stop()
-			appCfg.messenger.Close()
-			appCfg.dmClient.Close(ctx)
-			appCfg.storage.Close()
+			logger.Debug("shutting down servicerunner")
+			mqttClient.Stop()
+			messenger.Close()
+			dmClient.Close(ctx)
+			store.Close()
 
 			return nil
 		}),
 	)
 
 	return runner, nil
-}
-
-func newStorage(ctx context.Context, flags flagMap) (storage.Storage, error) {
-	if flags[devmode] == "true" {
-		return storage.NewInMemory(), nil
-	}
-	return storage.New(ctx, storage.LoadConfiguration(ctx))
-}
-
-func newDeviceManagementClient(ctx context.Context, flags flagMap) (devicemgmtclient.DeviceManagementClient, error) {
-	if flags[devmode] == "true" {
-		return &devmodeDeviceMgmtClient{}, nil
-	}
-
-	return devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], true, flags[oauth2ClientId], flags[oauth2ClientSecret])
 }
 
 func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {
@@ -188,10 +209,27 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 
 	// Allow command line arguments to override defaults and environment variables
 	flag.Func("policies", "an authorization policy file", apply(policiesFile))
+	flag.Func("deviceprofiles", "a device profile configuration file", apply(deviceprofileFile))
 	flag.Func("devmode", "enable dev mode", apply(devmode))
 	flag.Parse()
 
 	return ctx, flags
+}
+
+func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (*application.DeviceProfileConfigs, error) {
+	defer f.Close()
+
+	var cfg application.DeviceProfileConfigs
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read device profile file: %w", err)
+	}
+
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
+	}
+
+	return &cfg, nil
 }
 
 func exitIf(err error, logger *slog.Logger, msg string, args ...any) {

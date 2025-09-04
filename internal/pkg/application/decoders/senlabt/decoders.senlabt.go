@@ -14,9 +14,9 @@ import (
 )
 
 type SenlabPayload struct {
-	ID            int
-	BatteryLevel_ int
-	Temperature   float64
+	ID            int     `json:"id"`
+	BatteryLevel_ int     `json:"battery_level"`
+	Temperature   float64 `json:"temperature"`
 }
 
 func (a SenlabPayload) BatteryLevel() *int {

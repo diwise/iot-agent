@@ -13,13 +13,13 @@ import (
 )
 
 type SensativePayload struct {
-	BatteryLevel_ *int
-	Temperature   *float64
-	Humidity      *float32
-	DoorReport    *bool
-	DoorAlarm     *bool
-	Presence      *bool
-	CheckIn       *bool
+	BatteryLevel_ *int     `json:"battery_level,omitempty"`
+	Temperature   *float64 `json:"temperature,omitempty"`
+	Humidity      *float32 `json:"humidity,omitempty"`
+	DoorReport    *bool    `json:"door_report,omitempty"`
+	DoorAlarm     *bool    `json:"door_alarm,omitempty"`
+	Presence      *bool    `json:"presence,omitempty"`
+	CheckIn       *bool    `json:"check_in,omitempty"`
 }
 
 func (a SensativePayload) BatteryLevel() *int {

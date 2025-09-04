@@ -10,6 +10,7 @@ import (
 	"github.com/diwise/senml"
 )
 
+var ErrDevEUIMissing = errors.New("sensor id is missing")
 var ErrPayloadContainsNoData = errors.New("payload contains no data")
 var ErrUnknownMessageType = errors.New("unknown message type")
 
