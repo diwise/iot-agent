@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/diwise/iot-core v0.0.0-20250702084525-3242041abdf5
-	github.com/diwise/iot-device-mgmt v0.0.0-20250903131454-54bc53a3b568
+	github.com/diwise/iot-device-mgmt v0.0.0-20250904090434-b50b04da4266
 	github.com/diwise/senml v0.0.0-20240402140901-e4008e065e05
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.5
@@ -32,6 +32,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
@@ -43,7 +44,7 @@ require (
 	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
 	github.com/prometheus/client_golang v1.23.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.65.0 // indirect
+	github.com/prometheus/common v0.66.0 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
@@ -65,6 +66,7 @@ require (
 	golang.org/x/sync v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250826171959-ef028d996bc1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250826171959-ef028d996bc1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
@@ -82,7 +84,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.14.0 // indirect
 	go.opentelemetry.io/otel/log v0.14.0 // indirect
 	go.opentelemetry.io/otel/sdk/log v0.14.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
+	go.opentelemetry.io/proto/otlp v1.8.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
