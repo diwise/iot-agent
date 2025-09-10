@@ -62,7 +62,7 @@ func main() {
 	ctx, flags := parseExternalConfig(ctx, defaultFlags())
 
 	f, err := os.Open(flags[deviceprofileFile])
-	exitIf(err, logger, "failed to open device profile configuration file")	
+	exitIf(err, logger, "failed to open device profile configuration file")
 
 	dpCfg, err := parseExternalConfigFile(ctx, f)
 	exitIf(err, logger, "failed to parse device profile configuration")
