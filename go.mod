@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/diwise/messaging-golang v0.0.0-20250628135946-f23f34d06003
-	github.com/diwise/service-chassis v0.0.0-20250910082518-4f1fa60e9eaf
+	github.com/diwise/service-chassis v0.0.0-20250910115917-3609c77c5355
 	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/matryer/is v1.4.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/diwise/iot-core v0.0.0-20250702084525-3242041abdf5
-	github.com/diwise/iot-device-mgmt v0.0.0-20250904090434-b50b04da4266
+	github.com/diwise/iot-device-mgmt v0.0.0-20250910121546-25397413c702
 	github.com/diwise/senml v0.0.0-20240402140901-e4008e065e05
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
