@@ -14,9 +14,9 @@ import (
 )
 
 type NiabPayload struct {
-	Battery     int
-	Temperature float64
-	Distance    *float64
+	Battery     int      `json:"battery,omitzero"`
+	Temperature float64  `json:"temperature,omitempty"`
+	Distance    *float64 `json:"distance,omitempty"`
 }
 
 func (a NiabPayload) BatteryLevel() *int {

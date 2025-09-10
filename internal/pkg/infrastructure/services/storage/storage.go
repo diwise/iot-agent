@@ -6,7 +6,10 @@ import (
 	"fmt"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
+	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -38,8 +41,9 @@ func (c Config) ConnStr() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", c.user, c.password, c.host, c.port, c.dbname, c.sslmode)
 }
 
+//go:generate moq -rm -out storage_mock.go . Storage
 type Storage interface {
-	Save(ctx context.Context, se types.Event) error
+	Save(ctx context.Context, se types.Event, device dmc.Device, payload types.SensorPayload, objects []lwm2m.Lwm2mObject, err error) error
 	Close() error
 }
 
@@ -71,18 +75,41 @@ func (s *postgres) Close() error {
 	return nil
 }
 
-func (s *postgres) Save(ctx context.Context, se types.Event) error {
-	payload, err := json.Marshal(se)
+func (s *postgres) Save(ctx context.Context, se types.Event, device dmc.Device, payload types.SensorPayload, objects []lwm2m.Lwm2mObject, e error) error {
+	log := logging.GetFromContext(ctx)
+
+	evt, err := json.Marshal(se)
 	if err != nil {
+		log.Error("could not marshal sensor event", "err", err.Error())
 		return err
 	}
 
-	sql := `INSERT INTO sensor_events (sensor_id, payload, trace_id) VALUES (@sensor_id, @payload, @trace_id);`
-
 	args := pgx.NamedArgs{
 		"sensor_id": se.DevEUI,
-		"payload":   payload,
+		"device_id": nil,
+		"event":     evt,
+		"payload":   nil,
+		"objects":   nil,
+		"error":     nil,
 		"trace_id":  nil,
+	}
+
+	if device != nil {
+		args["device_id"] = device.ID()
+	}
+
+	if payload != nil {
+		p, _ := json.Marshal(payload)
+		args["payload"] = p
+	}
+
+	if len(objects) > 0 {
+		o, _ := json.Marshal(objects)
+		args["objects"] = o
+	}
+
+	if e != nil {
+		args["error"] = e.Error()
 	}
 
 	spanCtx := trace.SpanContextFromContext(ctx)
@@ -91,9 +118,15 @@ func (s *postgres) Save(ctx context.Context, se types.Event) error {
 		args["trace_id"] = traceID.String()
 	}
 
-	_, err = s.conn.Exec(ctx, sql, args)
+	sql := `INSERT INTO sensor_events_v2 (sensor_id, device_id, event, payload, objects, error, trace_id) VALUES (@sensor_id, @device_id, @event, @payload, @objects, @error, @trace_id);`
 
-	return err
+	_, err = s.conn.Exec(ctx, sql, args)
+	if err != nil {
+		log.Error("could not save sensor event", "sql", sql, "args", args, "err", err.Error())
+		return err
+	}
+
+	return nil
 }
 
 func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
@@ -114,11 +147,15 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 	ddl := `
 		CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-		CREATE TABLE IF NOT EXISTS sensor_events (
+		CREATE TABLE IF NOT EXISTS sensor_events_v2 (
 			id 			UUID DEFAULT gen_random_uuid(),
-			time 		TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,			
+			time 		TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			sensor_id   TEXT NOT NULL,
-			payload     JSONB NULL,			
+			device_id   TEXT NULL,
+			event       JSONB NULL,
+			payload     JSONB NULL,
+			objects     JSONB NULL,
+			error       TEXT NULL,
 			trace_id 	TEXT NULL,
 			PRIMARY KEY (time, id)
 		);
@@ -126,17 +163,18 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 		DO $$
 		DECLARE
 			n INTEGER;
-		BEGIN			
+		BEGIN
 			SELECT COUNT(*) INTO n
 			FROM timescaledb_information.hypertables
-			WHERE hypertable_name = 'sensor_events';
-			
-			IF n = 0 THEN				
-				PERFORM create_hypertable('sensor_events', 'time');				
+			WHERE hypertable_name = 'sensor_events_v2';
+
+			IF n = 0 THEN
+				PERFORM create_hypertable('sensor_events_v2', 'time');
 			END IF;
 		END $$;
 
 		DROP TABLE IF EXISTS agent_sensor_events;
+		DROP TABLE IF EXISTS sensor_events;
 	`
 
 	tx, err := conn.Begin(ctx)
@@ -151,17 +189,4 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 	}
 
 	return tx.Commit(ctx)
-}
-
-type memory struct{}
-
-func (n memory) Save(ctx context.Context, se types.Event) error {
-	return nil
-}
-func (n memory) Close() error {
-	return nil
-}
-
-func NewInMemory() Storage {
-	return memory{}
 }

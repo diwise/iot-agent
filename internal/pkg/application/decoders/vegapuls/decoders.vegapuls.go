@@ -14,10 +14,10 @@ import (
 )
 
 type VegapulsPayload struct {
-	Battery     *int
-	Distance    *float32
-	Temperature *float64
-	Unit        *uint32
+	Battery     *int     `json:"battery,omitempty"`
+	Distance    *float32 `json:"distance,omitempty"`
+	Temperature *float64 `json:"temperature,omitempty"`
+	Unit        *uint32  `json:"unit,omitempty"`
 }
 
 func (a VegapulsPayload) BatteryLevel() *int {

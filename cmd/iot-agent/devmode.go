@@ -12,7 +12,7 @@ import (
 type devmodeDeviceMgmtClient struct{}
 
 func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devEUI string) (devicemgmtclient.Device, error) {
-	device := test.DeviceMock{
+	device := t.DeviceMock{
 		IDFunc: func() string {
 			return application.DeterministicGUID(devEUI)
 		},
