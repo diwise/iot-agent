@@ -5,7 +5,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
-	"github.com/diwise/iot-device-mgmt/pkg/test"
+	test "github.com/diwise/iot-device-mgmt/pkg/test"
 	"github.com/diwise/iot-device-mgmt/pkg/types"
 )
 
@@ -35,4 +35,8 @@ func (d *devmodeDeviceMgmtClient) Close(ctx context.Context) {
 
 func (d *devmodeDeviceMgmtClient) CreateDevice(ctx context.Context, device types.Device) error {
 	return nil
+}
+
+func (d *devmodeDeviceMgmtClient) GetDeviceProfile(ctx context.Context, deviceProfileID string) (*types.DeviceProfile, error) {
+	return nil, nil
 }
