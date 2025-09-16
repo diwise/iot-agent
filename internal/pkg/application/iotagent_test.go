@@ -142,6 +142,19 @@ func TestDistancePayload(t *testing.T) {
 	is.Equal(*pack[1].Value, 1.80952)
 }
 
+func TestQalcosonic(t *testing.T) {
+	is, dmc, e, s, ctx := testSetup(t)
+
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
+	ue, _ := facades.New("netmore")(ctx, "payload", []byte(qalcosonic_w1e))
+	err := agent.HandleSensorEvent(ctx, ue)
+	is.NoErr(err)
+	is.True(len(e.SendCommandToCalls()) > 0)
+
+	pack := getPackFromSendCalls(e, 0)
+	is.Equal(*pack[1].Value, 10.727)
+}
+
 func TestDeterministicGuid(t *testing.T) {
 	is := is.New(t)
 	uuid1 := DeterministicGUID("inputstring")
@@ -164,25 +177,32 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messa
 			types := []string{"urn:oma:lwm2m:ext:3303"}
 			sensorType := "Elsys_Codec"
 
-			if devEUI == "70b3d580a010f260" {
+			switch devEUI {
+			case "70b3d580a010f260":
 				sensorType = "tem_lab_14ns"
-			} else if devEUI == "70b3d52c00019193" {
+			case "70b3d52c00019193":
 				sensorType = "strips_lora_ms_h"
-			} else if devEUI == "a81758fffe05e6fb" {
+			case "a81758fffe05e6fb":
 				sensorType = "Elsys_Codec"
 				types = []string{"urn:oma:lwm2m:ext:3303", "urn:oma:lwm2m:ext:3428"}
-			} else if devEUI == "aabbccddee" {
+			case "aabbccddee":
 				sensorType = "Elsys_Codec"
 				types = []string{"urn:oma:lwm2m:ext:3200"}
-			} else if devEUI == "3489573498573459" {
+			case "3489573498573459":
 				sensorType = "presence"
 				types = []string{"urn:oma:lwm2m:ext:3302"}
-			} else if devEUI == "a81758fffe09ec03" {
+			case "a81758fffe09ec03":
 				sensorType = "elt_2_hp"
 				types = []string{"urn:oma:lwm2m:ext:3200"}
-			} else if devEUI == "04c46100008f70e4" {
+			case "04c46100008f70e4":
 				sensorType = "vegapuls_air_41"
 				types = []string{"urn:oma:lwm2m:ext:3330"}
+			case "116c52b4274f":
+				sensorType = "qalcosonic"
+				types = []string{"urn:oma:lwm2m:ext:3424"}
+			default:
+				types = []string{"urn:oma:lwm2m:ext:3303"}
+				sensorType = "Elsys_Codec"
 			}
 
 			res := &dmctest.DeviceMock{
@@ -347,3 +367,37 @@ const livboj string = `
         "prevHistSeqNr": 65535
     }
 }`
+
+const qalcosonic_w1e string = `
+[{
+  "devEui": "116c52b4274f",
+  "sensorType": "qalcosonic_w1e",
+  "messageType": "payload.Payload",
+  "timestamp": "2022-08-25T07:35:21.834484Z",
+  "Payload": "0ea0355d302935000054c0345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900",
+  "fCntUp": 1490,
+  "toa": null,
+  "freq": 867900000,
+  "batteryLevel": "255",
+  "ack": false,
+  "spreadingFactor": "8",
+  "rssi": "-115",
+  "snr": "-1.8",
+  "gatewayIdentifier": "000",
+  "fPort": "100",
+  "tags": {
+    "application": ["ambiductor_test"],
+    "customer": ["customer"],
+    "deviceType": ["w1e"],
+    "serial": ["00000000"]
+  },
+  "gateways": [
+    {
+      "rssi": "-115",
+      "snr": "-1.8",
+      "gatewayIdentifier": "000",
+      "antenna": 0
+    }
+  ]
+}]
+`

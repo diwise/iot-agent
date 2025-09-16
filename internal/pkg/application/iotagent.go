@@ -446,7 +446,11 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt *typ
 			}
 		}
 
-		_, messages := p.Error()
+		code, messages := p.Error()
+
+		if code != "" {
+			msg.Code = &code
+		}
 
 		if len(messages) > 0 {
 			msg.Messages = append(msg.Messages, messages...)
