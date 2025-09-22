@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"fmt"
@@ -55,9 +56,13 @@ func (a QalcosonicPayload) Error() (string, []string) {
 			}
 		}
 
-		return "", m
+		if a.Volume.StatusCode == NoError {
+			return "0", m
+		}
+
+		return strconv.Itoa(int(a.Volume.StatusCode)), m
 	}
-	return "", []string{}
+	return "0", []string{}
 }
 
 type QalcosonicDeltaVolume struct {

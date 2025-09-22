@@ -5,14 +5,14 @@ import (
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
-	t "github.com/diwise/iot-device-mgmt/pkg/test"
+	test "github.com/diwise/iot-device-mgmt/pkg/test"
 	"github.com/diwise/iot-device-mgmt/pkg/types"
 )
 
 type devmodeDeviceMgmtClient struct{}
 
 func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devEUI string) (devicemgmtclient.Device, error) {
-	device := t.DeviceMock{
+	device := test.DeviceMock{
 		IDFunc: func() string {
 			return application.DeterministicGUID(devEUI)
 		},
@@ -37,6 +37,6 @@ func (d *devmodeDeviceMgmtClient) CreateDevice(ctx context.Context, device types
 	return nil
 }
 
-func (d *devmodeDeviceMgmtClient) GetDeviceProfile(ctx context.Context, profileID string) (types.DeviceProfile, error) {
-	return types.DeviceProfile{}, nil
+func (d *devmodeDeviceMgmtClient) GetDeviceProfile(ctx context.Context, deviceProfileID string) (*types.DeviceProfile, error) {
+	return nil, nil
 }
