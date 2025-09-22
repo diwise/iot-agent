@@ -103,8 +103,22 @@ func Converter(ctx context.Context, deviceID string, payload types.SensorPayload
 }
 
 func convert(ctx context.Context, deviceID string, p QalcosonicPayload) ([]lwm2m.Lwm2mObject, error) {
+	log := logging.GetFromContext(ctx)
 
-	return convertToLwm2mObjects(ctx, deviceID, p.Volume, p.Alarms), nil
+	objects := convertToLwm2mObjects(ctx, deviceID, p.Volume, p.Alarms)
+
+	prev := time.Time{}
+
+	for _, obj := range objects {
+		if prev.After(obj.Timestamp()) {
+			log.Warn("out of order timestamps", slog.String("device_id", deviceID), slog.String("object_id", obj.ObjectID()), slog.Time("prev", prev), slog.Time("current", obj.Timestamp()))
+			return nil, fmt.Errorf("out of order timestamps")
+		}
+
+		prev = obj.Timestamp()
+	}
+
+	return objects, nil
 }
 
 func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicVolumePayload, ap *QalcosonicAlarmPayload) []lwm2m.Lwm2mObject {
@@ -141,7 +155,13 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicVo
 
 		if p.Timestamp.UTC().After(time.Now().UTC()) {
 			log.Warn("time is in the future!", slog.String("device_id", deviceID), slog.String("type_of_meter", p.Type), slog.Time("timestamp", p.Timestamp))
-		} else {
+		}
+
+		switch p.Type {
+		case "w1h":
+			// W1H frames contains 24 hourly delta volumes, so no need to add current volume again
+		case "w1e", "w1t":
+			// W1E and W1T add current volume as well
 			m3 := p.CurrentVolume * 0.001
 
 			wm := lwm2m.NewWaterMeter(deviceID, m3, p.Timestamp)
@@ -150,6 +170,8 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *QalcosonicVo
 			wm.BackFlowDetected = contains(p.Messages, "Backflow")
 
 			objects = append(objects, wm)
+		default:
+			log.Warn("unknown type of meter", slog.String("device_id", deviceID), slog.String("type_of_meter", p.Type))
 		}
 
 		if p.Temperature != nil {

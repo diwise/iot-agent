@@ -2,6 +2,8 @@ package application
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
@@ -146,13 +148,38 @@ func TestQalcosonic(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
 	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
-	ue, _ := facades.New("netmore")(ctx, "payload", []byte(qalcosonic_w1e))
+	ue, _ := facades.New("netmore")(ctx, "payload", qalcosonic_templ("0ea0355d302935000054c0345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900"))
 	err := agent.HandleSensorEvent(ctx, ue)
 	is.NoErr(err)
 	is.True(len(e.SendCommandToCalls()) > 0)
 
 	pack := getPackFromSendCalls(e, 0)
 	is.Equal(*pack[1].Value, 10.727)
+}
+
+func TestQalcosonicInvalidPayload(t *testing.T) {
+	is, dmc, e, s, ctx := testSetup(t)
+	agent := New(dmc, e, s, true, "default", &DeviceProfileConfigs{}).(*app)
+
+	run := func(h string) error {
+		ue, _ := facades.New("netmore")(ctx, "payload", qalcosonic_templ(h))
+		err := agent.HandleSensorEvent(ctx, ue)
+		return err
+	}
+
+	var errs []error
+	payloads := []string{
+		"015B04B668006C3C9B007B801B0015140DED0450614A740E4746D8C03E6C11DD8386214D1C16E904FEF023A003134198B01500",
+		"01DB93B568006C3C9B007B801B0015140DED0450614A740E4746D8C03E6C11DD8386214D1C16E904FEF023A003134198B01500",
+		"D6FDD0680071160C00A006102FD068D50A0C004602630146014B0136000B000B0011001900100016005E0187013E01",
+		"1455D06800560F0C00AB065086CF6829F40B003800ED0012027B02FF016C020F022E029F0178013E02FD0246026301",
+	}
+
+	for _, p := range payloads {
+		errs = append(errs, run(p))
+	}
+
+	is.NoErr(errors.Join(errs...))
 }
 
 func TestDeterministicGuid(t *testing.T) {
@@ -368,13 +395,14 @@ const livboj string = `
     }
 }`
 
-const qalcosonic_w1e string = `
+func qalcosonic_templ(h string) []byte {
+	return []byte(fmt.Sprintf(`
 [{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1e",
-  "messageType": "payload.Payload",
+  "messageType": "payload",
   "timestamp": "2022-08-25T07:35:21.834484Z",
-  "Payload": "0ea0355d302935000054c0345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900",
+  "Payload": "%s",
   "fCntUp": 1490,
   "toa": null,
   "freq": 867900000,
@@ -386,10 +414,6 @@ const qalcosonic_w1e string = `
   "gatewayIdentifier": "000",
   "fPort": "100",
   "tags": {
-    "application": ["ambiductor_test"],
-    "customer": ["customer"],
-    "deviceType": ["w1e"],
-    "serial": ["00000000"]
   },
   "gateways": [
     {
@@ -400,4 +424,5 @@ const qalcosonic_w1e string = `
     }
   ]
 }]
-`
+`, h))
+}
