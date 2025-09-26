@@ -22,6 +22,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var tracer = otel.Tracer("iot-agent/api")
@@ -83,7 +84,17 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 }
 
 func NewIncomingLWM2MMessageHandler(ctx context.Context, app application.App) http.HandlerFunc {
+	messageCounter, err := otel.Meter("iot-agent/lwm2m").Int64Counter(
+		"diwise.lwm2m.messages.total",
+		metric.WithUnit("1"),
+		metric.WithDescription("Total number of received lwm2m messages"),
+	)
+
 	logger := logging.GetFromContext(ctx)
+
+	if err != nil {
+		logger.Error("failed to create otel message counter", "err", err.Error())
+	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -97,8 +108,8 @@ func NewIncomingLWM2MMessageHandler(ctx context.Context, app application.App) ht
 		defer r.Body.Close()
 
 		pack := senml.Pack{}
-		err = json.Unmarshal(msg, &pack)
 
+		err = json.Unmarshal(msg, &pack)
 		if err == nil && len(pack) == 0 {
 			err = errors.New("empty senML pack received")
 		}
@@ -108,6 +119,8 @@ func NewIncomingLWM2MMessageHandler(ctx context.Context, app application.App) ht
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
+		messageCounter.Add(ctx, 1)
 
 		deviceID := lwm2m.DeviceID(pack)
 		err = app.HandleSensorMeasurementList(ctx, deviceID, pack)
