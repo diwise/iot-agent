@@ -2,6 +2,7 @@ package decoders
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -19,6 +20,9 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders/vegapuls"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type DecoderFunc func(ctx context.Context, e types.Event) (types.SensorPayload, error)
@@ -26,8 +30,6 @@ type ConverterFunc func(ctx context.Context, deviceID string, payload types.Sens
 
 type Registry interface {
 	Get(ctx context.Context, sensorType string) (DecoderFunc, ConverterFunc, bool)
-	GetDecoder(ctx context.Context, sensorType string) DecoderFunc
-	GetConverter(ctx context.Context, sensorType string) ConverterFunc
 }
 
 type registryImpl struct {
@@ -95,29 +97,55 @@ func NewRegistry() Registry {
 }
 
 func (c *registryImpl) Get(ctx context.Context, sensorType string) (DecoderFunc, ConverterFunc, bool) {
+
+	log := logging.GetFromContext(ctx)
+
+	errCounter, err := otel.Meter("iot-agent/decoding").Int64Counter(
+		"diwise.decoding.errors.total",
+		metric.WithUnit("1"),
+		metric.WithDescription("Total number of errors"),
+	)
+
+	if err != nil {
+		log.Error("failed to create otel message counter", "err", err.Error())
+	}
+
+	decoder := func(fn DecoderFunc) DecoderFunc {
+		messageCounter, err := otel.Meter("iot-agent/decoding").Int64Counter(
+			"diwise.decoding."+sensorType+".total",
+			metric.WithUnit("1"),
+			metric.WithDescription(fmt.Sprintf("Total number of decoded %s payloads", sensorType)),
+		)
+
+		if err != nil {
+			log.Error("failed to create otel message counter", "err", err.Error())
+		}
+
+		return func(ctx context.Context, e types.Event) (types.SensorPayload, error) {
+			p, err := fn(ctx, e)
+			if err != nil {
+				errCounter.Add(ctx, 1)
+				return nil, err
+			}
+
+			messageCounter.Add(ctx, 1)
+			return p, nil
+		}
+	}
+
+	converter := func(fn ConverterFunc) ConverterFunc {
+		return func(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+			return fn(ctx, deviceID, payload, ts)
+		}
+	}
+
 	if d, ok := c.decoders[strings.ToLower(sensorType)]; ok {
 		if c, ok := c.converters[strings.ToLower(sensorType)]; ok {
-			return d, c, true
+			return decoder(d), converter(c), true
 		} else {
-			return d, defaultdecoder.Converter, false
+			return decoder(d), converter(defaultdecoder.Converter), false
 		}
 	}
 
 	return defaultdecoder.Decoder, defaultdecoder.Converter, false
-}
-
-func (c *registryImpl) GetDecoder(ctx context.Context, sensorType string) DecoderFunc {
-	if d, ok := c.decoders[strings.ToLower(sensorType)]; ok {
-		return d
-	}
-
-	return defaultdecoder.Decoder
-}
-
-func (c *registryImpl) GetConverter(ctx context.Context, sensorType string) ConverterFunc {
-	if d, ok := c.converters[strings.ToLower(sensorType)]; ok {
-		return d
-	}
-
-	return defaultdecoder.Converter
 }
