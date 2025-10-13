@@ -45,6 +45,9 @@ func NewRegistry() Registry {
 		"enviot":          enviot.Decoder,
 		"niab-fls":        niab.Decoder,
 		"qalcosonic":      qalcosonic.Decoder,
+		"qalcosonic/w1t":  qalcosonic.DecoderW1t,
+		"qalcosonic/w1h":  qalcosonic.DecoderW1h,
+		"qalcosonic/w1e":  qalcosonic.DecoderW1e,
 		"vegapuls_air_41": vegapuls.Decoder,
 
 		"elsys":       elsys.Decoder,
