@@ -41,27 +41,27 @@ type Alarm struct {
 }
 
 type Payload struct {
-	Volume *WaterMeterReading `json:"volume,omitempty"`
-	Alarms *Alarm             `json:"alarms,omitempty"`
+	Reading *WaterMeterReading `json:"volume,omitempty"`
+	Alarms  *Alarm             `json:"alarms,omitempty"`
 }
 
 func (a Payload) BatteryLevel() *int {
 	return nil
 }
 func (a Payload) Error() (string, []string) {
-	if len(a.Volume.Messages) > 0 {
+	if len(a.Reading.Messages) > 0 {
 		m := []string{}
-		for _, v := range a.Volume.Messages {
+		for _, v := range a.Reading.Messages {
 			if v != "No error" {
 				m = append(m, v)
 			}
 		}
 
-		if a.Volume.StatusCode == NoError {
+		if a.Reading.StatusCode == NoError {
 			return "0", m
 		}
 
-		return strconv.Itoa(int(a.Volume.StatusCode)), m
+		return strconv.Itoa(int(a.Reading.StatusCode)), m
 	}
 	return "0", []string{}
 }
@@ -85,8 +85,8 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	}
 
 	return Payload{
-		Volume: p,
-		Alarms: ap,
+		Reading: p,
+		Alarms:  ap,
 	}, err
 }
 
@@ -107,7 +107,7 @@ func DecoderW1h(ctx context.Context, e types.Event) (types.SensorPayload, error)
 	}
 
 	return Payload{
-		Volume: &p,
+		Reading: &p,
 	}, nil
 }
 
@@ -128,7 +128,7 @@ func DecoderW1e(ctx context.Context, e types.Event) (types.SensorPayload, error)
 	}
 
 	return Payload{
-		Volume: &p,
+		Reading: &p,
 	}, nil
 }
 
@@ -154,7 +154,7 @@ func DecoderW1t(ctx context.Context, e types.Event) (types.SensorPayload, error)
 			return nil, err
 		}
 		return Payload{
-			Volume: &p,
+			Reading: &p,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported payload length %d for w1t decoder", buf.Len())
@@ -169,7 +169,7 @@ func Converter(ctx context.Context, deviceID string, payload types.SensorPayload
 func convert(ctx context.Context, deviceID string, p Payload) ([]lwm2m.Lwm2mObject, error) {
 	log := logging.GetFromContext(ctx)
 
-	objects := convertToLwm2mObjects(ctx, deviceID, p.Volume, p.Alarms)
+	objects := convertToLwm2mObjects(ctx, deviceID, p.Reading, p.Alarms)
 
 	prev := time.Time{}
 
@@ -202,12 +202,12 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *WaterMeterRe
 
 	if p != nil {
 		for _, d := range p.Volumes {
-			m3 := d.Volume * 0.001
-
 			if d.Timestamp.UTC().After(time.Now().UTC()) {
 				log.Warn("time is in the future!", slog.String("device_id", deviceID), slog.String("type_of_meter", p.Type), slog.Time("timestamp", d.Timestamp))
 				continue
 			}
+
+			m3 := d.Volume * 0.001
 
 			wm := lwm2m.NewWaterMeter(deviceID, m3, d.Timestamp)
 			wm.TypeOfMeter = &p.Type
