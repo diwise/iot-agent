@@ -220,24 +220,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *WaterMeterRe
 		if p.Timestamp.UTC().After(time.Now().UTC()) {
 			log.Warn("time is in the future!", slog.String("device_id", deviceID), slog.String("type_of_meter", p.Type), slog.Time("timestamp", p.Timestamp))
 		}
-		/*
-			switch p.Type {
-			case "w1h":
-				// W1H frames contains 24 hourly delta volumes, so no need to add current volume again
-			case "w1e", "w1t":
-				// W1E and W1T add current volume as well
-				m3 := p.Current * 0.001
 
-				wm := lwm2m.NewWaterMeter(deviceID, m3, p.Timestamp)
-				wm.TypeOfMeter = &p.Type
-				wm.LeakDetected = contains(p.Messages, "Leak")
-				wm.BackFlowDetected = contains(p.Messages, "Backflow")
-
-				objects = append(objects, wm)
-			default:
-				log.Warn("unknown type of meter", slog.String("device_id", deviceID), slog.String("type_of_meter", p.Type))
-			}
-		*/
 		if p.Temperature != nil {
 			objects = append(objects, lwm2m.NewTemperature(deviceID, float64(*p.Temperature)/100, p.Timestamp))
 		}
