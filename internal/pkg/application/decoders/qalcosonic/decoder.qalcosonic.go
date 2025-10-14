@@ -360,7 +360,7 @@ func w1e(buf *bytes.Reader) (WaterMeterReading, error) {
 		ldt = time.Date(y, m, d, hh, 0, 0, 0, time.UTC)
 	}
 
-	if sensorTime.Sub(ldt) > 24*time.Hour {
+	if sensorTime.Sub(ldt) > 24*time.Hour || sensorTime.Sub(ldt) < -48*time.Hour {
 		return p, ErrTimeTooFarOff
 	}
 
