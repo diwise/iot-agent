@@ -386,6 +386,15 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 				d.Tags = append(d.Tags, dmtypes.Tag{
 					Name: tag,
 				})
+
+				if i := slices.IndexFunc(d.Metadata, func(m dmtypes.Metadata) bool { return m.Key == tag }); i == -1 {
+					d.Metadata = append(d.Metadata, dmtypes.Metadata{
+						Key:   k,
+						Value: v[0],
+					})
+				} else {
+					d.Metadata[i].Value = v[0]
+				}
 			}
 		}
 	}
