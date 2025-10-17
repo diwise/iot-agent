@@ -50,7 +50,7 @@ type appConfig struct {
 	mqttCfg      *mqtt.Config
 	messengerCfg *messaging.Config
 	storageCfg   *storage.Config
-	dpCfg        *application.DeviceProfileConfigs
+	dpCfg        map[string]application.DeviceProfileConfig
 }
 
 var oninit = servicerunner.OnInit[appConfig]

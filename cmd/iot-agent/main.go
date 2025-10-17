@@ -216,10 +216,10 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	return ctx, flags
 }
 
-func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (*application.DeviceProfileConfigs, error) {
+func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (map[string]application.DeviceProfileConfig, error) {
 	defer f.Close()
 
-	var cfg application.DeviceProfileConfigs
+	var cfg map[string]application.DeviceProfileConfig
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read device profile file: %w", err)
@@ -229,7 +229,7 @@ func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (*application.D
 		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func exitIf(err error, logger *slog.Logger, msg string, args ...any) {
