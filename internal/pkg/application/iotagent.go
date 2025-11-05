@@ -427,6 +427,10 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		return err
 	}
 
+	a.notFoundDevicesMu.Lock()
+	delete(a.notFoundDevices, se.DevEUI)
+	a.notFoundDevicesMu.Unlock()
+
 	log.Debug("new device created", "sensor_id", se.DevEUI, "device_id", d.DeviceID, "profile_name", d.DeviceProfile.Name, "name", d.Name, "tenant", d.Tenant)
 
 	return nil
