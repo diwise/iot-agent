@@ -98,6 +98,23 @@ func TestElsysTemperatureDecoder(t *testing.T) {
 	is.Equal(len(objects), 2)
 }
 
+func TestElsysWithTwoTemperaturesDecoder(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(elsys2Temp))
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
+	is.NoErr(err)
+
+	is.Equal(28.2, objects[0].(lwm2m.Temperature).SensorValue) // Temperature
+	is.Equal(29.7, objects[1].(lwm2m.Temperature).SensorValue) // ExternalTemp1
+	is.Equal("abc123/0", objects[0].ID())
+	is.Equal("abc123/1", objects[1].ID())
+
+	is.Equal(len(objects), 5)
+}
+
 func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
@@ -253,6 +270,22 @@ const elsysTemp string = `{
 		"Location": "Vangen"
 	}
 }`
+
+const elsys2Temp string = `[{
+	"devEui":"a81758fffe09ec03",
+	"deviceName":"elt_2_hp",
+	"sensorType":"elt_2_hp",
+	"fPort":"5",
+	"payload":"01011A021E070E450C012914000F980419F830",
+	"timestamp":"2023-10-30T13:57:37.868543Z",
+	"rxInfo":{
+		"gatewayId":"881",
+		"rssi":-117,
+		"snr":-17
+	},
+	"txInfo":{},
+	"error":{}
+}]`
 
 const elsysCO2 string = `{
 	"deviceName":"mcg-ers-co2-01",

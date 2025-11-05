@@ -1,0 +1,59 @@
+Elsys_Codec:
+  profile_name: elsys
+  tenant: default
+  activate: true
+  location: true
+  tags: 
+    enabled: true
+    metadata: true
+    mappings:
+      location: plats
+      mount: position
+Axioma_Universal_Codec:
+  profile_name: qalcosonic
+  tenant: default
+  activate: true
+  location: false
+  tags: 
+    enabled: true
+    metadata: true
+Milesight EM400 UDL:
+  profile_name: milesight
+  tenant: default
+  activate: true
+  location: true
+  tags: 
+    enabled: true
+    metadata: true
+Milesight EM400TLD:
+  profile_name: milesight
+  tenant: default
+  activate: true
+  location: true
+  tags: 
+    enabled: true
+    metadata: true
+Milesight EM500-UDL:
+  profile_name: milesight
+  tenant: default
+  activate: true
+  location: true
+  tags: 
+    enabled: true
+    metadata: true
+Milesight AM100:
+  profile_name: milesight
+  tenant: default
+  activate: true
+  location: true
+  tags: 
+    enabled: true
+    metadata: true
+Sensative_Codec:
+  profile_name: wrong!
+  tenant: default
+  activate: false
+  location: true
+  tags: 
+    enabled: true
+    metadata: true

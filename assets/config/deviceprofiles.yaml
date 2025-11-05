@@ -1,1 +1,11 @@
-profiles:
+#Elsys_Codec:
+#  profile_name: elsys
+#  tenant: default
+#  activate: true
+#  location: true
+#  tags: 
+#    enabled: true
+#    metadata: true
+#    mappings:
+#      location: plats
+#      mount: position
