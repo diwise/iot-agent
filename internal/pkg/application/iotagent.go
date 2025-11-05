@@ -96,6 +96,21 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		}
 	}
 
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			a.notFoundDevicesMu.Lock()
+			for devEUI, ts := range a.notFoundDevices {
+				if ts.UTC().After(time.Now().UTC()) {
+					delete(a.notFoundDevices, devEUI)
+				}
+			}
+			a.notFoundDevicesMu.Unlock()
+		}
+	}()
+
 	return a
 }
 
@@ -427,9 +442,11 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		return err
 	}
 
-	a.notFoundDevicesMu.Lock()
-	delete(a.notFoundDevices, se.DevEUI)
-	a.notFoundDevicesMu.Unlock()
+	if p.Cfg.ProfileName != UNKNOWN {
+		a.notFoundDevicesMu.Lock()
+		delete(a.notFoundDevices, se.DevEUI)
+		a.notFoundDevicesMu.Unlock()
+	}
 
 	log.Debug("new device created", "sensor_id", se.DevEUI, "device_id", d.DeviceID, "profile_name", d.DeviceProfile.Name, "name", d.Name, "tenant", d.Tenant)
 
