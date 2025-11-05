@@ -68,6 +68,12 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 			return
 		}
 
+		if evt.DevEUI == "" {
+			log.Debug("could not handle message", "type", im.Type, "reason", "DevEUI is missing")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		// add source to event to use for auto create devices (TODO)
 		evt.Source = im.Source
 

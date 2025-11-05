@@ -366,6 +366,15 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		Tenant: p.Cfg.Tenant,
 	}
 
+	if len(p.Types) > 0 {
+		d.Lwm2mTypes = make([]dmtypes.Lwm2mType, 0, len(p.Types))
+		for _, t := range p.Types {
+			d.Lwm2mTypes = append(d.Lwm2mTypes, dmtypes.Lwm2mType{
+				Urn: t,
+			})
+		}
+	}
+
 	if p.Cfg.Location {
 		d.Location = dmtypes.Location{
 			Latitude:  se.Location.Latitude,
