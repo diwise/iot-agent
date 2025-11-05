@@ -82,6 +82,8 @@ func TestElsysCO2Decoder(t *testing.T) {
 	is.NoErr(err)
 
 	is.Equal(len(objects), 5)
+	expected := 66
+	is.Equal(objects[4].(lwm2m.Device).BatteryLevel, &expected)
 }
 
 func TestElsysTemperatureDecoder(t *testing.T) {
@@ -135,7 +137,7 @@ func TestDecodeElsysPayload(t *testing.T) {
 	j, err := json.Marshal(singlePack)
 	is.NoErr(err)
 
-	is.Equal(string(j), `[{"bn":"devId/3303/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":7.5},{"bn":"devId/3304/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3304"},{"n":"5700","u":"%RH","v":84},{"bn":"devId/3/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3"},{"n":"7","u":"mV","v":3642},{"bn":"devId/3200/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":false}]`)
+	is.Equal(string(j), `[{"bn":"devId/3303/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":7.5},{"bn":"devId/3304/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3304"},{"n":"5700","u":"%RH","v":84},{"bn":"devId/3/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3"},{"n":"9","u":"%","v":100},{"n":"7","u":"mV","v":3642},{"bn":"devId/3200/","bt":1698674257,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":false}]`)
 }
 
 func TestElsysElt2hpTrue(t *testing.T) {
@@ -149,6 +151,33 @@ func TestElsysElt2hpTrue(t *testing.T) {
 
 	is.Equal(len(objects), 4)
 	is.True(objects[3].(lwm2m.DigitalInput).DigitalInputState)
+}
+
+func TestElsysElt2hpTrueConvertToBatteryLevelPercentage(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(elt2hp_true))
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
+	is.NoErr(err)
+
+	is.Equal(len(objects), 4)
+	is.True(objects[3].(lwm2m.DigitalInput).DigitalInputState)
+	expected := 100
+	is.Equal(objects[2].(lwm2m.Device).BatteryLevel, &expected)
+}
+
+func TestElsysMBatteruLevelFromMVoltToPercetage(t *testing.T) {
+	milliVoltages := []int{2800, 3300, 3350, 3400, 3450, 3500, 3550, 3600, 3700}
+	expected := []int{0, 7, 19, 40, 66, 85, 94, 100, 100}
+
+	for i := range milliVoltages {
+		soc := MVoltToPercent(milliVoltages[i])
+		if soc != expected[i] {
+			t.Errorf("voltage %d → got %d%%, want %d%%", milliVoltages[i], soc, expected[i])
+		}
+	}
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
@@ -237,6 +266,6 @@ const elsysCO2 string = `{
 		"light":90,
 		"motion":2,
 		"temperature":23.2,
-		"vdd":3636
+		"vdd":3450
 	}
 }`
