@@ -59,7 +59,7 @@ type profile struct {
 	Types []string
 }
 
-func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string, dpCfg *DeviceProfileConfigs) App {
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string, dpCfg map[string]DeviceProfileConfig) App {
 	d := decoders.NewRegistry()
 
 	a := &app{
@@ -73,13 +73,12 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		dpCfg:                      make(map[string]profile),
 	}
 
-	for _, config := range dpCfg.Profiles {
-		if config.Tenant == "" {
-			config.Tenant = createUnknownDeviceTenant
+	for sensorType, p := range dpCfg {
+		if p.Tenant == "" {
+			p.Tenant = createUnknownDeviceTenant
 		}
-
-		a.dpCfg[strings.ToLower(config.SensorType)] = profile{
-			Cfg:   config,
+		a.dpCfg[strings.ToLower(sensorType)] = profile{
+			Cfg:   p,
 			Types: []string{},
 		}
 	}
@@ -87,12 +86,11 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 	if _, ok := a.dpCfg[UNKNOWN]; !ok {
 		a.dpCfg[UNKNOWN] = profile{
 			Cfg: DeviceProfileConfig{
-				SensorType:  UNKNOWN,
 				ProfileName: UNKNOWN,
 				Tenant:      createUnknownDeviceTenant,
 				Activate:    false,
 				Location:    false,
-				Tags:        false,
+				Tags:        Tags{Enabled: false},
 			},
 			Types: []string{},
 		}
@@ -305,17 +303,18 @@ func (a *app) deviceIsCurrentlyIgnored(_ context.Context, id string) bool {
 	return true
 }
 
-type DeviceProfileConfigs struct {
-	Profiles []DeviceProfileConfig `json:"profiles" yaml:"profiles"`
-}
-
 type DeviceProfileConfig struct {
-	SensorType  string `json:"sensor_type" yaml:"sensor_type"`
 	ProfileName string `json:"profile_name" yaml:"profile_name"`
 	Tenant      string `json:"tenant" yaml:"tenant"`
 	Activate    bool   `json:"activate" yaml:"activate"`
 	Location    bool   `json:"location" yaml:"location"`
-	Tags        bool   `json:"tags" yaml:"tags"`
+	Tags        Tags   `json:"tags" yaml:"tags"`
+}
+
+type Tags struct {
+	Enabled  bool              `json:"enabled"`
+	Metadata bool              `json:"metadata"`
+	Mappings map[string]string `json:"mappings"`
 }
 
 func (a *app) getDeviceProfile(ctx context.Context, sensorType string) profile {
@@ -367,6 +366,15 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		Tenant: p.Cfg.Tenant,
 	}
 
+	if len(p.Types) > 0 {
+		d.Lwm2mTypes = make([]dmtypes.Lwm2mType, 0, len(p.Types))
+		for _, t := range p.Types {
+			d.Lwm2mTypes = append(d.Lwm2mTypes, dmtypes.Lwm2mType{
+				Urn: t,
+			})
+		}
+	}
+
 	if p.Cfg.Location {
 		d.Location = dmtypes.Location{
 			Latitude:  se.Location.Latitude,
@@ -374,7 +382,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		}
 	}
 
-	if p.Cfg.Tags {
+	if p.Cfg.Tags.Enabled {
 		if len(se.Tags) > 0 {
 			for k, v := range se.Tags {
 				tag := k
@@ -386,6 +394,26 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 				d.Tags = append(d.Tags, dmtypes.Tag{
 					Name: tag,
 				})
+
+				if !p.Cfg.Tags.Metadata {
+					continue
+				}
+
+				key := strings.ToLower(strings.TrimSpace(k))
+				if p.Cfg.Tags.Mappings != nil {
+					if mappedKey, ok := p.Cfg.Tags.Mappings[key]; ok {
+						key = mappedKey
+					}
+				}
+
+				if i := slices.IndexFunc(d.Metadata, func(m dmtypes.Metadata) bool { return m.Key == key }); i == -1 {
+					d.Metadata = append(d.Metadata, dmtypes.Metadata{
+						Key:   key,
+						Value: v[0],
+					})
+				} else {
+					d.Metadata[i].Value = v[0]
+				}
 			}
 		}
 	}
