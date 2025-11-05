@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"math"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
@@ -44,11 +45,12 @@ type ElsysPayload struct {
 func (a ElsysPayload) BatteryLevel() *int {
 	if a.VDD != nil {
 		bat := int(*a.VDD)
-		return &bat
+		soc_status := MVoltToPercent(bat)
+		return &soc_status
 	}
-
 	return nil
 }
+
 func (a ElsysPayload) Error() (string, []string) {
 	return "", []string{}
 }
@@ -165,6 +167,8 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload,
 		vdd := int(*p.VDD)
 		d := lwm2m.NewDevice(deviceID, ts)
 		d.PowerSourceVoltage = &vdd
+		soc := MVoltToPercent(vdd)
+		d.BatteryLevel = &soc
 		objects = append(objects, d)
 	}
 
@@ -188,6 +192,27 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload,
 	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
+}
+
+func MVoltToPercent(vdd int) int { // till att det bara är elsys två som använder här
+	halfVoltageCapacity := 3.4177
+	calibrationFactor := 21.347
+
+	batteryVolt := math.Round(float64(vdd)/10) / 100
+
+	if batteryVolt >= 3.6 {
+		batteryFull := 100.0
+		return int(batteryFull)
+	}
+
+	if batteryVolt < 3.3 {
+		batteryEmpty := 0.0
+		return int(batteryEmpty)
+	}
+
+	soc := 100 * (1 / (1 + math.Exp(-calibrationFactor*(batteryVolt-halfVoltageCapacity))))
+	roundedSoc := math.Round(soc*100) / 100
+	return int(roundedSoc)
 }
 
 const (
