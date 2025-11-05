@@ -28,9 +28,9 @@ func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event
 	case "status":
 		log.Debug("Handling status event")
 		return handleStatusEvent(b)
-	case "join":
-		log.Debug("Handling join event (NOP)")
-		return types.Event{}, fmt.Errorf("join events not supported")
+	case "txack", "down", "join":
+		log.Debug(fmt.Sprintf("Handling %s event (NOP)", messageType))
+		return types.Event{}, nil
 	default:
 		log.Debug("Handling unknown event type as uplink event", "type", messageType)
 		return handleUplinkEvent(b)

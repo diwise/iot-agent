@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 
 	"github.com/matryer/is"
@@ -19,8 +20,7 @@ import (
 func TestQalcosonic_w1t(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(fmt.Sprintf(qalcosonic_w1t, "55cb585f7cf29d0400120ae0fe575f8a570400cd04cb04cc04cd04ca04c404c504c404f004e604dc04d604b9057905")))
-	p, err := w1t(bytes.NewReader(ue.Payload.Data))
+	p, err := w1t(bytes.NewReader(qalcosonic("55cb585f7cf29d0400120ae0fe575f8a570400cd04cb04cc04cd04ca04c404c504c404f004e604dc04d604b9057905")))
 
 	is.NoErr(err)
 
@@ -31,8 +31,7 @@ func TestQalcosonic_w1t(t *testing.T) {
 func TestQalcosonic_w1t_lwm2m(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(fmt.Sprintf(qalcosonic_w1t, "55cb585f7cf29d0400120ae0fe575f8a570400cd04cb04cc04cd04ca04c404c504c404f004e604dc04d604b9057905")))
-	p, ap, err := decode(context.Background(), ue)
+	p, ap, err := decode(qalcosonic_ue("55cb585f7cf29d0400120ae0fe575f8a570400cd04cb04cc04cd04ca04c404c504c404f004e604dc04d604b9057905"))
 
 	is.NoErr(err)
 	is.True(ap == nil)
@@ -48,8 +47,7 @@ func TestQalcosonic_w1t_lwm2m(t *testing.T) {
 func TestQalcosonic_w1h(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(qalcosonic_w1h))
-	p, err := w1h(bytes.NewReader(ue.Payload.Data))
+	p, err := w1h(bytes.NewReader(qalcosonic("011fbfd05e30cd0f0800d4879e41865c1b42470d7283b8201608fec181981dd007f3919460218247b631784c1c9e87b8e17600")))
 
 	is.NoErr(err)
 
@@ -60,8 +58,7 @@ func TestQalcosonic_w1h(t *testing.T) {
 func TestQalcosonic_w1h_lwm2m(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(qalcosonic_w1h))
-	p, ap, err := decode(context.Background(), ue)
+	p, ap, err := decode(qalcosonic_ue("011fbfd05e30cd0f0800d4879e41865c1b42470d7283b8201608fec181981dd007f3919460218247b631784c1c9e87b8e17600"))
 
 	is.NoErr(err)
 	is.True(ap == nil)
@@ -77,8 +74,7 @@ func TestQalcosonic_w1h_lwm2m(t *testing.T) {
 func TestQalcosonic_w1e(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(qalcosonic_w1e))
-	p, err := w1e(bytes.NewReader(ue.Payload.Data))
+	p, err := w1e(bytes.NewReader(qalcosonic("0ea0355d302935000054c0345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900")))
 
 	is.NoErr(err)
 
@@ -89,8 +85,7 @@ func TestQalcosonic_w1e(t *testing.T) {
 func TestQalcosonic_w1e_lwm2m(t *testing.T) {
 	is, _ := testSetup(t)
 
-	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(qalcosonic_w1e))
-	p, err := w1e(bytes.NewReader(ue.Payload.Data))
+	p, err := w1e(bytes.NewReader(qalcosonic("0ea0355d302935000054c0345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900")))
 
 	is.NoErr(err)
 	is.Equal(16, len(p.Volumes))
@@ -152,12 +147,7 @@ func TestDecodeW1t(t *testing.T) {
 	vol := []volume{}
 
 	for _, h := range slices.Backward(hex) {
-		s := fmt.Sprintf(qalcosonic_w1t, h)
-
-		ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(s))
-
-		buf := bytes.NewReader(ue.Payload.Data)
-		p, err := w1t(buf)
+		p, err := w1t(bytes.NewReader(qalcosonic(h)))
 		is.NoErr(err)
 
 		vol = append(vol, volume{
@@ -246,12 +236,8 @@ func TestDecode(t *testing.T) {
 	vol := []volume{}
 
 	for _, h := range slices.Backward(hex) {
-		s := fmt.Sprintf(qalcosonic_w1t, h)
-
-		ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(s))
-
 		// Test that decode uses correct decoder (should use w1t for all payloads here)
-		p, _, err := decode(context.Background(), ue)
+		p, _, err := decode(qalcosonic_ue(h))
 		is.NoErr(err)
 
 		vol = append(vol, volume{
@@ -363,69 +349,18 @@ func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-const qalcosonic_w1e string = `
-[{
-  "devEui": "116c52b4274f",
-  "sensorType": "qalcosonic_w1e",
-  "messageType": "payload.Payload",
-  "timestamp": "2022-08-25T07:35:21.834484Z",
-  "Payload": "0ea0355d302935000054c0345de7290000b800b900b800b800b800b900b800b800b800b800b800b800b900b900b900",
-  "fCntUp": 1490,
-  "toa": null,
-  "freq": 867900000,
-  "batteryLevel": "255",
-  "ack": false,
-  "spreadingFactor": "8",
-  "rssi": "-115",
-  "snr": "-1.8",
-  "gatewayIdentifier": "000",
-  "fPort": "100",
-  "tags": {
-    "application": ["ambiductor_test"]
-  },
-  "gateways": [
-    {
-      "rssi": "-115",
-      "snr": "-1.8",
-      "gatewayIdentifier": "000",
-      "antenna": 0
-    }
-  ]
-}]
-`
+func qalcosonic_ue(hex string) (context.Context, types.Event) {
+	s := fmt.Sprintf(qalcosonic_payload, hex)
+	ue, _ := facades.New("netmore")(context.Background(), "payload", []byte(s))
+	return context.Background(), ue
+}
 
-const qalcosonic_w1h string = `
-[{
-  "devEui": "116c52b4274f",
-  "sensorType": "qalcosonic_w1h",
-  "messageType": "payload.Payload",
-  "timestamp": "2019-07-27T11:37:50.834484Z",
-  "Payload": "011fbfd05e30cd0f0800d4879e41865c1b42470d7283b8201608fec181981dd007f3919460218247b631784c1c9e87b8e17600",
-  "fCntUp": 1490,
-  "toa": null,
-  "freq": 867900000,
-  "batteryLevel": "255",
-  "ack": false,
-  "spreadingFactor": "8",
-  "rssi": "-115",
-  "snr": "-1.8",
-  "gatewayIdentifier": "000",
-  "fPort": "100",
-  "tags": {
-    "application": ["ambiductor_test"]
-  },
-  "gateways": [
-    {
-      "rssi": "-115",
-      "snr": "-1.8",
-      "gatewayIdentifier": "000",
-      "antenna": 0
-    }
-  ]
-}]
-`
+func qalcosonic(hex string) []byte {
+	_, ue := qalcosonic_ue(hex)
+	return ue.Payload.Data
+}
 
-const qalcosonic_w1t string = `
+const qalcosonic_payload string = `
 [{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1t",

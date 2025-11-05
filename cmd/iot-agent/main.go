@@ -73,11 +73,15 @@ func main() {
 	messengerConfig := messaging.LoadConfiguration(ctx, serviceName, logger)
 	storageConfig := storage.LoadConfiguration(ctx)
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	appCfg := appConfig{
 		mqttCfg:      &mqttConfig,
 		messengerCfg: &messengerConfig,
 		storageCfg:   &storageConfig,
 		dpCfg:        dpCfg,
+		devmode:      flags[devmode] == "true",
+		cancel:       cancel,
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg)
@@ -129,7 +133,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 
 			var err error
 
-			store, err = storage.New(ctx, *ac.storageCfg)
+			store, err = newStorage(ctx, *ac.storageCfg, ac.devmode)
 			if err != nil {
 				return fmt.Errorf("failed to create storage: %w", err)
 			}
@@ -144,7 +148,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 				return fmt.Errorf("failed to init messenger: %w", err)
 			}
 
-			dmClient, err = devicemgmtclient.New(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], true, flags[oauth2ClientId], flags[oauth2ClientSecret])
+			dmClient, err = newDeviceMgmtClient(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], flags[oauth2ClientId], flags[oauth2ClientSecret], ac.devmode)
 			if err != nil {
 				return fmt.Errorf("failed to create device management client: %w", err)
 			}
@@ -162,16 +166,36 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 		}),
 		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
 			logger.Debug("shutting down servicerunner")
+
 			mqttClient.Stop()
 			messenger.Close()
 			dmClient.Close(ctx)
 			store.Close()
+			appCfg.cancel()
 
 			return nil
 		}),
 	)
 
 	return runner, nil
+}
+
+func newStorage(ctx context.Context, cfg storage.Config, devmode bool) (storage.Storage, error) {
+	if devmode {
+		logging.GetFromContext(ctx).Warn("devmode is enabled, using in-memory storage")
+		return newDevmodeStorage(ctx)
+	}
+
+	return storage.New(ctx, cfg)
+}
+
+func newDeviceMgmtClient(ctx context.Context, url, tokenUrl, clientId, clientSecret string, devmode bool) (devicemgmtclient.DeviceManagementClient, error) {
+	if devmode {
+		logging.GetFromContext(ctx).Warn("devmode is enabled, using device management client mock")
+		return newDevmodeDeviceMgmtClient(ctx)
+	}
+
+	return devicemgmtclient.New(ctx, url, tokenUrl, true, clientId, clientSecret)
 }
 
 func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {
@@ -216,10 +240,10 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	return ctx, flags
 }
 
-func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (*application.DeviceProfileConfigs, error) {
+func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (map[string]application.DeviceProfileConfig, error) {
 	defer f.Close()
 
-	var cfg application.DeviceProfileConfigs
+	var cfg map[string]application.DeviceProfileConfig
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read device profile file: %w", err)
@@ -229,7 +253,7 @@ func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (*application.D
 		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func exitIf(err error, logger *slog.Logger, msg string, args ...any) {
