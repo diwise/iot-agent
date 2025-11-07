@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
@@ -120,10 +121,13 @@ func Converter(ctx context.Context, deviceID string, payload types.SensorPayload
 	return convertToLwm2mObjects(ctx, deviceID, p, ts), nil
 }
 
-func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload, ts time.Time) []lwm2m.Lwm2mObject {
-	objects := []lwm2m.Lwm2mObject{}
+func ConverterEltSht3x(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+	p := payload.(ElsysPayload)
+	return convertToLwm2mObjects(ctx, deviceID, p, ts, "sht3x"), nil
+}
 
-	// TODO: better solution for multiple values of same type
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload, ts time.Time, options ...string) []lwm2m.Lwm2mObject {
+	objects := []lwm2m.Lwm2mObject{}
 
 	if p.Temperature != nil {
 		del := ""
@@ -151,7 +155,11 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload,
 	}
 
 	if p.Humidity != nil {
-		objects = append(objects, lwm2m.NewHumidity(deviceID, float64(*p.Humidity), ts))
+		del := ""
+		if p.Pulse != nil && slices.Contains(options, "sht3x") {
+			del = "/0"
+		}
+		objects = append(objects, lwm2m.NewHumidity(deviceID+del, float64(*p.Humidity), ts))
 	}
 
 	if p.Light != nil {
@@ -187,6 +195,12 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload,
 		di.DigitalInputCounter = pulseAbs
 
 		objects = append(objects, di)
+	}
+
+	if slices.Contains(options, "sht3x") {
+		if p.Pulse != nil {
+			objects = append(objects, lwm2m.NewHumidity(deviceID+"/1", float64(*p.Pulse)/10, ts))
+		}
 	}
 
 	logging.GetFromContext(ctx).Debug("converted objects", slog.Int("count", len(objects)))
