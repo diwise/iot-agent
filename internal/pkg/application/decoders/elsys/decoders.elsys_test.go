@@ -72,6 +72,21 @@ func TestElsysDigital1False_lwm2m(t *testing.T) {
 	is.Equal(false, objects[0].(lwm2m.DigitalInput).DigitalInputState)
 }
 
+func TestElsysSht3x(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ue, err := facades.New("netmore")(context.Background(), "payload", []byte(elsysSht3x))
+	is.NoErr(err)
+
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+
+	objects, err := ConverterEltSht3x(context.Background(), "abc123", payload, ue.Timestamp)
+	is.NoErr(err)
+
+	is.Equal(len(objects), 5)
+}
+
 func TestElsysCO2Decoder(t *testing.T) {
 	is, _ := testSetup(t)
 
@@ -270,6 +285,22 @@ const elsysTemp string = `{
 		"Location": "Vangen"
 	}
 }`
+
+const elsysSht3x string = `[{
+	"devEui":"a81758fffe09ec03",
+	"deviceName":"elt_2_hp",
+	"sensorType":"elt_2_hp",
+	"fPort":"5",
+	"payload":"01002A0237070E450A03570C002D14000F7D5E",
+	"timestamp":"2023-10-30T13:57:37.868543Z",
+	"rxInfo":{
+		"gatewayId":"881",
+		"rssi":-117,
+		"snr":-17
+	},
+	"txInfo":{},
+	"error":{}
+}]`
 
 const elsys2Temp string = `[{
 	"devEui":"a81758fffe09ec03",

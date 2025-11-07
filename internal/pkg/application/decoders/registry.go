@@ -39,19 +39,22 @@ type registryImpl struct {
 
 func NewRegistry() Registry {
 	decoders := map[string]DecoderFunc{
-		"airquality":      airquality.Decoder,
-		"axsensor":        axsensor.Decoder,
-		"elt_2_hp":        elsys.Decoder,
-		"enviot":          enviot.Decoder,
-		"niab-fls":        niab.Decoder,
+		"airquality": airquality.Decoder,
+		"axsensor":   axsensor.Decoder,
+		"enviot":     enviot.Decoder,
+		"niab-fls":   niab.Decoder,
+
 		"qalcosonic":      qalcosonic.Decoder,
 		"qalcosonic/w1t":  qalcosonic.DecoderW1t,
 		"qalcosonic/w1h":  qalcosonic.DecoderW1h,
 		"qalcosonic/w1e":  qalcosonic.DecoderW1e,
+		
 		"vegapuls_air_41": vegapuls.Decoder,
 
-		"elsys":       elsys.Decoder,
-		"elsys_codec": elsys.Decoder, // deprecated, use elsys
+		"elt_2_hp":        elsys.Decoder,
+		"elsys":           elsys.Decoder,
+		"elsys/elt/sht3x": elsys.Decoder,
+		"elsys_codec":     elsys.Decoder, // deprecated, use elsys
 
 		"milesight":       milesight.Decoder,
 		"milesight_am100": milesight.Decoder, // deprecated, use milesight
@@ -59,8 +62,8 @@ func NewRegistry() Registry {
 		"senlabt":      senlabt.Decoder,
 		"tem_lab_14ns": senlabt.Decoder, // deprecated, use senlabt
 
-		"cube02":    sensefarm.Decoder, // deprecated, use sensefarm
 		"sensefarm": sensefarm.Decoder,
+		"cube02":    sensefarm.Decoder, // deprecated, use sensefarm
 
 		"sensative":        sensative.Decoder,
 		"strips_lora_ms_h": sensative.Decoder, // deprecated, use sensative
@@ -68,16 +71,22 @@ func NewRegistry() Registry {
 	}
 
 	converters := map[string]ConverterFunc{
-		"airquality":      airquality.Converter,
-		"axsensor":        axsensor.Converter,
-		"elt_2_hp":        elsys.Converter,
-		"enviot":          enviot.Converter,
-		"niab-fls":        niab.Converter,
-		"qalcosonic":      qalcosonic.Converter,
+		"airquality": airquality.Converter,
+		"axsensor":   axsensor.Converter,
+		"enviot":     enviot.Converter,
+		"niab-fls":   niab.Converter,
+
+		"qalcosonic":     qalcosonic.Converter,
+		"qalcosonic/w1t": qalcosonic.Converter,
+		"qalcosonic/w1h": qalcosonic.Converter,
+		"qalcosonic/w1e": qalcosonic.Converter,
+
 		"vegapuls_air_41": vegapuls.Converter,
 
-		"elsys":       elsys.Converter,
-		"elsys_codec": elsys.Converter, // deprecated, use elsys
+		"elt_2_hp":        elsys.Converter,
+		"elsys":           elsys.Converter,
+		"elsys/elt/sht3x": elsys.ConverterEltSht3x,
+		"elsys_codec":     elsys.Converter, // deprecated, use elsys
 
 		"milesight":       milesight.Converter,
 		"milesight_am100": milesight.Converter, // deprecated, use milesight
@@ -85,8 +94,8 @@ func NewRegistry() Registry {
 		"senlabt":      senlabt.Converter,
 		"tem_lab_14ns": senlabt.Converter, // deprecated, use senlabt
 
-		"cube02":    sensefarm.Converter, // deprecated, use sensefarm
 		"sensefarm": sensefarm.Converter,
+		"cube02":    sensefarm.Converter, // deprecated, use sensefarm
 
 		"sensative":        sensative.Converter,
 		"strips_lora_ms_h": sensative.Converter, // deprecated, use sensative
