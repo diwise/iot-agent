@@ -1,11 +1,13 @@
-#Elsys_Codec:
-#  profile_name: elsys
-#  tenant: default
-#  activate: true
-#  location: true
+# Configuration for when creating new sensors 
+
+#Elsys_Codec:               -- name of codec in chirpstack/netmore
+#  profile_name: elsys      -- profile to use
+#  tenant: default          -- tenant to assign device to
+#  activate: true           -- activate device upon creation
+#  location: true           -- use location from chirpstack/netmore
 #  tags: 
-#    enabled: true
-#    metadata: true
+#    enabled: true          -- use tags from chirpstack/netmore 
+#    metadata: true         -- use tags to create metadata
 #    mappings:
-#      location: plats
+#      location: plats      -- map keys. E.g. "location" to "plats"
 #      mount: position

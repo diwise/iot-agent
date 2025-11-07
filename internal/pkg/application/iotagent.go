@@ -336,9 +336,14 @@ func (a *app) getDeviceProfile(ctx context.Context, sensorType string) profile {
 	var dp profile
 	var ok bool
 
+	log := logging.GetFromContext(ctx)
+
 	sensorType = strings.ToLower(sensorType)
 
+	log.Debug("get device profile for sensor type", "sensor_type", sensorType)
+
 	if dp, ok = a.dpCfg[sensorType]; !ok {
+		log.Debug("device profile not found, returning UNKNOWN", "name", dp.Cfg.ProfileName)
 		return a.dpCfg[UNKNOWN]
 	}
 
@@ -348,6 +353,7 @@ func (a *app) getDeviceProfile(ctx context.Context, sensorType string) profile {
 
 	p, err := a.client.GetDeviceProfile(ctx, dp.Cfg.ProfileName)
 	if err != nil {
+		log.Debug("could not fetch device profile from device management, returning UNKNOWN", "name", dp.Cfg.ProfileName)
 		return a.dpCfg[UNKNOWN]
 	}
 
