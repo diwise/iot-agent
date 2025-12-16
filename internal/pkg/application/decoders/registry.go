@@ -17,7 +17,9 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders/senlabt"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders/sensative"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders/sensefarm"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoders/talkpool"
 	"github.com/diwise/iot-agent/internal/pkg/application/decoders/vegapuls"
+	"github.com/diwise/iot-agent/internal/pkg/application/decoders/x2climate"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -44,11 +46,11 @@ func NewRegistry() Registry {
 		"enviot":     enviot.Decoder,
 		"niab-fls":   niab.Decoder,
 
-		"qalcosonic":      qalcosonic.Decoder,
-		"qalcosonic/w1t":  qalcosonic.DecoderW1t,
-		"qalcosonic/w1h":  qalcosonic.DecoderW1h,
-		"qalcosonic/w1e":  qalcosonic.DecoderW1e,
-		
+		"qalcosonic":     qalcosonic.Decoder,
+		"qalcosonic/w1t": qalcosonic.DecoderW1t,
+		"qalcosonic/w1h": qalcosonic.DecoderW1h,
+		"qalcosonic/w1e": qalcosonic.DecoderW1e,
+
 		"vegapuls_air_41": vegapuls.Decoder,
 
 		"elt_2_hp":        elsys.Decoder,
@@ -68,6 +70,10 @@ func NewRegistry() Registry {
 		"sensative":        sensative.Decoder,
 		"strips_lora_ms_h": sensative.Decoder, // deprecated, use sensative
 		"presence":         sensative.Decoder, // deprecated, use sensative
+
+		"talkpool/oy1210": talkpool.DecoderOy1210,
+
+		"x2climate": x2climate.DecoderX2Climate,
 	}
 
 	converters := map[string]ConverterFunc{
@@ -100,6 +106,10 @@ func NewRegistry() Registry {
 		"sensative":        sensative.Converter,
 		"strips_lora_ms_h": sensative.Converter, // deprecated, use sensative
 		"presence":         sensative.Converter, // deprecated, use sensative
+
+		"talkpool/oy1210": talkpool.ConverterOy1210,
+
+		"x2climate": x2climate.ConverterX2Climate,
 	}
 
 	return &registryImpl{
