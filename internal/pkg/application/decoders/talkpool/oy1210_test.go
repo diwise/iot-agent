@@ -17,12 +17,26 @@ func TestPayload(t *testing.T) {
 			ue, err := facades.New("netmore")(nil, "payload", []byte(fmt.Sprintf(message, p)))
 			is.NoErr(err)
 			is.Equal(ue.DevEUI, "00138e0000007608")
-			x, err := DecodeOy1210Payload(ue.Payload.Data, 2)
+			x, err := decodeOy1210Payload(ue.Payload.Data, 2)
 			is.NoErr(err)
 			fmt.Printf("Decoded payload %d: %+v\n", i, x)
 		})
 	}
 
+}
+
+func TestSinglePayload(t *testing.T) {
+	is := is.New(t)
+
+	ue, err := facades.New("netmore")(nil, "payload", []byte(fmt.Sprintf(message, testPayloads[0])))
+	is.NoErr(err)
+	is.Equal(ue.DevEUI, "00138e0000007608")
+	x, err := decodeOy1210Payload(ue.Payload.Data, 2)
+	is.NoErr(err)
+
+	is.Equal(x.CO2, int(826))
+	is.Equal(x.Humidity, 43.8)
+	is.Equal(x.Temperature, 24.1)
 }
 
 var testPayloads = []string{"412B10033A", "4028F00321", "4128090319", "3D2AFE01AF", "3D2BE401AB"}

@@ -1,8 +1,13 @@
 package talkpool
 
 import (
+	"context"
 	"errors"
 	"math"
+	"time"
+
+	"github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/pkg/lwm2m"
 )
 
 var (
@@ -16,7 +21,22 @@ type Oy1210Data struct {
 	CO2         int     `json:"co2"`
 }
 
-func DecodeOy1210Payload(bytes []byte, port int) (*Oy1210Data, error) {
+func (a Oy1210Data) BatteryLevel() *int {
+	return nil
+}
+func (a Oy1210Data) Error() (string, []string) {
+	return "", []string{}
+}
+
+func DecoderOy1210(ctx context.Context, e types.Event) (types.SensorPayload, error) {
+	p, err := decodeOy1210Payload(e.Payload.Data, 2)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func decodeOy1210Payload(bytes []byte, port int) (*Oy1210Data, error) {
 	if port != 2 {
 		return nil, ErrUnsupportedPort
 	}
@@ -38,4 +58,22 @@ func DecodeOy1210Payload(bytes []byte, port int) (*Oy1210Data, error) {
 
 func roundToOneDecimal(v float64) float64 {
 	return math.Round(v*10) / 10
+}
+
+func ConverterOy1210(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
+	p := payload.(Oy1210Data)
+	return convertToLwm2mObjects(ctx, deviceID, p, ts, "sht3x"), nil
+}
+
+func convertToLwm2mObjects(ctx context.Context, deviceID string, p Oy1210Data, ts time.Time, options ...string) []lwm2m.Lwm2mObject {
+	objects := []lwm2m.Lwm2mObject{}
+
+	objects = append(objects, lwm2m.NewTemperature(deviceID, float64(p.Temperature), ts))
+
+	objects = append(objects, lwm2m.NewHumidity(deviceID, float64(p.Humidity), ts))
+
+	co2 := float64(p.CO2)
+	objects = append(objects, lwm2m.NewAirQuality(deviceID, &co2, nil, nil, nil, ts))
+
+	return objects
 }
