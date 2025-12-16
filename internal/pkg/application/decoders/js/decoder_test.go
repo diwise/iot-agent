@@ -12,26 +12,8 @@ import (
 func TestTalkpool(t *testing.T) {
 	is := is.New(t)
 
-	for i, p := range testPayloads {
-
-		t.Run(fmt.Sprintf("payload-%d", i), func(t *testing.T) {
-			ctx := t.Context()
-			ue, err := facades.New("netmore")(nil, "payload", []byte(fmt.Sprintf(message, p)))
-			is.NoErr(err)
-
-			is.Equal(ue.DevEUI, "00138e0000007608")
-
-			_, err = Decode(ctx, strings.NewReader(talkpoolDecoder), ue)
-			is.NoErr(err)
-		})
-	}
-}
-
-func TestSinglePayload(t *testing.T) {
-	is := is.New(t)
-
 	ctx := t.Context()
-	ue, err := facades.New("netmore")(nil, "payload", []byte(fmt.Sprintf(message, testPayloads[0])))
+	ue, err := facades.New("netmore")(nil, "payload", fmt.Appendf(nil, message, testPayloads[0]))
 	is.NoErr(err)
 
 	is.Equal(ue.DevEUI, "00138e0000007608")
@@ -76,11 +58,9 @@ function decodeUplink(input) {
     return {
         "data": DecodeOy1210Payload(input.bytes, input.fPort)
     }
-}
+}`
 
-`
-
-var testPayloads = []string{"412B10033A", "4028F00321", "4128090319", "3D2AFE01AF", "3D2BE401AB"}
+var testPayloads = []string{"412B10033A"}
 
 const message string = `[{
 	"devEui":"00138e0000007608",

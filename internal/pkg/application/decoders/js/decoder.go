@@ -9,7 +9,7 @@ import (
 	"github.com/dop251/goja"
 )
 
-// This is a way to execute JavaScript decoders for payloads from The Things Network
+// This is a way to execute JavaScript decoders from The Things Network
 // as of now only for test purposes.
 
 func Decode(ctx context.Context, js io.Reader, e types.Event) (map[string]any, error) {
