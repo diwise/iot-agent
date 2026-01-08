@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -59,6 +60,7 @@ func New(ctx context.Context, config Config) (Storage, error) {
 
 	err = initialize(ctx, pool)
 	if err != nil {
+		pool.Close()
 		return &postgres{}, err
 	}
 
@@ -130,13 +132,25 @@ func (s *postgres) Save(ctx context.Context, se types.Event, device dmc.Device, 
 }
 
 func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
-	p, err := pgxpool.New(ctx, config.ConnStr())
+	poolConfig, err := pgxpool.ParseConfig(config.ConnStr())
+	if err != nil {
+		return nil, err
+	}
+
+	poolConfig.MaxConns = 10
+	poolConfig.MinConns = 2
+	poolConfig.MaxConnLifetime = 30 * time.Minute
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
+	poolConfig.HealthCheckPeriod = 30 * time.Second
+
+	p, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	err = p.Ping(ctx)
 	if err != nil {
+		p.Close()
 		return nil, err
 	}
 
@@ -182,11 +196,22 @@ func initialize(ctx context.Context, conn *pgxpool.Pool) error {
 		return err
 	}
 
+	committed := false
+	defer func() {
+		if !committed {
+			tx.Rollback(ctx)
+		}
+	}()
+
 	_, err = tx.Exec(ctx, ddl)
 	if err != nil {
-		tx.Rollback(ctx)
 		return err
 	}
 
-	return tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err == nil {
+		committed = true
+	}
+
+	return err
 }
