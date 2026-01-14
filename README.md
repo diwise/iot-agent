@@ -8,7 +8,7 @@ A Go service that handles decoding and conversion of incoming IoT sensor data fr
 ## Architecture
 
 ```mermaid
-flowchart TB
+flowchart LB
     subgraph "External Systems"
         AS[Application Server<br/>(Chirpstack/Netmore/Servanet)]
         MQTT_Broker[MQTT Broker]
@@ -25,18 +25,15 @@ flowchart TB
         Converter[LwM2M Converter]
     end
     
-    AS --> MQTT_Broker
-    MQTT_Broker --> Handler
-    Handler --> API
-    API --> Facade
-    API --> DeviceMgmt
-    DeviceMgmt --> Decoder
-    Decoder --> Converter
-    Converter --> RabbitMQ
-    RabbitMQ --> IoTCore
-    
-    style External Systems fill:#e1f5fe
-    style "IoT Agent" fill:#f3e5f5
+    AS-->MQTT_Broker
+    MQTT_Broker-->Handler
+    Handler-->API
+    API-->Facade
+    API-->DeviceMgmt
+    DeviceMgmt-->Decoder
+    Decoder-->Converter
+    Converter-->RabbitMQ
+    RabbitMQ-->IoTCore
 ```
 
 The IoT Agent follows a modular architecture where:
