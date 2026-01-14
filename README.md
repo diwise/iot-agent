@@ -10,7 +10,7 @@ A Go service that handles decoding and conversion of incoming IoT sensor data fr
 ```mermaid
 flowchart TB
     subgraph external
-        AS[Application Server (Chirpstack/Netmore/Servanet)]
+        AS[Chirpstack/Netmore/Servanet]
         MQTT_Broker[MQTT Broker]
         RabbitMQ[RabbitMQ]
         DeviceMgmt[iot-device-mgmt]
@@ -18,7 +18,7 @@ flowchart TB
     end
     
     subgraph iot-agent
-        API[API Server:8080]
+        API[API Server]
         Handler[Message Handler]
         Facade[Facade Layer]
         Decoder[Decoder Registry]
@@ -262,11 +262,11 @@ DEVMODE=false
 #### MQTT Configuration
 ```bash
 # MQTT Broker Connection
-MQTT_DISABLED=false
-MQTT_HOST=localhost
+MQTT_DISABLED=<true/false>
+MQTT_HOST=<host>
 MQTT_PORT=1883
-MQTT_USER=username
-MQTT_PASSWORD=password
+MQTT_USER=<username>
+MQTT_PASSWORD=<password>
 
 # MQTT Topics (supports multiple topics)
 MQTT_TOPIC_0=application/+/device/+/event/up
@@ -276,22 +276,22 @@ MQTT_TOPIC_1=topic-02/#
 
 #### RabbitMQ Configuration
 ```bash
-RABBITMQ_HOST=rabbitmq
+RABBITMQ_HOST=<host>
 RABBITMQ_PORT=5672
 RABBITMQ_VHOST=/
-RABBITMQ_USER=user
-RABBITMQ_PASS=bitnami
-RABBITMQ_DISABLED=false
+RABBITMQ_USER=<username>
+RABBITMQ_PASS=<password>
+RABBITMQ_DISABLED=<true/false>
 ```
 
 #### Database Configuration
 ```bash
 # PostgreSQL/TimescaleDB
-POSTGRES_HOST=localhost
+POSTGRES_HOST=<host>
 POSTGRES_PORT=5432
 POSTGRES_DBNAME=diwise
-POSTGRES_USER=diwise
-POSTGRES_PASSWORD=password
+POSTGRES_USER=<username>
+POSTGRES_PASSWORD=<password>
 POSTGRES_SSLMODE=disable
 ```
 
@@ -301,7 +301,7 @@ POSTGRES_SSLMODE=disable
 DEV_MGMT_URL=http://iot-device-mgmt:8080
 OAUTH2_TOKEN_URL=http://keycloak:8080/realms/diwise-local/protocol/openid-connect/token
 OAUTH2_CLIENT_ID=diwise-devmgmt-api
-OAUTH2_CLIENT_SECRET=your-client-secret
+OAUTH2_CLIENT_SECRET=<your-client-secret>
 ```
 
 #### Application Server Configuration
