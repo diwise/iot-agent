@@ -8,17 +8,17 @@ A Go service that handles decoding and conversion of incoming IoT sensor data fr
 ## Architecture
 
 ```mermaid
-flowchart LB
-    subgraph "External Systems"
-        AS[Application Server<br/>(Chirpstack/Netmore/Servanet)]
+flowchart TB
+    subgraph external
+        AS[Application Server (Chirpstack/Netmore/Servanet)]
         MQTT_Broker[MQTT Broker]
         RabbitMQ[RabbitMQ]
         DeviceMgmt[iot-device-mgmt]
         IoTCore[iot-core]
     end
     
-    subgraph "IoT Agent"
-        API[API Server<br/>:8080]
+    subgraph iot-agent
+        API[API Server:8080]
         Handler[Message Handler]
         Facade[Facade Layer]
         Decoder[Decoder Registry]
