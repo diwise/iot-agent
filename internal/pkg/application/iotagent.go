@@ -103,7 +103,7 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		for range ticker.C {
 			a.notFoundDevicesMu.Lock()
 			for devEUI, ts := range a.notFoundDevices {
-				if ts.UTC().After(time.Now().UTC()) {
+				if time.Now().UTC().After(ts.UTC()) {
 					delete(a.notFoundDevices, devEUI)
 				}
 			}
@@ -125,7 +125,7 @@ func (a *app) decodeAndConvert(ctx context.Context, se types.Event) (dmc.Device,
 	}
 
 	if a.createUnknownDeviceEnabled && device.SensorType() == UNKNOWN {
-		a.ignoreDeviceFor(se.DevEUI, 1*time.Hour)
+		a.ignoreDeviceFor(se.DevEUI, 5*time.Minute)
 		return device, nil, nil, errDeviceIgnored
 	}
 

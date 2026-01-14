@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/diwise/iot-agent/internal/pkg/application/decoders"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
@@ -189,6 +191,180 @@ func TestDeterministicGuid(t *testing.T) {
 	is.Equal(uuid1, uuid2)
 }
 
+func TestIgnoreDeviceFor(t *testing.T) {
+	is := is.New(t)
+	_, _, e, s, _ := testSetup(t)
+
+	agent := New(nil, e, s, false, "default", map[string]DeviceProfileConfig{}).(*app)
+
+	// Verify cache is empty initially
+	is.Equal(len(agent.notFoundDevices), 0)
+
+	// Add device to cache for 1 minute
+	agent.ignoreDeviceFor("testdevice", 1*time.Minute)
+
+	// Verify device is now in cache
+	is.Equal(len(agent.notFoundDevices), 1)
+
+	// Verify the timestamp is in the future
+	timestamp, exists := agent.notFoundDevices["testdevice"]
+	is.True(exists)
+	is.True(timestamp.After(time.Now().UTC()))
+}
+
+func TestDeviceIsCurrentlyIgnored(t *testing.T) {
+	is := is.New(t)
+	_, _, e, s, ctx := testSetup(t)
+
+	agent := New(nil, e, s, false, "default", map[string]DeviceProfileConfig{}).(*app)
+
+	// Test non-ignored device
+	ignored := agent.deviceIsCurrentlyIgnored(ctx, "nonexistent")
+	is.True(!ignored)
+
+	// Add device to cache for 1 minute
+	agent.ignoreDeviceFor("testdevice", 1*time.Minute)
+
+	// Test recently ignored device
+	ignored = agent.deviceIsCurrentlyIgnored(ctx, "testdevice")
+	is.True(ignored)
+
+	// Add device to cache for very short time (1ms)
+	agent.ignoreDeviceFor("shortlived", 1*time.Millisecond)
+
+	// Wait for the time to expire
+	time.Sleep(2 * time.Millisecond)
+
+	// Test expired device
+	ignored = agent.deviceIsCurrentlyIgnored(ctx, "shortlived")
+	is.True(!ignored)
+
+	// Verify expired device was removed from cache
+	_, exists := agent.notFoundDevices["shortlived"]
+	is.True(!exists)
+}
+
+func TestIgnoreDeviceExpires(t *testing.T) {
+	is := is.New(t)
+	_, _, e, s, ctx := testSetup(t)
+
+	agent := New(nil, e, s, false, "default", map[string]DeviceProfileConfig{}).(*app)
+
+	// Add device to cache for very short time (1ms)
+	agent.ignoreDeviceFor("expiringdevice", 1*time.Millisecond)
+
+	// Verify device is initially ignored
+	ignored := agent.deviceIsCurrentlyIgnored(ctx, "expiringdevice")
+	is.True(ignored)
+
+	// Wait for the time to expire
+	time.Sleep(2 * time.Millisecond)
+
+	// Verify device is no longer ignored
+	ignored = agent.deviceIsCurrentlyIgnored(ctx, "expiringdevice")
+	is.True(!ignored)
+
+	// Verify device was removed from cache
+	_, exists := agent.notFoundDevices["expiringdevice"]
+	is.True(!exists)
+}
+
+func TestIgnoredDeviceIsBlacklisted(t *testing.T) {
+	is := is.New(t)
+	_, dmc, e, s, _ := testSetup(t)
+
+	agent := New(dmc, e, s, false, "default", map[string]DeviceProfileConfig{}).(*app)
+
+	// Add device to ignore cache
+	agent.ignoreDeviceFor("blacklisteddevice", 1*time.Minute)
+
+	// Try to find the ignored device
+	device, err := agent.findDevice(context.Background(), "blacklisteddevice", dmc.FindDeviceFromDevEUI)
+
+	// Should return errDeviceOnBlackList
+	is.Equal(err, errDeviceOnBlackList)
+	is.True(device == nil)
+}
+
+func TestUnknownDeviceIgnored(t *testing.T) {
+	is := is.New(t)
+	_, dmc, e, s, ctx := testSetup(t)
+
+	agent := New(dmc, e, s, true, "default", map[string]DeviceProfileConfig{}).(*app)
+
+	// Create an event for an unknown device that will be found as "unknown" type
+	ue, _ := facades.New("netmore")(ctx, "payload", []byte("test"))
+	ue.DevEUI = "unknowndevicetest"
+
+	// Mock the FindDeviceFromDevEUI to return a device with "unknown" sensor type
+	dmc.FindDeviceFromDevEUIFunc = func(ctx context.Context, devEUI string) (client.Device, error) {
+		if devEUI == "unknowndevicetest" {
+			return &dmctest.DeviceMock{
+				IDFunc:         func() string { return "unknown-device-id" },
+				SensorTypeFunc: func() string { return "unknown" },
+				TypesFunc:      func() []string { return []string{} },
+				IsActiveFunc:   func() bool { return true },
+				TenantFunc:     func() string { return "default" },
+			}, nil
+		}
+		return dmc.FindDeviceFromDevEUI(ctx, devEUI)
+	}
+
+	// Handle the event - should return nil (errDeviceIgnored is handled internally)
+	err := agent.HandleSensorEvent(ctx, ue)
+	is.NoErr(err)
+
+	// Verify device was added to ignore cache for 5 minutes
+	ignored := agent.deviceIsCurrentlyIgnored(ctx, ue.DevEUI)
+	is.True(ignored)
+
+	// Verify the timestamp is in the future (about 5 minutes from now)
+	timestamp, exists := agent.notFoundDevices[ue.DevEUI]
+	is.True(exists)
+	expectedTime := time.Now().UTC().Add(5 * time.Minute)
+	is.True(timestamp.After(expectedTime.Add(-10*time.Second)) && timestamp.Before(expectedTime.Add(10*time.Second)))
+}
+
+func TestAutoCleanupWorks(t *testing.T) {
+	is := is.New(t)
+	_, _, e, s, _ := testSetup(t)
+
+	// Create an app with very short cleanup interval for testing
+	agent := &app{
+		registry:                   decoders.NewRegistry(),
+		client:                     nil,
+		msgCtx:                     e,
+		store:                      s,
+		notFoundDevices:            make(map[string]time.Time),
+		createUnknownDeviceEnabled: false,
+		createUnknownDeviceTenant:  "default",
+		dpCfg:                      make(map[string]profile),
+	}
+
+	// Add devices to cache with very short expiry time (1ms)
+	agent.ignoreDeviceFor("device1", 1*time.Millisecond)
+	agent.ignoreDeviceFor("device2", 2*time.Millisecond)
+	agent.ignoreDeviceFor("device3", 3*time.Millisecond)
+
+	// Verify devices are in cache initially
+	is.Equal(len(agent.notFoundDevices), 3)
+
+	// Wait a bit longer than the shortest expiry
+	time.Sleep(5 * time.Millisecond)
+
+	// Manually run the cleanup logic (simulate ticker)
+	agent.notFoundDevicesMu.Lock()
+	for devEUI, ts := range agent.notFoundDevices {
+		if time.Now().UTC().After(ts.UTC()) {
+			delete(agent.notFoundDevices, devEUI)
+		}
+	}
+	agent.notFoundDevicesMu.Unlock()
+
+	// Verify all devices have been cleaned up
+	is.Equal(len(agent.notFoundDevices), 0)
+}
+
 func getPackFromSendCalls(e *messaging.MsgContextMock, i int) senml.Pack {
 	sendCalls := e.SendCommandToCalls()
 	cmd := sendCalls[i].Command
@@ -240,6 +416,16 @@ func testSetup(t *testing.T) (*is.I, *dmctest.DeviceManagementClientMock, *messa
 				TenantFunc:     func() string { return "default" },
 			}
 
+			return res, nil
+		},
+		FindDeviceFromInternalIDFunc: func(ctx context.Context, deviceID string) (client.Device, error) {
+			res := &dmctest.DeviceMock{
+				IDFunc:         func() string { return deviceID },
+				SensorTypeFunc: func() string { return "Elsys_Codec" },
+				TypesFunc:      func() []string { return []string{"urn:oma:lwm2m:ext:3303"} },
+				IsActiveFunc:   func() bool { return true },
+				TenantFunc:     func() string { return "default" },
+			}
 			return res, nil
 		},
 	}
