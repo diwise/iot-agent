@@ -29,7 +29,7 @@ func (a Oy1210Data) Error() (string, []string) {
 }
 
 func DecoderOy1210(ctx context.Context, e types.Event) (types.SensorPayload, error) {
-	p, err := decodeOy1210Payload(e.Payload.Data, 2)
+	p, err := decodeOy1210Payload(e.Payload.Data, e.Payload.FPort)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package talkpool
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -59,6 +60,20 @@ func TestUplingEvent(t *testing.T) {
 
 	obj := convertToLwm2mObjects(ctx, ue.DevEUI, *x, ue.Timestamp)
 	is.Equal(3, len(obj))
+}
+
+func TestDecoderUsesEventFPort(t *testing.T) {
+	is := is.New(t)
+	ctx := t.Context()
+
+	var ue types.Event
+	err := json.Unmarshal([]byte(event), &ue)
+	is.NoErr(err)
+
+	ue.Payload.FPort = 1
+
+	_, err = DecoderOy1210(ctx, ue)
+	is.True(errors.Is(err, ErrUnsupportedPort))
 }
 
 var testPayloads = []string{"412B10033A", "4028F00321", "4128090319", "3D2AFE01AF", "3D2BE401AB"}
