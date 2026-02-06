@@ -61,11 +61,11 @@ func roundToOneDecimal(v float64) float64 {
 }
 
 func ConverterOy1210(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
-	p := payload.(Oy1210Data)
-	return convertToLwm2mObjects(ctx, deviceID, p, ts, "sht3x"), nil
+	p := payload.(*Oy1210Data)
+	return convertToLwm2mObjects(ctx, deviceID, *p, ts), nil
 }
 
-func convertToLwm2mObjects(ctx context.Context, deviceID string, p Oy1210Data, ts time.Time, options ...string) []lwm2m.Lwm2mObject {
+func convertToLwm2mObjects(_ context.Context, deviceID string, p Oy1210Data, ts time.Time) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
 	objects = append(objects, lwm2m.NewTemperature(deviceID, float64(p.Temperature), ts))

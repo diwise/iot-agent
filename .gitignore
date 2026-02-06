@@ -19,3 +19,5 @@
 .zed
 
 tempo-data
+
+**/*.test.csv

@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
+	"os"
 	"sync"
 
 	apptypes "github.com/diwise/iot-agent/internal/pkg/application/types"
@@ -11,6 +13,7 @@ import (
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	test "github.com/diwise/iot-device-mgmt/pkg/test"
 	"github.com/diwise/iot-device-mgmt/pkg/types"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,17 +24,55 @@ type devmodeDeviceMgmtClient struct {
 	mu       sync.Mutex
 }
 
-func newDevmodeDeviceMgmtClient(_ context.Context) (devicemgmtclient.DeviceManagementClient, error) {
+func newDevmodeDeviceMgmtClient(ctx context.Context) (devicemgmtclient.DeviceManagementClient, error) {
 	loadDeviceProfilesConfig, err := loadDeviceProfilesConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return &devmodeDeviceMgmtClient{
+	c := &devmodeDeviceMgmtClient{
 		devEUI:   make(map[string]types.Device),
 		deviceID: make(map[string]types.Device),
 		profiles: loadDeviceProfilesConfig,
-	}, nil
+	}
+
+	devicesFile := env.GetVariableOrDefault(ctx, "DEVMODE_DEVICES_FILE", "")
+	if f, err := os.Open(devicesFile); err == nil {
+		defer f.Close()
+		r := csv.NewReader(f)
+		r.Comma = ';'
+		records, err := r.ReadAll()
+		if err == nil {
+
+			for i, rec := range records {
+				if i == 0 {
+					continue
+				}
+				// devEUI;internalID;lat;lon;where;types;sensorType;name;description;active;tenant;interval;source;metadata
+				d := types.Device{
+					Active:   true,
+					SensorID: rec[0],
+					DeviceID: rec[1],
+					//Latitude: rec[2],
+					//Longitude: rec[3],
+					//Where: rec[4],
+					Lwm2mTypes: []types.Lwm2mType{},
+					DeviceProfile: types.DeviceProfile{
+						Decoder:  rec[6],
+						Interval: 3600,
+					},
+					Name:        rec[7],
+					Description: rec[8],
+					Tenant:      rec[10],
+				}
+
+				c.devEUI[d.SensorID] = d
+				c.deviceID[d.DeviceID] = d
+			}
+		}
+	}
+
+	return c, nil
 }
 
 func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devEUI string) (devicemgmtclient.Device, error) {
