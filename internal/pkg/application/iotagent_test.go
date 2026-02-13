@@ -286,6 +286,38 @@ func TestIgnoredDeviceIsBlacklisted(t *testing.T) {
 	is.True(device == nil)
 }
 
+func TestFindDeviceMapsNotFoundError(t *testing.T) {
+	is := is.New(t)
+	_, dmc, e, s, _ := testSetup(t)
+
+	agent := New(dmc, e, s, false, "default", map[string]DeviceProfileConfig{}).(*app)
+
+	dmc.FindDeviceFromDevEUIFunc = func(ctx context.Context, devEUI string) (client.Device, error) {
+		return nil, client.ErrNotFound
+	}
+
+	device, err := agent.findDevice(context.Background(), "missing-device", dmc.FindDeviceFromDevEUI)
+	is.True(device == nil)
+	is.True(errors.Is(err, errDeviceNotFound))
+}
+
+func TestFindDeviceReturnsUnderlyingError(t *testing.T) {
+	is := is.New(t)
+	_, dmc, e, s, _ := testSetup(t)
+
+	agent := New(dmc, e, s, false, "default", map[string]DeviceProfileConfig{}).(*app)
+
+	expectedErr := errors.New("request failed, not authorized")
+	dmc.FindDeviceFromDevEUIFunc = func(ctx context.Context, devEUI string) (client.Device, error) {
+		return nil, expectedErr
+	}
+
+	device, err := agent.findDevice(context.Background(), "auth-problem-device", dmc.FindDeviceFromDevEUI)
+	is.True(device == nil)
+	is.True(errors.Is(err, expectedErr))
+	is.True(!errors.Is(err, errDeviceNotFound))
+}
+
 func TestUnknownDeviceIgnored(t *testing.T) {
 	is := is.New(t)
 	_, dmc, e, s, ctx := testSetup(t)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -94,17 +95,57 @@ func main() {
 func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunner.Runner[appConfig], error) {
 	logger := logging.GetFromContext(ctx)
 
-	probes := map[string]k8shandlers.ServiceProber{
-		"rabbitmq":  func(context.Context) (string, error) { return "ok", nil },
-		"timescale": func(context.Context) (string, error) { return "ok", nil },
-		"mqtt":      func(context.Context) (string, error) { return "ok", nil },
-	}
-
 	var dmClient devicemgmtclient.DeviceManagementClient
 	var messenger messaging.MsgContext
 	var mqttClient mqtt.Client
 	var store storage.Storage
 	var facade facades.EventFunc
+
+	probes := map[string]k8shandlers.ServiceProber{
+		"rabbitmq": func(ctx context.Context) (string, error) {
+			if messenger == nil {
+				return "", errors.New("messenger not initialized")
+			}
+
+			probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			defer cancel()
+
+			if err := messenger.NoteToSelf(probeCtx, messaging.NewPingCommand()); err != nil {
+				return "", err
+			}
+
+			return "ok", nil
+		},
+		"timescale": func(ctx context.Context) (string, error) {
+			if store == nil {
+				return "", errors.New("storage not initialized")
+			}
+
+			if pinger, ok := store.(interface{ Ping(context.Context) error }); ok {
+				probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+				defer cancel()
+
+				if err := pinger.Ping(probeCtx); err != nil {
+					return "", err
+				}
+
+				return "ok", nil
+			}
+
+			return "ok", nil
+		},
+		"mqtt": func(context.Context) (string, error) {
+			if mqttClient == nil {
+				return "", errors.New("mqtt not initialized")
+			}
+
+			if !mqttClient.Ready() {
+				return "", errors.New("mqtt not connected")
+			}
+
+			return "ok", nil
+		},
+	}
 
 	_, runner := servicerunner.New(ctx, *cfg,
 		webserver("control", listen(flags[listenAddress]), port(flags[controlPort]),

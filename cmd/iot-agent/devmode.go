@@ -149,6 +149,10 @@ type devmodeStorage struct {
 	storage.StorageMock
 }
 
+func (d *devmodeStorage) Ping(ctx context.Context) error {
+	return nil
+}
+
 func newDevmodeStorage(_ context.Context) (storage.Storage, error) {
 	return &devmodeStorage{
 		storage.StorageMock{

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -75,6 +76,14 @@ func (s *postgres) Close() error {
 		return nil
 	}
 	return nil
+}
+
+func (s *postgres) Ping(ctx context.Context) error {
+	if s.conn == nil {
+		return errors.New("storage connection is not initialized")
+	}
+
+	return s.conn.Ping(ctx)
 }
 
 func (s *postgres) Save(ctx context.Context, se types.Event, device dmc.Device, payload types.SensorPayload, objects []lwm2m.Lwm2mObject, e error) error {
