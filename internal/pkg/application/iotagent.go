@@ -52,6 +52,7 @@ type app struct {
 	createUnknownDeviceEnabled bool
 	createUnknownDeviceTenant  string
 	dpCfg                      map[string]profile
+	dpCfgMu                    sync.RWMutex
 }
 
 type profile struct {
@@ -288,7 +289,10 @@ func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context
 
 	device, err := finder(ctx, id)
 	if err != nil {
-		return nil, errDeviceNotFound
+		if errors.Is(err, dmc.ErrNotFound) {
+			return nil, errDeviceNotFound
+		}
+		return nil, err
 	}
 
 	return device, nil
@@ -333,18 +337,20 @@ type Tags struct {
 }
 
 func (a *app) getDeviceProfile(ctx context.Context, sensorType string) profile {
-	var dp profile
-	var ok bool
-
 	log := logging.GetFromContext(ctx)
 
 	sensorType = strings.ToLower(sensorType)
 
 	log.Debug("get device profile for sensor type", "sensor_type", sensorType)
 
-	if dp, ok = a.dpCfg[sensorType]; !ok {
+	a.dpCfgMu.RLock()
+	dp, ok := a.dpCfg[sensorType]
+	unknown := a.dpCfg[UNKNOWN]
+	a.dpCfgMu.RUnlock()
+
+	if !ok {
 		log.Debug("device profile not found, returning UNKNOWN", "name", dp.Cfg.ProfileName)
-		return a.dpCfg[UNKNOWN]
+		return unknown
 	}
 
 	if len(dp.Types) > 0 {
@@ -354,12 +360,13 @@ func (a *app) getDeviceProfile(ctx context.Context, sensorType string) profile {
 	p, err := a.client.GetDeviceProfile(ctx, dp.Cfg.ProfileName)
 	if err != nil {
 		log.Debug("could not fetch device profile from device management, returning UNKNOWN", "name", dp.Cfg.ProfileName)
-		return a.dpCfg[UNKNOWN]
+		return unknown
 	}
 
+	a.dpCfgMu.Lock()
 	dp.Types = p.Types
-
 	a.dpCfg[sensorType] = dp
+	a.dpCfgMu.Unlock()
 
 	return dp
 }

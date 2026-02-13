@@ -49,8 +49,13 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		b, _ := io.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
+		if err != nil {
+			log.Error("failed to read incoming message body", "err", err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 		var im types.IncomingMessage
 		err = json.Unmarshal(b, &im)
@@ -110,8 +115,13 @@ func NewIncomingLWM2MMessageHandler(ctx context.Context, app application.App) ht
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		msg, _ := io.ReadAll(r.Body)
+		msg, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
+		if err != nil {
+			log.Error("failed to read incoming senML body", "err", err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 		pack := senml.Pack{}
 

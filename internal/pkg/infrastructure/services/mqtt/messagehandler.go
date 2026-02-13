@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -36,59 +37,76 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 	}
 
 	httpClient := http.Client{
+		Timeout:   15 * time.Second,
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
 	return func(client mqtt.Client, msg mqtt.Message) {
-		go func() {
-			var err error
+		var err error
 
-			ctx, span := tracer.Start(context.Background(), "forward-message")
-			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-			_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		ctx, span := tracer.Start(context.Background(), "forward-message")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-			messageCounter.Add(ctx, 1)
+		messageCounter.Add(ctx, 1)
 
-			defer msg.Ack()
-			payload := msg.Payload()
+		payload := msg.Payload()
 
-			parts := strings.Split(msg.Topic(), "/")
+		parts := strings.Split(msg.Topic(), "/")
 
-			im := types.IncomingMessage{
-				ID:     fmt.Sprintf("mqtt-%d", msg.MessageID()),
-				Type:   parts[len(parts)-1],
-				Source: msg.Topic(),
-				Data:   payload,
+		im := types.IncomingMessage{
+			ID:     fmt.Sprintf("mqtt-%d", msg.MessageID()),
+			Type:   parts[len(parts)-1],
+			Source: msg.Topic(),
+			Data:   payload,
+		}
+
+		b, err := json.Marshal(im)
+		if err != nil {
+			log.Error("failed to marshal incoming message", "err", err.Error())
+			if msg.Qos() > 0 {
+				msg.Ack()
 			}
+			return
+		}
 
-			b, err := json.Marshal(im)
-			if err != nil {
-				log.Error("failed to marshal incoming message", "err", err.Error())
-				return
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(b))
+		if err != nil {
+			log.Error("failed to create http request", "err", err.Error())
+			if msg.Qos() > 0 {
+				msg.Ack()
 			}
+			return
+		}
 
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(b))
-			if err != nil {
-				log.Error("failed to create http request", "err", err.Error())
-				return
-			}
+		req.Header.Add("Content-Type", "application/json")
 
-			req.Header.Add("Content-Type", "application/json")
-
-			resp, err := httpClient.Do(req)
-			if err != nil {
-				log.Error("forwarding request failed", "err", err.Error())
-			} else {
-				defer func() {
-					io.Copy(io.Discard, resp.Body)
-					resp.Body.Close()
-				}()
-
-				if resp.StatusCode != http.StatusCreated {
-					err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
-					log.Error("failed to forward message", "err", err.Error())
-				}
-			}
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			log.Error("forwarding request failed", "err", err.Error())
+			return
+		}
+		defer func() {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
 		}()
+
+		if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent {
+			if msg.Qos() > 0 {
+				msg.Ack()
+			}
+			return
+		}
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
+			log.Warn("dropping message after non-retryable response", "status_code", resp.StatusCode)
+			if msg.Qos() > 0 {
+				msg.Ack()
+			}
+			return
+		}
+
+		err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
+		log.Error("failed to forward message", "err", err.Error())
 	}
 }
