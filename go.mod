@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/diwise/messaging-golang v0.0.0-20250628135946-f23f34d06003
-	github.com/diwise/service-chassis v0.0.0-20260205073309-c91825ed1189
+	github.com/diwise/service-chassis v0.0.0-20260223135725-6d7d041046a6
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/matryer/is v1.4.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0
@@ -52,8 +52,8 @@ require (
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.3 // indirect
-	github.com/valyala/fastjson v1.6.7 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.31 // indirect
+	github.com/valyala/fastjson v1.6.10 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.32 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yashtewari/glob-intersection v0.2.0 // indirect
@@ -67,20 +67,20 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260217215200-42d3e9bedb6d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260217215200-42d3e9bedb6d // indirect
 	gopkg.in/ini.v1 v1.67.1 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
 require (
-	github.com/dop251/goja v0.0.0-20260106131823-651366fbe6e3
+	github.com/dop251/goja v0.0.0-20260219130522-0ba9a5494a59
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.8 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/open-policy-agent/opa v1.13.1
+	github.com/open-policy-agent/opa v1.13.2
 	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/bridges/otelslog v0.15.0 // indirect
