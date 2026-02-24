@@ -1,10 +1,10 @@
 module github.com/diwise/iot-agent
 
-go 1.25.0
+go 1.26
 
 require (
 	github.com/diwise/messaging-golang v0.0.0-20250628135946-f23f34d06003
-	github.com/diwise/service-chassis v0.0.0-20260223135725-6d7d041046a6
+	github.com/diwise/service-chassis v0.0.0-20260224075452-111d1a12718e
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/matryer/is v1.4.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0
@@ -12,8 +12,8 @@ require (
 )
 
 require (
-	github.com/diwise/iot-core v0.0.0-20260123092611-0333923bb4d4
-	github.com/diwise/iot-device-mgmt v0.0.0-20260213133520-ecaddd3b0548
+	github.com/diwise/iot-core v0.0.0-20260223155449-6534c148e11c
+	github.com/diwise/iot-device-mgmt v0.0.0-20260223155642-452bb00fe486
 	github.com/diwise/senml v0.0.0-20251022134045-d0045d1dd610
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
@@ -27,7 +27,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
@@ -67,8 +67,8 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260217215200-42d3e9bedb6d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260217215200-42d3e9bedb6d // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260223185530-2f722ef697dc // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260223185530-2f722ef697dc // indirect
 	gopkg.in/ini.v1 v1.67.1 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
