@@ -2,8 +2,6 @@ package airquality
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"math"
 	"time"
 
@@ -32,7 +30,7 @@ func (a AirQualityPayload) Error() (string, []string) {
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 
 	if e.Payload.FPort != 2 {
-		return nil, errors.New("invalid fPort")
+		return nil, types.ErrInvalidFPort
 	}
 
 	return decode(e.Payload.Data)
@@ -65,8 +63,7 @@ func decode(bytes []byte) (AirQualityPayload, error) {
 	var aqp AirQualityPayload
 
 	if len(bytes) < 12 {
-		err := fmt.Errorf("not enough bytes to decode")
-		return aqp, err
+		return aqp, types.ErrUnsupportedPayloadLength
 	}
 
 	aqp.PM10Raw = float64(uint16(bytes[1])<<8|uint16(bytes[0])) / 10.0

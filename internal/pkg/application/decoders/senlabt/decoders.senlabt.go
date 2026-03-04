@@ -32,7 +32,7 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2)
 	// | ID(1) | BatteryLevel(1) | Internal(n) | Temp(2) | Temp(2)
 	if len(e.Payload.Data) < 4 {
-		return nil, errors.New("payload too short")
+		return nil, types.ErrUnsupportedPayloadLength
 	}
 
 	err := decodePayload(e.Payload.Data, &d)
@@ -80,7 +80,7 @@ func decodePayload(b []byte, p *SenlabPayload) error {
 
 	// these values must be ignored since they are sensor reading errors
 	if p.Temperature == -46.75 || p.Temperature == 85 {
-		return errors.New("sensor reading error")
+		return types.ErrSensorReadingError
 	}
 
 	return nil

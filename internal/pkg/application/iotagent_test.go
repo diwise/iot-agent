@@ -281,8 +281,8 @@ func TestIgnoredDeviceIsBlacklisted(t *testing.T) {
 	// Try to find the ignored device
 	device, err := agent.findDevice(context.Background(), "blacklisteddevice", dmc.FindDeviceFromDevEUI)
 
-	// Should return errDeviceOnBlackList
-	is.Equal(err, errDeviceOnBlackList)
+	// Should return ErrDeviceIgnored
+	is.Equal(err, types.ErrDeviceIgnored)
 	is.True(device == nil)
 }
 
@@ -298,7 +298,7 @@ func TestFindDeviceMapsNotFoundError(t *testing.T) {
 
 	device, err := agent.findDevice(context.Background(), "missing-device", dmc.FindDeviceFromDevEUI)
 	is.True(device == nil)
-	is.True(errors.Is(err, errDeviceNotFound))
+	is.True(errors.Is(err, types.ErrDeviceNotFound))
 }
 
 func TestFindDeviceReturnsUnderlyingError(t *testing.T) {
@@ -315,7 +315,7 @@ func TestFindDeviceReturnsUnderlyingError(t *testing.T) {
 	device, err := agent.findDevice(context.Background(), "auth-problem-device", dmc.FindDeviceFromDevEUI)
 	is.True(device == nil)
 	is.True(errors.Is(err, expectedErr))
-	is.True(!errors.Is(err, errDeviceNotFound))
+	is.True(!errors.Is(err, types.ErrDeviceNotFound))
 }
 
 func TestUnknownDeviceIgnored(t *testing.T) {

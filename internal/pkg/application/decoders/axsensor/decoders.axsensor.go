@@ -3,7 +3,6 @@ package axsensor
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"math"
 	"time"
 
@@ -35,7 +34,7 @@ func (a AxsensorPayload) Error() (string, []string) {
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 
 	if e.Payload.FPort != 2 {
-		return nil, errors.New("invalid fPort")
+		return nil, types.ErrInvalidFPort
 	}
 
 	return decode(e.Payload.Data)

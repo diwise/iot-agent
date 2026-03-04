@@ -76,7 +76,7 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var err error
 
 	if e.Payload.FPort != 100 {
-		return Payload{}, fmt.Errorf("unsupported fPort %d", e.Payload.FPort)
+		return Payload{}, types.ErrInvalidFPort
 	}
 
 	p, ap, err := decode(ctx, e)
@@ -92,13 +92,13 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 
 func DecoderW1h(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if e.Payload.FPort != 100 {
-		return Payload{}, fmt.Errorf("unsupported fPort %d", e.Payload.FPort)
+		return Payload{}, types.ErrInvalidFPort
 	}
 
 	buf := bytes.NewReader(e.Payload.Data)
 
 	if buf.Len() != 51 && buf.Len() != 52 {
-		return Payload{}, fmt.Errorf("unsupported payload length %d for w1h decoder", buf.Len())
+		return Payload{}, types.ErrUnsupportedPayloadLength
 	}
 
 	p, err := w1h(buf)
@@ -113,13 +113,13 @@ func DecoderW1h(ctx context.Context, e types.Event) (types.SensorPayload, error)
 
 func DecoderW1e(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if e.Payload.FPort != 100 {
-		return Payload{}, fmt.Errorf("unsupported fPort %d", e.Payload.FPort)
+		return Payload{}, types.ErrInvalidFPort
 	}
 
 	buf := bytes.NewReader(e.Payload.Data)
 
 	if buf.Len() != 43 && buf.Len() != 44 && buf.Len() != 45 && buf.Len() != 46 && buf.Len() != 47 {
-		return Payload{}, fmt.Errorf("unsupported payload length %d for w1e decoder", buf.Len())
+		return Payload{}, types.ErrUnsupportedPayloadLength
 	}
 
 	p, err := w1e(buf)
@@ -134,7 +134,7 @@ func DecoderW1e(ctx context.Context, e types.Event) (types.SensorPayload, error)
 
 func DecoderW1t(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if e.Payload.FPort != 100 {
-		return Payload{}, fmt.Errorf("unsupported fPort %d", e.Payload.FPort)
+		return Payload{}, types.ErrInvalidFPort
 	}
 
 	buf := bytes.NewReader(e.Payload.Data)
@@ -157,7 +157,7 @@ func DecoderW1t(ctx context.Context, e types.Event) (types.SensorPayload, error)
 			Reading: &p,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unsupported payload length %d for w1t decoder", buf.Len())
+		return nil, types.ErrUnsupportedPayloadLength
 	}
 }
 
@@ -247,7 +247,7 @@ func decode(_ context.Context, ue types.Event) (*WaterMeterReading, *Alarm, erro
 	buf := bytes.NewReader(ue.Payload.Data)
 
 	if buf.Len() < 5 && buf.Len() < 42 {
-		return nil, nil, errors.New("decoder not implemented or payload to short")
+		return nil, nil, types.ErrUnsupportedPayloadLength
 	}
 
 	var p WaterMeterReading
@@ -264,7 +264,7 @@ func decode(_ context.Context, ue types.Event) (*WaterMeterReading, *Alarm, erro
 	case 43, 44, 45, 46, 47:
 		p, err = w1e(buf)
 	default:
-		return nil, nil, fmt.Errorf("unknown payload length %d", buf.Len())
+		return nil, nil, types.ErrUnsupportedPayloadLength
 	}
 
 	if err != nil && errors.Is(err, ErrTimeTooFarOff) {

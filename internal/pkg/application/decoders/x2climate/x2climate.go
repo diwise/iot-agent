@@ -3,7 +3,6 @@ package x2climate
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"math"
 	"time"
 
@@ -32,7 +31,7 @@ func (p X2ClimatePayload) Error() (string, []string) {
 
 func DecoderX2Climate(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	if e.Payload.FPort != 2 {
-		return nil, fmt.Errorf("x2climate: unsupported fPort %d, expected 2", e.Payload.FPort)
+		return nil, types.ErrInvalidFPort
 	}
 
 	p, err := decodeX2Climate(e.Payload.Data)
@@ -49,7 +48,7 @@ func decodeX2Climate(b []byte) (X2ClimatePayload, error) {
 	var t X2ClimatePayload
 
 	if len(b) != 19 {
-		return t, fmt.Errorf("invalid payload length: %d (expected 19)", len(b))
+		return t, types.ErrUnsupportedPayloadLength
 	}
 
 	// Temperature: bytes 4–5, uint16 BE, /1600 → °C

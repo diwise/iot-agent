@@ -88,7 +88,7 @@ func handleUplinkEvent(b []byte) (types.Event, error) {
 	}
 
 	if uplinkEvent.DevEUI == "" {
-		return types.Event{}, types.ErrDevEUIMissing
+		return types.Event{}, types.ErrSensorIDMissing
 	}
 
 	var data []byte

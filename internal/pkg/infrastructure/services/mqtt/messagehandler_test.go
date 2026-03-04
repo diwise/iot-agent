@@ -74,3 +74,37 @@ func TestMessageHandlerAcksOnClientError(t *testing.T) {
 		t.Fatalf("expected ack count 1, got %d", msg.acked.Load())
 	}
 }
+
+func TestMessageHandlerAcksOnNotFound(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer s.Close()
+
+	h := NewMessageHandler(context.Background(), s.URL)
+	msg := &fakeMessage{topic: "a/b/up", payload: []byte(`{"k":"v"}`), qos: 1}
+
+	h(nil, msg)
+
+	if msg.acked.Load() != 1 {
+		t.Fatalf("expected ack count 1, got %d", msg.acked.Load())
+	}
+}
+
+func TestMessageHandlerAcksOnUnprocessableEntity(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+	}))
+	defer s.Close()
+
+	h := NewMessageHandler(context.Background(), s.URL)
+	msg := &fakeMessage{topic: "a/b/up", payload: []byte(`{"k":"v"}`), qos: 1}
+
+	h(nil, msg)
+
+	if msg.acked.Load() != 1 {
+		t.Fatalf("expected ack count 1, got %d", msg.acked.Load())
+	}
+}

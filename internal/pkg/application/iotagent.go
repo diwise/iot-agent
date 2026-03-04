@@ -25,11 +25,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
-var errDeviceOnBlackList = errors.New("blacklisted")
-var errDeviceNotFound = errors.New("device not found")
-var errDeviceIgnored = errors.New("device is ignored")
-var errEventContainsNoPayload = errors.New("event contains no payload")
-
 //go:generate moq -rm -out iotagent_mock.go . App
 
 const UNKNOWN = "unknown"
@@ -127,16 +122,16 @@ func (a *app) decodeAndConvert(ctx context.Context, se types.Event) (dmc.Device,
 
 	if a.createUnknownDeviceEnabled && device.SensorType() == UNKNOWN {
 		a.ignoreDeviceFor(se.DevEUI, 5*time.Minute)
-		return device, nil, nil, errDeviceIgnored
+		return device, nil, nil, types.ErrDeviceIgnored
 	}
 
 	if se.Payload == nil {
-		return device, nil, nil, errEventContainsNoPayload
+		return device, nil, nil, types.ErrPayloadContainsNoData
 	}
 
 	decoder, converter, ok := a.registry.Get(ctx, device.SensorType())
 	if !ok {
-		return device, nil, nil, nil
+		return device, nil, nil, types.ErrDecoderOrConverterNotFound
 	}
 
 	payload, err := decoder(ctx, se)
@@ -169,47 +164,53 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	device, payload, objects, err = a.decodeAndConvert(ctx, se)
 	a.storeSensorEvent(ctx, se, device, payload, objects, err)
 
+	if errors.Is(err, types.ErrDecoderOrConverterNotFound) {
+		log.Warn("decoder or converter not found for sensor type", "sensor_type", device.SensorType())
+		return nil
+	}
+
+	if errors.Is(err, types.ErrPayloadEmpty) || errors.Is(err, types.ErrPayloadContainsNoData) {
+		log.Debug("event contains no payload")
+		return nil
+	}
+
+	if errors.Is(err, types.ErrDeviceOnBlackList) {
+		log.Debug("device is blacklisted", "sensor_id", se.DevEUI)
+		return nil
+	}
+
+	if errors.Is(err, types.ErrDeviceIgnored) {
+		log.Debug("device is ignored since the type is unknown", "sensor_id", se.DevEUI, slog.Bool("create_unknown_devices", a.createUnknownDeviceEnabled))
+		return nil
+	}
+
+	if a.createUnknownDeviceEnabled && errors.Is(err, types.ErrDeviceNotFound) {
+		err := a.createUnknownDevice(ctx, se)
+		if err != nil {
+			log.Error("could not create new device of unknown type", "err", err.Error())
+			return err
+		}
+
+		log.Info("created new device of unknown type", "sensor_id", se.DevEUI, "tenant", a.createUnknownDeviceTenant)
+		return nil
+	}
+
+	if errors.Is(err, types.ErrNoDevice) {
+		log.Debug("no device found for sensor id", "sensor_id", se.DevEUI)
+		return types.ErrNoDevice
+	}
+
 	if err != nil {
-		if errors.Is(err, errEventContainsNoPayload) {
-			log.Debug("event contains no payload")
-			return nil
-		}
-
-		if errors.Is(err, errDeviceOnBlackList) {
-			log.Info("blacklisted")
-			return nil
-		}
-
-		if errors.Is(err, errDeviceIgnored) {
-			log.Debug("device is ignored")
-			return nil
-		}
-
-		if errors.Is(err, errDeviceNotFound) {
-			if a.createUnknownDeviceEnabled {
-				err := a.createUnknownDevice(ctx, se)
-				if err != nil {
-					log.Error("could not create new device of unknown type", "err", err.Error())
-					return err
-				}
-
-				return nil
-			}
-
-			log.Debug("device not found")
-
-			return nil
-		}
-
+		log.Error("failed to decode and convert sensor event", "err", err.Error())
 		return err
 	}
 
-	err = a.sendStatusMessage(ctx, device, &se, payload)
-	if err != nil {
+	if err := a.sendStatusMessage(ctx, device, &se, payload); err != nil {
 		log.Warn("failed to send status message", "err", err.Error())
 	}
 
 	if !device.IsActive() {
+		log.Debug("device is not active", "device_id", device.ID(), "sensor_id", se.DevEUI)
 		return nil
 	}
 
@@ -245,21 +246,25 @@ func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, 
 
 	d, err := a.findDevice(ctx, deviceID, a.client.FindDeviceFromInternalID)
 	if err != nil {
-		if errors.Is(err, errDeviceOnBlackList) {
-			log.Info("blacklisted", "device_id", deviceID)
+		if errors.Is(err, types.ErrDeviceOnBlackList) {
+			log.Debug("device is blacklisted", "device_id", deviceID)
 			return nil
 		}
+		if errors.Is(err, types.ErrDeviceIgnored) {
+			log.Debug("device is ignored since the type is unknown", "device_id", deviceID, slog.Bool("create_unknown_devices", a.createUnknownDeviceEnabled))
+			return nil
+		}
+
+		log.Error("could not find device for id", "device_id", deviceID, "err", err.Error())
 
 		return err
 	}
 
-	err = a.sendStatusMessage(ctx, d, nil, nil)
-	if err != nil {
+	if err := a.sendStatusMessage(ctx, d, nil, nil); err != nil {
 		log.Warn("failed to send status message", "err", err.Error())
 	}
 
-	err = a.handleSensorMeasurementList(ctx, pack)
-	if err != nil {
+	if err := a.handleSensorMeasurementList(ctx, pack); err != nil {
 		log.Error("could not handle measurement list", "err", err.Error())
 		return err
 	}
@@ -284,13 +289,13 @@ func (a *app) handleSensorMeasurementList(ctx context.Context, pack senml.Pack) 
 
 func (a *app) findDevice(ctx context.Context, id string, finder func(ctx context.Context, id string) (dmc.Device, error)) (dmc.Device, error) {
 	if a.deviceIsCurrentlyIgnored(ctx, id) {
-		return nil, errDeviceOnBlackList
+		return nil, types.ErrDeviceIgnored
 	}
 
 	device, err := finder(ctx, id)
 	if err != nil {
 		if errors.Is(err, dmc.ErrNotFound) {
-			return nil, errDeviceNotFound
+			return nil, types.ErrDeviceNotFound
 		}
 		return nil, err
 	}

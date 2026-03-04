@@ -10,9 +10,21 @@ import (
 	"github.com/diwise/senml"
 )
 
-var ErrDevEUIMissing = errors.New("sensor id is missing")
-var ErrPayloadContainsNoData = errors.New("payload contains no data")
+var ErrSensorIDMissing = errors.New("sensor id is missing")
 var ErrUnknownMessageType = errors.New("unknown message type")
+
+var ErrNoDevice = errors.New("no device")
+var ErrDeviceIgnored = fmt.Errorf("%w: %s", ErrNoDevice, "device is ignored")
+var ErrDeviceOnBlackList = fmt.Errorf("%w: %s", ErrNoDevice, "blacklisted")
+var ErrDeviceNotFound = fmt.Errorf("%w: %s", ErrNoDevice, "device not found")
+
+var ErrDecoderError = errors.New("decoder error")
+var ErrDecoderOrConverterNotFound = fmt.Errorf("%w: decoder or converter not found", ErrDecoderError)
+var ErrPayloadContainsNoData = fmt.Errorf("%w: payload contains no data", ErrDecoderError)
+var ErrInvalidFPort = fmt.Errorf("%w: invalid fPort", ErrDecoderError)
+var ErrPayloadEmpty = fmt.Errorf("%w: payload is empty", ErrDecoderError)
+var ErrUnsupportedPayloadLength = fmt.Errorf("%w: unsupported payload length", ErrDecoderError)
+var ErrSensorReadingError = fmt.Errorf("%w: sensor reading error", ErrDecoderError)
 
 type SensorPayload interface {
 	BatteryLevel() *int

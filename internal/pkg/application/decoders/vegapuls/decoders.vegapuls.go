@@ -86,7 +86,7 @@ func decode(b []byte) (VegapulsPayload, error) {
 	}
 
 	if len(b) < packetLength {
-		return p, fmt.Errorf("incomplete or partial payload")
+		return p, types.ErrUnsupportedPayloadLength
 	}
 
 	pos := 0

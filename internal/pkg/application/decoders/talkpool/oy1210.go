@@ -2,17 +2,11 @@ package talkpool
 
 import (
 	"context"
-	"errors"
 	"math"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
-)
-
-var (
-	ErrUnsupportedPort = errors.New("oy1210: unsupported fPort, expected 2")
-	ErrInvalidLength   = errors.New("oy1210: payload must contain exactly 5 bytes")
 )
 
 type Oy1210Data struct {
@@ -38,11 +32,11 @@ func DecoderOy1210(ctx context.Context, e types.Event) (types.SensorPayload, err
 
 func decodeOy1210Payload(bytes []byte, port int) (*Oy1210Data, error) {
 	if port != 2 {
-		return nil, ErrUnsupportedPort
+		return nil, types.ErrInvalidFPort
 	}
 
 	if len(bytes) != 5 {
-		return nil, ErrInvalidLength
+		return nil, types.ErrUnsupportedPayloadLength
 	}
 
 	tempRaw := (int(bytes[0]) << 4) | (int(bytes[2]) >> 4)

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"log/slog"
 	"time"
 
@@ -57,10 +56,8 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p NiabPayload, 
 func decode(b []byte) (NiabPayload, error) {
 	p := NiabPayload{}
 
-	if len(b) < 4 {
-		return p, errors.New("payload too short")
-	} else if len(b) > 4 {
-		return p, errors.New("payload too long")
+	if len(b) != 4 {
+		return p, types.ErrUnsupportedPayloadLength
 	}
 
 	bat := int(b[0])
@@ -83,7 +80,7 @@ func decode(b []byte) (NiabPayload, error) {
 		dist := float64(distance) / 1000.0
 		p.Distance = &dist
 	} else {
-		return p, errors.New("sensor reading error")
+		return p, types.ErrSensorReadingError
 	}
 
 	return p, nil

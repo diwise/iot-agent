@@ -32,7 +32,7 @@ func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event
 	uplinkEvent := uplinkEvents[0]
 
 	if uplinkEvent.DevEui == "" {
-		return types.Event{}, types.ErrDevEUIMissing
+		return types.Event{}, types.ErrSensorIDMissing
 	}
 
 	var data []byte

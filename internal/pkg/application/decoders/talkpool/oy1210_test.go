@@ -73,7 +73,7 @@ func TestDecoderUsesEventFPort(t *testing.T) {
 	ue.Payload.FPort = 1
 
 	_, err = DecoderOy1210(ctx, ue)
-	is.True(errors.Is(err, ErrUnsupportedPort))
+	is.True(errors.Is(err, types.ErrInvalidFPort))
 }
 
 var testPayloads = []string{"412B10033A", "4028F00321", "4128090319", "3D2AFE01AF", "3D2BE401AB"}

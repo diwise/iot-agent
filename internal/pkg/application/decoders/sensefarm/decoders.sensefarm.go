@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -34,7 +33,7 @@ func (a SensefarmPayload) Error() (string, []string) {
 func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	// At minimum we must receive 2 bytes, one for header type and one for value
 	if len(e.Payload.Data) < 2 {
-		return nil, errors.New("payload too short")
+		return nil, types.ErrUnsupportedPayloadLength
 	}
 
 	return decodeSensefarmPayload(e.Payload.Data)
@@ -72,7 +71,7 @@ func decodeSensefarmPayload(b []byte) (SensefarmPayload, error) {
 	p := SensefarmPayload{}
 
 	if len(b) == 0 {
-		return p, errors.New("input payload array is empty")
+		return p, types.ErrPayloadEmpty
 	}
 
 	for i := 0; i < len(b); i++ { //The multisensor message are read byte by byte and parsed for information on each individual sensor and it's values.

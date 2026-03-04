@@ -85,12 +85,23 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 		err = app.HandleSensorEvent(ctx, evt)
 		if err != nil {
 			log.Error("failed to handle message", "err", err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(statusCodeForHandleSensorEventError(err))
 			w.Write([]byte(err.Error()))
 			return
 		}
 
 		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func statusCodeForHandleSensorEventError(err error) int {
+	switch {
+	case errors.Is(err, types.ErrNoDevice):
+		return http.StatusNotFound
+	case errors.Is(err, types.ErrDecoderError):
+		return http.StatusUnprocessableEntity
+	default:
+		return http.StatusInternalServerError
 	}
 }
 

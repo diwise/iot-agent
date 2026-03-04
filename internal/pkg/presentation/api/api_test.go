@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -48,6 +49,59 @@ func TestThatApiCallsMessageReceivedProperlyOnValidMessageFromMQTT(t *testing.T)
 	resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer(b))
 	is.Equal(resp.StatusCode, http.StatusCreated)
 	is.Equal(len(app.HandleSensorEventCalls()), 1)
+}
+
+func TestIncomingMessageStatusCodeMatchesHandleSensorEventErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		appErr     error
+		statusCode int
+	}{
+		{
+			name:       "no device maps to 404",
+			appErr:     types.ErrNoDevice,
+			statusCode: http.StatusNotFound,
+		},
+		{
+			name:       "decoder error maps to 422",
+			appErr:     types.ErrInvalidFPort,
+			statusCode: http.StatusUnprocessableEntity,
+		},
+		{
+			name:       "unknown error maps to 500",
+			appErr:     errors.New("boom"),
+			statusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+
+			app := &application.AppMock{
+				HandleSensorEventFunc:           func(ctx context.Context, se types.Event) error { return tc.appErr },
+				HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error { return nil },
+			}
+
+			mux := http.NewServeMux()
+			RegisterHandlers(context.Background(), mux, app, facades.New("servanet"))
+
+			server := httptest.NewServer(mux)
+			defer server.Close()
+
+			im := types.IncomingMessage{
+				ID:     "123",
+				Type:   "up",
+				Source: "/topic/456/up",
+				Data:   []byte(msgfromMQTT),
+			}
+
+			b, _ := json.Marshal(im)
+
+			resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer(b))
+			is.Equal(resp.StatusCode, tc.statusCode)
+		})
+	}
 }
 
 func TestSenMLPayload(t *testing.T) {

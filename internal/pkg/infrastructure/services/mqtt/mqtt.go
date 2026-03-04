@@ -51,8 +51,8 @@ func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Clie
 	options.SetKeepAlive(time.Duration(cfg.keepAlive) * time.Second)
 	options.SetAutoReconnect(true)
 	options.SetAutoAckDisabled(true)
-	options.SetConnectRetry(false)
-	options.SetMaxReconnectInterval(60 * time.Second)
+	options.SetConnectRetry(true)
+	options.SetMaxReconnectInterval(10 * time.Second)
 
 	log := logging.GetFromContext(ctx).With(slog.String("mqtt-host", cfg.host), slog.Int("mqtt-port", cfg.port))
 
