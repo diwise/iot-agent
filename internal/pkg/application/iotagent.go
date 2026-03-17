@@ -341,7 +341,7 @@ type Tags struct {
 	Mappings map[string]string `json:"mappings"`
 }
 
-func (a *app) getDeviceProfile(ctx context.Context, sensorType string) profile {
+func (a *app) getDeviceProfileOrUnknown(ctx context.Context, sensorType string) profile {
 	log := logging.GetFromContext(ctx)
 
 	sensorType = strings.ToLower(sensorType)
@@ -380,8 +380,35 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	log := logging.GetFromContext(ctx)
 
 	var d dmtypes.Device
+	var s dmtypes.SensorInputModel
 
-	p := a.getDeviceProfile(ctx, se.SensorType)
+	p := a.getDeviceProfileOrUnknown(ctx, se.SensorType)
+
+	s = dmtypes.SensorInputModel{
+		SensorID:        se.DevEUI,
+		SensorProfileID: p.Cfg.ProfileName,
+		Location: &dmtypes.Location{
+			Latitude:  se.Location.Latitude,
+			Longitude: se.Location.Longitude,
+		},
+	}
+
+	if se.Name != "" {
+		name := se.Name
+		s.Name = &name
+	}
+
+	err := a.client.CreateSensor(ctx, s)
+	if err != nil {
+		if !errors.Is(err, client.ErrConflict) {
+			return err
+		}
+	}
+
+	if s.SensorProfileID == UNKNOWN {
+		log.Debug("we will not create a device for a sensor of unknown profile")
+		return nil
+	}
 
 	d = dmtypes.Device{
 		Active:      p.Cfg.Activate,
@@ -390,7 +417,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		Name:        se.Name,
 		Description: se.SensorType,
 
-		DeviceProfile: dmtypes.DeviceProfile{
+		SensorProfile: dmtypes.SensorProfile{
 			Name:    p.Cfg.ProfileName,
 			Decoder: p.Cfg.ProfileName,
 			Types:   p.Types,
@@ -451,7 +478,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		}
 	}
 
-	err := a.client.CreateDevice(ctx, d)
+	err = a.client.CreateDevice(ctx, d)
 	if err != nil {
 		if errors.Is(err, client.ErrDeviceExist) {
 			return nil
@@ -466,7 +493,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 		a.notFoundDevicesMu.Unlock()
 	}
 
-	log.Debug("new device created", "sensor_id", se.DevEUI, "device_id", d.DeviceID, "profile_name", d.DeviceProfile.Name, "name", d.Name, "tenant", d.Tenant)
+	log.Debug("new device created", "sensor_id", se.DevEUI, "device_id", d.DeviceID, "profile_name", d.SensorProfile.Name, "name", d.Name, "tenant", d.Tenant)
 
 	return nil
 }

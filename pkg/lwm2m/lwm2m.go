@@ -183,7 +183,7 @@ func addValue(r *senml.Record, value reflect.Value) bool {
 		return true
 	}
 
-	if kind == reflect.Ptr || kind == reflect.Pointer {
+	if kind == reflect.Pointer || kind == reflect.Pointer {
 		if value.IsNil() {
 			return false
 		}

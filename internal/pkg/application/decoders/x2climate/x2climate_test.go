@@ -14,7 +14,7 @@ func TestPayload(t *testing.T) {
 	for i, p := range testPayloads {
 
 		t.Run(fmt.Sprintf("payload-%d", i), func(t *testing.T) {
-			ue, err := facades.New("netmore")(nil, "payload", []byte(fmt.Sprintf(message, p)))
+			ue, err := facades.New("netmore")(nil, "payload", fmt.Appendf(nil, message, p))
 			is.NoErr(err)
 			is.Equal(ue.DevEUI, "00138e0000007608")
 			x, err := decodeX2Climate(ue.Payload.Data)

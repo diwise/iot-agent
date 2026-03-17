@@ -17,7 +17,7 @@ func TestPayload(t *testing.T) {
 	for i, p := range testPayloads {
 
 		t.Run(fmt.Sprintf("payload-%d", i), func(t *testing.T) {
-			ue, err := facades.New("netmore")(nil, "payload", []byte(fmt.Sprintf(message, p)))
+			ue, err := facades.New("netmore")(nil, "payload", fmt.Appendf(nil, message, p))
 			is.NoErr(err)
 			is.Equal(ue.DevEUI, "00138e0000007608")
 			x, err := decodeOy1210Payload(ue.Payload.Data, 2)
@@ -31,7 +31,7 @@ func TestPayload(t *testing.T) {
 func TestSinglePayload(t *testing.T) {
 	is := is.New(t)
 
-	ue, err := facades.New("netmore")(nil, "payload", []byte(fmt.Sprintf(message, testPayloads[0])))
+	ue, err := facades.New("netmore")(nil, "payload", fmt.Appendf(nil, message, testPayloads[0]))
 	is.NoErr(err)
 	is.Equal(ue.DevEUI, "00138e0000007608")
 	x, err := decodeOy1210Payload(ue.Payload.Data, 2)

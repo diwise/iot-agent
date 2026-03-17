@@ -614,7 +614,7 @@ const livboj string = `
 }`
 
 func qalcosonic_templ(h string) []byte {
-	return []byte(fmt.Sprintf(`
+	return fmt.Appendf(nil, `
 [{
   "devEui": "116c52b4274f",
   "sensorType": "qalcosonic_w1e",
@@ -642,5 +642,5 @@ func qalcosonic_templ(h string) []byte {
     }
   ]
 }]
-`, h))
+`, h)
 }
