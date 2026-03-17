@@ -380,11 +380,11 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	log := logging.GetFromContext(ctx)
 
 	var d dmtypes.Device
-	var s dmtypes.SensorConfig
+	var s dmtypes.SensorInputModel
 
 	p := a.getDeviceProfileOrUnknown(ctx, se.SensorType)
 
-	s = dmtypes.SensorConfig{
+	s = dmtypes.SensorInputModel{
 		SensorID:        se.DevEUI,
 		SensorProfileID: p.Cfg.ProfileName,
 		Location: &dmtypes.Location{

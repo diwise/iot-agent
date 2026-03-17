@@ -166,10 +166,10 @@ func (d *devmodeSensor) Interval() int {
 	return 0
 }
 
-func (d *devmodeDeviceMgmtClient) CreateSensor(ctx context.Context, sensor types.SensorConfig) error {
+func (d *devmodeDeviceMgmtClient) CreateSensor(ctx context.Context, sensor types.SensorInputModel) error {
 	return nil
 }
-func (d *devmodeDeviceMgmtClient) UpdateSensor(ctx context.Context, sensor types.SensorConfig) error {
+func (d *devmodeDeviceMgmtClient) UpdateSensor(ctx context.Context, sensor types.SensorInputModel) error {
 	return nil
 }
 func (d *devmodeDeviceMgmtClient) GetSensor(ctx context.Context, sensorID string) (devicemgmtclient.Sensor, error) {
