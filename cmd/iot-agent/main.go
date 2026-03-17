@@ -16,7 +16,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
-	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
+	dmclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
@@ -95,7 +95,7 @@ func main() {
 func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunner.Runner[appConfig], error) {
 	logger := logging.GetFromContext(ctx)
 
-	var dmClient devicemgmtclient.DeviceManagementClient
+	var dmClient dmclient.DeviceManagementClient
 	var messenger messaging.MsgContext
 	var mqttClient mqtt.Client
 	var store storage.Storage
@@ -230,13 +230,13 @@ func newStorage(ctx context.Context, cfg storage.Config, devmode bool) (storage.
 	return storage.New(ctx, cfg)
 }
 
-func newDeviceMgmtClient(ctx context.Context, url, tokenUrl, clientId, clientSecret string, devmode bool) (devicemgmtclient.DeviceManagementClient, error) {
+func newDeviceMgmtClient(ctx context.Context, url, tokenUrl, clientId, clientSecret string, devmode bool) (dmclient.DeviceManagementClient, error) {
 	if devmode {
 		logging.GetFromContext(ctx).Warn("devmode is enabled, using device management client mock")
 		return newDevmodeDeviceMgmtClient(ctx)
 	}
 
-	return devicemgmtclient.New(ctx, url, tokenUrl, true, clientId, clientSecret)
+	return dmclient.New(ctx, url, tokenUrl, true, clientId, clientSecret)
 }
 
 func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {

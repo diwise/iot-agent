@@ -57,7 +57,7 @@ func newDevmodeDeviceMgmtClient(ctx context.Context) (devicemgmtclient.DeviceMan
 					//Longitude: rec[3],
 					//Where: rec[4],
 					Lwm2mTypes: []types.Lwm2mType{},
-					DeviceProfile: types.DeviceProfile{
+					SensorProfile: types.SensorProfile{
 						Decoder:  rec[6],
 						Interval: 3600,
 					},
@@ -102,7 +102,7 @@ func newDeviceMock(device types.Device) devicemgmtclient.Device {
 			return device.Tenant
 		},
 		SensorTypeFunc: func() string {
-			return device.DeviceProfile.Decoder
+			return device.SensorProfile.Decoder
 		},
 		TypesFunc: func() []string {
 			t := []string{}
@@ -130,10 +130,10 @@ func (d *devmodeDeviceMgmtClient) CreateDevice(ctx context.Context, device types
 	return nil
 }
 
-func (d *devmodeDeviceMgmtClient) GetDeviceProfile(ctx context.Context, deviceProfileID string) (*types.DeviceProfile, error) {
+func (d *devmodeDeviceMgmtClient) GetDeviceProfile(ctx context.Context, deviceProfileID string) (*types.SensorProfile, error) {
 	for _, dp := range d.profiles.DeviceProfiles {
 		if dp.Name == deviceProfileID {
-			return &types.DeviceProfile{
+			return &types.SensorProfile{
 				Name:     dp.Name,
 				Decoder:  dp.Decoder,
 				Interval: dp.Interval,
@@ -143,6 +143,52 @@ func (d *devmodeDeviceMgmtClient) GetDeviceProfile(ctx context.Context, devicePr
 	}
 
 	return nil, fmt.Errorf("not found")
+}
+
+type devmodeSensor struct{}
+
+func (d *devmodeSensor) ID() string {
+	return ""
+}
+func (d *devmodeSensor) DeviceID() string {
+	return ""
+}
+func (d *devmodeSensor) IsAssigned() bool {
+	return false
+}
+func (d *devmodeSensor) SensorType() string {
+	return ""
+}
+func (d *devmodeSensor) ProfileName() string {
+	return ""
+}
+func (d *devmodeSensor) Interval() int {
+	return 0
+}
+
+func (d *devmodeDeviceMgmtClient) CreateSensor(ctx context.Context, sensor types.SensorConfig) error {
+	return nil
+}
+func (d *devmodeDeviceMgmtClient) UpdateSensor(ctx context.Context, sensor types.SensorConfig) error {
+	return nil
+}
+func (d *devmodeDeviceMgmtClient) GetSensor(ctx context.Context, sensorID string) (devicemgmtclient.Sensor, error) {
+	return &devmodeSensor{}, nil
+}
+func (d *devmodeDeviceMgmtClient) ListSensors(ctx context.Context, query types.SensorsQuery) ([]devicemgmtclient.Sensor, error) {
+	return nil, nil
+}
+func (d *devmodeDeviceMgmtClient) AttachSensorToDevice(ctx context.Context, deviceID, sensorID string) error {
+	return nil
+}
+func (d *devmodeDeviceMgmtClient) DetachSensorFromDevice(ctx context.Context, deviceID string) error {
+	return nil
+}
+func (d *devmodeDeviceMgmtClient) GetTenants(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
+func (d *devmodeDeviceMgmtClient) GetDeviceProfiles(ctx context.Context) ([]types.SensorProfile, error) {
+	return nil, nil
 }
 
 type devmodeStorage struct {
