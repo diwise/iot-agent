@@ -31,3 +31,15 @@ func TestDigitalInput(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(`[{"bn":"25e185f6-bdba-4c68-b6e8-23ae2bb10254/3200/","bt":1710151647,"n":"0","vs":"urn:oma:lwm2m:ext:3200"},{"n":"5500","vb":true}]`, string(b))
 }
+
+func TestEncodeLoudness(t *testing.T) {
+	is := is.New(t)
+
+	ts := time.Date(2024, 3, 11, 12, 7, 27, 0, time.UTC)
+	peak := 63.0
+	l := NewLoudness("25e185f6-bdba-4c68-b6e8-23ae2bb10254", 58.0, &peak, ts)
+	b, err := json.Marshal(l)
+	is.NoErr(err)
+
+	is.Equal(`[{"bn":"25e185f6-bdba-4c68-b6e8-23ae2bb10254/3324/","bt":1710158847,"n":"0","vs":"urn:oma:lwm2m:ext:3324"},{"n":"5700","u":"dB","v":58},{"n":"5602","u":"dB","v":63}]`, string(b))
+}
