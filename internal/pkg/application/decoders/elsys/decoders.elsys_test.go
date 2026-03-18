@@ -130,6 +130,52 @@ func TestElsysWithTwoTemperaturesDecoder(t *testing.T) {
 	is.Equal(len(objects), 5)
 }
 
+func TestElsysSoundDecoder(t *testing.T) {
+	is, _ := testSetup(t)
+
+	p, err := decodePayload([]byte{TYPE_SOUND, 63, 58})
+	is.NoErr(err)
+	is.Equal(uint8(63), *p.SoundPeak)
+	is.Equal(uint8(58), *p.SoundAvg)
+
+	objects := convertToLwm2mObjects(context.Background(), "abc123", p, time.Now())
+	is.Equal(len(objects), 1)
+
+	loudness := objects[0].(lwm2m.Loudness)
+	is.Equal("3324", loudness.ObjectID())
+	is.Equal(58.0, loudness.SensorValue)
+	is.Equal(63.0, *loudness.MaxMeasuredValue)
+}
+
+func TestElsysSoundDecoderFromObject(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ue, err := facades.New("servanet")(context.Background(), "up", []byte(`{
+		"data": "",
+		"fPort": 5,
+		"devEui": "abc123",
+		"object": {
+			"soundPeak": 61,
+			"soundAvg": 55
+		},
+		"timestamp": "2024-08-05T11:18:37.650212638Z",
+		"deviceName": "abc123",
+		"sensorType": "Elsys_codec"
+	}`))
+	is.NoErr(err)
+
+	payload, err := Decoder(context.Background(), ue)
+	is.NoErr(err)
+
+	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
+	is.NoErr(err)
+	is.Equal(len(objects), 1)
+
+	loudness := objects[0].(lwm2m.Loudness)
+	is.Equal(55.0, loudness.SensorValue)
+	is.Equal(61.0, *loudness.MaxMeasuredValue)
+}
+
 func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
