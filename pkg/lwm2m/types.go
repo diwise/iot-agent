@@ -457,6 +457,39 @@ func (p Pressure) MarshalJSON() ([]byte, error) {
 	return marshalJSON(p)
 }
 
+func NewLoudness(deviceID string, sensorValue float64, ts time.Time) Loudness {
+	return Loudness{
+		DeviceInfo: DeviceInfo{
+			ID_:        deviceID,
+			Timestamp_: ts,
+		},
+		SensorValue: sensorValue,
+	}
+}
+
+type Loudness struct {
+	DeviceInfo
+	SensorValue      float64  `lwm2m:"5700,dB"`
+	MinMeasuredValue *float64 `lwm2m:"5601,dB"`
+	MaxMeasuredValue *float64 `lwm2m:"5602,dB"`
+}
+
+func (l Loudness) ID() string {
+	return l.ID_
+}
+func (l Loudness) Timestamp() time.Time {
+	return l.Timestamp_
+}
+func (l Loudness) ObjectID() string {
+	return "3324"
+}
+func (l Loudness) ObjectURN() string {
+	return fmt.Sprintf("%s:%s", prefix, l.ObjectID())
+}
+func (l Loudness) MarshalJSON() ([]byte, error) {
+	return marshalJSON(l)
+}
+
 func NewPower(deviceID string, sensorValue float64, ts time.Time) Power {
 	return Power{
 		DeviceInfo: DeviceInfo{
