@@ -41,6 +41,8 @@ type ElsysPayload struct {
 	DigitalInput  *bool    `json:"digital,omitempty"`
 	DigitalInput2 *bool    `json:"digital2,omitempty"`
 	Waterleak     *uint8   `json:"waterleak,omitempty"`
+	SoundPeak     *uint8   `json:"soundPeak,omitempty"`
+	SoundAvg      *uint8   `json:"soundAvg,omitempty"`
 }
 
 func (a ElsysPayload) BatteryLevel() *int {
@@ -78,6 +80,8 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 			DigitalInput         *int     `json:"digital,omitempty"`
 			DigitalInput2        *int     `json:"digital2,omitempty"`
 			Waterleak            *uint8   `json:"waterleak,omitempty"`
+			SoundPeak            *uint8   `json:"soundPeak,omitempty"`
+			SoundAvg             *uint8   `json:"soundAvg,omitempty"`
 		}{}
 		err := json.Unmarshal(e.Payload.Object, &obj)
 		if err != nil {
@@ -106,6 +110,8 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 			p.DigitalInput2 = &b
 		}
 		p.Waterleak = obj.Waterleak
+		p.SoundPeak = obj.SoundPeak
+		p.SoundAvg = obj.SoundAvg
 	} else {
 		p, err = decodePayload(e.Payload.Data)
 		if err != nil {
@@ -182,6 +188,23 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload,
 
 	if p.Occupancy != nil {
 		objects = append(objects, lwm2m.NewPresence(deviceID, *p.Occupancy == 2, ts))
+	}
+
+	if p.SoundAvg != nil || p.SoundPeak != nil {
+		soundValue := 0.0
+		if p.SoundAvg != nil {
+			soundValue = float64(*p.SoundAvg)
+		} else {
+			soundValue = float64(*p.SoundPeak)
+		}
+
+		l := lwm2m.NewLoudness(deviceID, soundValue, ts)
+		if p.SoundPeak != nil {
+			maxMeasuredValue := float64(*p.SoundPeak)
+			l.MaxMeasuredValue = &maxMeasuredValue
+		}
+
+		objects = append(objects, l)
 	}
 
 	if p.DigitalInput != nil {
@@ -355,6 +378,12 @@ func decodePayload(data []byte) (ElsysPayload, error) {
 			result := data[i+1] == 1
 			p.DigitalInput2 = &result
 			i += 1
+		case TYPE_SOUND:
+			soundPeak := uint8(int(data[i+1]))
+			soundAvg := uint8(int(data[i+2]))
+			p.SoundPeak = &soundPeak
+			p.SoundAvg = &soundAvg
+			i += 2
 		}
 	}
 
