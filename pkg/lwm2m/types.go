@@ -457,14 +457,13 @@ func (p Pressure) MarshalJSON() ([]byte, error) {
 	return marshalJSON(p)
 }
 
-func NewLoudness(deviceID string, sensorValue float64, maxMeasuredValue *float64, ts time.Time) Loudness {
+func NewLoudness(deviceID string, sensorValue float64, ts time.Time) Loudness {
 	return Loudness{
 		DeviceInfo: DeviceInfo{
 			ID_:        deviceID,
 			Timestamp_: ts,
 		},
-		SensorValue:      sensorValue,
-		MaxMeasuredValue: maxMeasuredValue,
+		SensorValue: sensorValue,
 	}
 }
 

@@ -198,13 +198,13 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p ElsysPayload,
 			soundValue = float64(*p.SoundPeak)
 		}
 
-		var maxMeasuredValue *float64
+		l := lwm2m.NewLoudness(deviceID, soundValue, ts)
 		if p.SoundPeak != nil {
-			v := float64(*p.SoundPeak)
-			maxMeasuredValue = &v
+			maxMeasuredValue := float64(*p.SoundPeak)
+			l.MaxMeasuredValue = &maxMeasuredValue
 		}
 
-		objects = append(objects, lwm2m.NewLoudness(deviceID, soundValue, maxMeasuredValue, ts))
+		objects = append(objects, l)
 	}
 
 	if p.DigitalInput != nil {

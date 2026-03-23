@@ -144,6 +144,7 @@ func TestElsysSoundDecoder(t *testing.T) {
 	loudness := objects[0].(lwm2m.Loudness)
 	is.Equal("3324", loudness.ObjectID())
 	is.Equal(58.0, loudness.SensorValue)
+	is.True(loudness.MaxMeasuredValue != nil)
 	is.Equal(63.0, *loudness.MaxMeasuredValue)
 }
 
@@ -173,6 +174,7 @@ func TestElsysSoundDecoderFromObject(t *testing.T) {
 
 	loudness := objects[0].(lwm2m.Loudness)
 	is.Equal(55.0, loudness.SensorValue)
+	is.True(loudness.MaxMeasuredValue != nil)
 	is.Equal(61.0, *loudness.MaxMeasuredValue)
 }
 
