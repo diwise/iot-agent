@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
 
@@ -85,6 +86,10 @@ func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devE
 	}
 
 	return newDeviceMock(device), nil
+}
+
+func (d *devmodeDeviceMgmtClient) Client() *http.Client {
+  return &http.Client{}
 }
 
 func newDeviceMock(device types.Device) devicemgmtclient.Device {
