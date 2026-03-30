@@ -67,6 +67,29 @@ func TestMessageHandlerDoesNotAckOnServerError(t *testing.T) {
 	}
 }
 
+func TestMessageHandlerDoesNotAckOnTooManyRequests(t *testing.T) {
+	ctx := t.Context()
+
+	var requestCount atomic.Int32
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer s.Close()
+
+	h := NewMessageHandler(ctx, s.URL)
+	msg := &fakeMessage{topic: "a/b/up", payload: []byte(`{"k":"v"}`), qos: 1}
+
+	h(nil, msg)
+
+	waitFor(t, func() bool { return requestCount.Load() == 1 })
+	time.Sleep(20 * time.Millisecond)
+	if msg.acked.Load() != 0 {
+		t.Fatalf("expected ack count 0, got %d", msg.acked.Load())
+	}
+}
+
 func TestMessageHandlerAcksOnClientError(t *testing.T) {
 	ctx := t.Context()
 

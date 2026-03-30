@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -85,6 +86,76 @@ func TestIncomingMessageStatusCodeMatchesHandleSensorEventErrors(t *testing.T) {
 
 			mux := http.NewServeMux()
 			RegisterHandlers(context.Background(), mux, app, facades.New("servanet"))
+
+			server := httptest.NewServer(mux)
+			defer server.Close()
+
+			im := types.IncomingMessage{
+				ID:     "123",
+				Type:   "up",
+				Source: "/topic/456/up",
+				Data:   []byte(msgfromMQTT),
+			}
+
+			b, _ := json.Marshal(im)
+
+			resp, _ := testRequest(is, http.MethodPost, server.URL+"/api/v0/messages", bytes.NewBuffer(b))
+			is.Equal(resp.StatusCode, tc.statusCode)
+		})
+	}
+}
+
+func TestIncomingMessageStatusCodeMatchesFacadeErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		facadeErr  error
+		statusCode int
+	}{
+		{
+			name:       "unknown message type maps to 422",
+			facadeErr:  types.ErrUnknownMessageType,
+			statusCode: http.StatusUnprocessableEntity,
+		},
+		{
+			name:       "missing sensor id maps to 422",
+			facadeErr:  types.ErrSensorIDMissing,
+			statusCode: http.StatusUnprocessableEntity,
+		},
+		{
+			name:       "decoder error maps to 422",
+			facadeErr:  types.ErrPayloadContainsNoData,
+			statusCode: http.StatusUnprocessableEntity,
+		},
+		{
+			name:       "bad payload encoding maps to 422",
+			facadeErr:  base64.CorruptInputError(0),
+			statusCode: http.StatusUnprocessableEntity,
+		},
+		{
+			name:       "malformed facade payload maps to 422",
+			facadeErr:  &json.SyntaxError{Offset: 1},
+			statusCode: http.StatusUnprocessableEntity,
+		},
+		{
+			name:       "unimplemented facade maps to 500",
+			facadeErr:  errors.New("not implemented"),
+			statusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+
+			app := &application.AppMock{
+				HandleSensorEventFunc:           func(ctx context.Context, se types.Event) error { return nil },
+				HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error { return nil },
+			}
+
+			mux := http.NewServeMux()
+			RegisterHandlers(context.Background(), mux, app, func(ctx context.Context, messageType string, b []byte) (types.Event, error) {
+				return types.Event{}, tc.facadeErr
+			})
 
 			server := httptest.NewServer(mux)
 			defer server.Close()

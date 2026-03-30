@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 
@@ -66,7 +68,7 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 		evt, err := facade(ctx, im.Type, im.Data)
 		if err != nil {
 			log.Error("failed to decode sensor event using facade", "err", err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(statusCodeForFacadeError(err))
 			w.Write([]byte(err.Error()))
 			return
 		}
@@ -93,6 +95,32 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 		}
 
 		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func statusCodeForFacadeError(err error) int {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	var base64Err base64.CorruptInputError
+	var hexErr hex.InvalidByteError
+
+	switch {
+	case errors.Is(err, types.ErrUnknownMessageType):
+		return http.StatusUnprocessableEntity
+	case errors.Is(err, types.ErrSensorIDMissing):
+		return http.StatusUnprocessableEntity
+	case errors.Is(err, types.ErrDecoderError):
+		return http.StatusUnprocessableEntity
+	case errors.As(err, &syntaxErr):
+		return http.StatusUnprocessableEntity
+	case errors.As(err, &typeErr):
+		return http.StatusUnprocessableEntity
+	case errors.As(err, &base64Err):
+		return http.StatusUnprocessableEntity
+	case errors.As(err, &hexErr):
+		return http.StatusUnprocessableEntity
+	default:
+		return http.StatusInternalServerError
 	}
 }
 

@@ -143,7 +143,6 @@ func (f *messageForwarder) run() {
 
 func (f *messageForwarder) forward(job queuedMessage) {
 	var err error
-	defer ack(job)
 
 	ctx, span := tracer.Start(f.ctx, "forward-message")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -160,7 +159,7 @@ func (f *messageForwarder) forward(job queuedMessage) {
 
 	b, err := json.Marshal(im)
 	if err != nil {
-		log.Error("failed to marshal incoming message", "err", err.Error())		
+		log.Error("failed to marshal incoming message", "err", err.Error())
 		return
 	}
 
@@ -183,20 +182,24 @@ func (f *messageForwarder) forward(job queuedMessage) {
 	}()
 
 	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent {
+		ack(job)
 		return
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
+		ack(job)
 		return
 	}
 
 	if resp.StatusCode == http.StatusUnprocessableEntity {
 		log.Warn("error while processing message", "topic", im.Source, "status_code", http.StatusUnprocessableEntity)
+		ack(job)
 		return
 	}
 
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
 		log.Warn("dropping message after non-retryable response", "status_code", resp.StatusCode)
+		ack(job)
 		return
 	}
 
