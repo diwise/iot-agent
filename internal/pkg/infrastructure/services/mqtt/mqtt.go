@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -20,6 +21,13 @@ type Client interface {
 	Ready() bool
 }
 
+type sessionMode string
+
+const (
+	sessionModeEphemeral sessionMode = "ephemeral"
+	sessionModeDurable   sessionMode = "durable"
+)
+
 type Config struct {
 	enabled   bool
 	host      string
@@ -29,6 +37,7 @@ type Config struct {
 	password  string
 	topics    []string
 	clientId  string
+	session   sessionMode
 }
 
 func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Client, error) {
@@ -40,26 +49,36 @@ func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Clie
 	options.SetUsername(cfg.user)
 	options.SetPassword(cfg.password)
 
-	clientID := cfg.clientId
-	if clientID == "" {
-		clientID = "diwise/iot-agent/" + uuid.NewString()
+	clientID, err := cfg.resolvedClientID()
+	if err != nil {
+		return nil, err
 	}
 	options.SetClientID(clientID)
 
-	options.SetDefaultPublishHandler(NewMessageHandler(ctx, forwardingEndpoint))
+	forwarder := newMessageForwarder(ctx, forwardingEndpoint, defaultForwarderWorkerCount, defaultForwarderQueueDepth)
+	options.SetDefaultPublishHandler(forwarder.Handle)
 
+	options.SetCleanSession(!cfg.isDurable())
 	options.SetKeepAlive(time.Duration(cfg.keepAlive) * time.Second)
 	options.SetAutoReconnect(true)
 	options.SetAutoAckDisabled(true)
 	options.SetConnectRetry(true)
+	options.SetConnectRetryInterval(10 * time.Second)
 	options.SetMaxReconnectInterval(10 * time.Second)
+	options.SetOrderMatters(false)
+	options.SetResumeSubs(cfg.isDurable())
 
-	log := logging.GetFromContext(ctx).With(slog.String("mqtt-host", cfg.host), slog.Int("mqtt-port", cfg.port))
+	log := logging.GetFromContext(ctx).With(
+		slog.String("mqtt-host", cfg.host),
+		slog.Int("mqtt-port", cfg.port),
+		slog.String("mqtt-session-mode", string(cfg.session)),
+	)
 
 	options.OnConnect = func(mc mqtt.Client) {
 		log.Info("connected")
 		for _, topic := range cfg.topics {
 			log.Info("subscribing to topic", "topic", topic)
+
 			token := mc.Subscribe(topic, 1, nil)
 			token.Wait()
 			if token.Error() != nil {
@@ -86,9 +105,10 @@ func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Clie
 	}
 
 	return &mqttClient{
-		cfg:     cfg,
-		log:     log,
-		options: options,
+		cfg:       cfg,
+		log:       log,
+		options:   options,
+		forwarder: forwarder,
 	}, nil
 }
 
@@ -105,6 +125,7 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 		keepAlive: 30,
 		user:      os.Getenv(fmt.Sprintf("%sMQTT_USER", prefix)),
 		password:  os.Getenv(fmt.Sprintf("%sMQTT_PASSWORD", prefix)),
+		session:   sessionModeEphemeral,
 		topics: []string{
 			os.Getenv(fmt.Sprintf(topicEnvNamePattern, prefix, 0)),
 		},
@@ -118,6 +139,12 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 	if cfg.host == "" {
 		return cfg, fmt.Errorf("the mqtt host must be specified using the %sMQTT_HOST environment variable", prefix)
 	}
+
+	parsedSessionMode, err := parseSessionMode(os.Getenv(fmt.Sprintf("%sMQTT_SESSION_MODE", prefix)))
+	if err != nil {
+		return cfg, fmt.Errorf("invalid %sMQTT_SESSION_MODE: %w", prefix, err)
+	}
+	cfg.session = parsedSessionMode
 
 	customPort := os.Getenv(fmt.Sprintf("%sMQTT_PORT", prefix))
 	if customPort != "" {
@@ -133,6 +160,10 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 
 	if cfg.topics[0] == "" {
 		return cfg, fmt.Errorf("at least one topic (%sMQTT_TOPIC_0) must be added to the configuration", prefix)
+	}
+
+	if cfg.isDurable() && cfg.clientId == "" {
+		return cfg, fmt.Errorf("%sMQTT_CLIENT_ID must be specified when %sMQTT_SESSION_MODE=durable", prefix, prefix)
 	}
 
 	customKeepAlive := os.Getenv(fmt.Sprintf("%sMQTT_KEEPALIVE", prefix))
@@ -156,4 +187,31 @@ func NewConfigFromEnvironment(prefix string) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c Config) isDurable() bool {
+	return c.session == sessionModeDurable
+}
+
+func (c Config) resolvedClientID() (string, error) {
+	if c.clientId != "" {
+		return c.clientId, nil
+	}
+
+	if c.isDurable() {
+		return "", fmt.Errorf("durable mqtt sessions require an explicit client id")
+	}
+
+	return "diwise/iot-agent/" + uuid.NewString(), nil
+}
+
+func parseSessionMode(value string) (sessionMode, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", string(sessionModeEphemeral):
+		return sessionModeEphemeral, nil
+	case string(sessionModeDurable):
+		return sessionModeDurable, nil
+	default:
+		return "", fmt.Errorf("expected ephemeral or durable, got %q", value)
+	}
 }

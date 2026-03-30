@@ -128,6 +128,27 @@ func TestVegapulsSensorPacketIdentifier12(t *testing.T) {
 	is.Equal(tmp.SensorValue, float64(21.4))
 }
 
+func TestVegapulsSensorPacketIdentifier10(t *testing.T) {
+	is, _ := testSetup(t)
+	ctx := t.Context()
+
+	ue, err := facades.New("netmore")(ctx, "payload", fmt.Appendf(nil, testData, packetIdentifier10))
+	is.NoErr(err)
+
+	payload, err := Decoder(ctx, ue)
+	is.NoErr(err)
+	objects, err := Converter(ctx, "devid", payload, ue.Timestamp)
+	is.NoErr(err)
+
+	is.Equal(len(objects), 2)
+
+	b, _ := objects[0].(lwm2m.Device)
+	is.Equal(*b.BatteryLevel, int(66))
+
+	tmp, _ := objects[1].(lwm2m.Temperature)
+	is.Equal(tmp.SensorValue, float64(6.1))
+}
+
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
 	is := is.New(t)
 	return is, slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -160,6 +181,8 @@ const testDataFahrenheit string = "083FA31F152D2403022109"
 
 const partialTestData string = "02003FA31F152D2400FA"
 
-const unknownPacketIdentifier string = "05003FA31F152D2400FA"
+const unknownPacketIdentifier string = "1b"
 
 const packetIdentifier12 string = "0c3fefc9712d222f222f42af05af296300d620b2"
+
+const packetIdentifier10 string = "0A047FFFFFFF2D42000055F0003D2004"

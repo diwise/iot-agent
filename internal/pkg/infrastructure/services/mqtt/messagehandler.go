@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
@@ -22,7 +24,38 @@ import (
 
 var tracer = otel.Tracer("iot-agent/mqtt/message-handler")
 
+const (
+	defaultForwarderWorkerCount = 4
+	defaultForwarderQueueDepth  = 128
+	forwardRequestTimeout       = 15 * time.Second
+)
+
+type queuedMessage struct {
+	topic     string
+	payload   []byte
+	qos       byte
+	messageID uint16
+	ack       func()
+}
+
+type messageForwarder struct {
+	ctx                context.Context
+	cancel             context.CancelFunc
+	forwardingEndpoint string
+	logger             *slog.Logger
+	messageCounter     metric.Int64Counter
+	httpClient         *http.Client
+	jobs               chan queuedMessage
+	closeOnce          sync.Once
+	wg                 sync.WaitGroup
+}
+
 func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
+	forwarder := newMessageForwarder(ctx, forwardingEndpoint, defaultForwarderWorkerCount, defaultForwarderQueueDepth)
+	return forwarder.Handle
+}
+
+func newMessageForwarder(ctx context.Context, forwardingEndpoint string, workerCount int, queueDepth int) *messageForwarder {
 
 	messageCounter, err := otel.Meter("iot-agent/mqtt").Int64Counter(
 		"diwise.mqtt.messages.total",
@@ -36,77 +69,143 @@ func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt
 		logger.Error("failed to create otel message counter", "err", err.Error())
 	}
 
-	httpClient := http.Client{
-		Timeout:   15 * time.Second,
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	if workerCount < 1 {
+		workerCount = 1
 	}
 
-	return func(client mqtt.Client, msg mqtt.Message) {
-		var err error
+	if queueDepth < 1 {
+		queueDepth = 1
+	}
 
-		ctx, span := tracer.Start(context.Background(), "forward-message")
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+	workerCtx, cancel := context.WithCancel(ctx)
+	f := &messageForwarder{
+		ctx:                workerCtx,
+		cancel:             cancel,
+		forwardingEndpoint: forwardingEndpoint,
+		logger:             logger,
+		messageCounter:     messageCounter,
+		httpClient: &http.Client{
+			Timeout:   forwardRequestTimeout,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
+		jobs: make(chan queuedMessage, queueDepth),
+	}
 
-		messageCounter.Add(ctx, 1)
+	for range workerCount {
+		f.wg.Add(1)
+		go f.run()
+	}
 
-		payload := msg.Payload()
+	return f
+}
 
-		parts := strings.Split(msg.Topic(), "/")
+func (f *messageForwarder) Handle(client mqtt.Client, msg mqtt.Message) {
+	f.messageCounter.Add(f.ctx, 1)
 
-		im := types.IncomingMessage{
-			ID:     fmt.Sprintf("mqtt-%d", msg.MessageID()),
-			Type:   parts[len(parts)-1],
-			Source: msg.Topic(),
-			Data:   payload,
-		}
+	job := queuedMessage{
+		topic:     msg.Topic(),
+		payload:   append([]byte(nil), msg.Payload()...),
+		qos:       msg.Qos(),
+		messageID: msg.MessageID(),
+	}
+	if msg.Qos() > 0 {
+		job.ack = msg.Ack
+	}
 
-		b, err := json.Marshal(im)
-		if err != nil {
-			log.Error("failed to marshal incoming message", "err", err.Error())
-			if msg.Qos() > 0 {
-				msg.Ack()
-			}
+	select {
+	case <-f.ctx.Done():
+		f.logger.Warn("mqtt forwarder is shutting down; leaving message unacked", "topic", job.topic, "message_id", job.messageID)
+	case f.jobs <- job:
+	default:
+		f.logger.Warn("mqtt forwarder queue is full; leaving message unacked", "topic", job.topic, "message_id", job.messageID)
+	}
+}
+
+func (f *messageForwarder) Close() {
+	f.closeOnce.Do(func() {
+		f.cancel()
+		f.wg.Wait()
+	})
+}
+
+func (f *messageForwarder) run() {
+	defer f.wg.Done()
+
+	for {
+		select {
+		case <-f.ctx.Done():
 			return
+		case job := <-f.jobs:
+			f.forward(job)
 		}
+	}
+}
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, forwardingEndpoint, bytes.NewBuffer(b))
-		if err != nil {
-			log.Error("failed to create http request", "err", err.Error())
-			if msg.Qos() > 0 {
-				msg.Ack()
-			}
-			return
-		}
+func (f *messageForwarder) forward(job queuedMessage) {
+	var err error
+	defer ack(job)
 
-		req.Header.Add("Content-Type", "application/json")
+	ctx, span := tracer.Start(f.ctx, "forward-message")
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+	_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, f.logger, ctx)
 
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			log.Error("forwarding request failed", "err", err.Error())
-			return
-		}
-		defer func() {
-			io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
-		}()
+	parts := strings.Split(job.topic, "/")
 
-		if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent {
-			if msg.Qos() > 0 {
-				msg.Ack()
-			}
-			return
-		}
+	im := types.IncomingMessage{
+		ID:     fmt.Sprintf("mqtt-%d", job.messageID),
+		Type:   parts[len(parts)-1],
+		Source: job.topic,
+		Data:   job.payload,
+	}
 
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
-			log.Warn("dropping message after non-retryable response", "status_code", resp.StatusCode)
-			if msg.Qos() > 0 {
-				msg.Ack()
-			}
-			return
-		}
+	b, err := json.Marshal(im)
+	if err != nil {
+		log.Error("failed to marshal incoming message", "err", err.Error())		
+		return
+	}
 
-		err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
-		log.Error("failed to forward message", "err", err.Error())
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, f.forwardingEndpoint, bytes.NewReader(b))
+	if err != nil {
+		log.Error("failed to create http request", "err", err.Error())
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := f.httpClient.Do(req)
+	if err != nil {
+		log.Error("forwarding request failed", "err", err.Error())
+		return
+	}
+	defer func() {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
+
+	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent {
+		return
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return
+	}
+
+	if resp.StatusCode == http.StatusUnprocessableEntity {
+		log.Warn("error while processing message", "topic", im.Source, "status_code", http.StatusUnprocessableEntity)
+		return
+	}
+
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
+		log.Warn("dropping message after non-retryable response", "status_code", resp.StatusCode)
+		return
+	}
+
+	err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
+	log.Error("failed to forward message", "err", err.Error())
+}
+
+func ack(job queuedMessage) {
+	if job.qos > 0 && job.ack != nil {
+		job.ack()
 	}
 }

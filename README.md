@@ -153,6 +153,8 @@ curl -X POST http://localhost:8080/api/v0/messages
 "MQTT_PORT": "<broker port number>",
 "MQTT_USER": "<username>",
 "MQTT_PASSWORD": "<password>",
+"MQTT_SESSION_MODE": "ephemeral", # ephemeral or durable
+"MQTT_CLIENT_ID": "<optional stable client id>", # required for durable, optional for ephemeral
 "MQTT_TOPIC_0": "topic-01/#", # configure mqtt topic names
 "MQTT_TOPIC_1": "topic-02/#", # it is possible to specify multiple topics
 ...

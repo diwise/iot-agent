@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	//"fmt"
 	"io"
 	"net/http"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 
-	//"github.com/diwise/iot-agent/internal/pkg/presentation/api/auth"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	"github.com/diwise/senml"
 	"github.com/diwise/service-chassis/pkg/infrastructure/net/http/router"
@@ -84,9 +82,13 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 
 		err = app.HandleSensorEvent(ctx, evt)
 		if err != nil {
-			log.Error("failed to handle message", "err", err.Error())
+			if !errors.Is(err, types.ErrNoDevice) {
+				log.Error("failed to handle message", "err", err.Error())
+			}
+
 			w.WriteHeader(statusCodeForHandleSensorEventError(err))
 			w.Write([]byte(err.Error()))
+
 			return
 		}
 
