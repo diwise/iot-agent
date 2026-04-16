@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -51,6 +52,8 @@ func defaultFlags() flagMap {
 		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
 		appServerFacade:    "servanet",
 
+		logLevel: "debug",
+
 		devmode: "false",
 	}
 }
@@ -61,6 +64,8 @@ func main() {
 	defer cleanup()
 
 	ctx, flags := parseExternalConfig(ctx, defaultFlags())
+
+	logging.SetLogLevel(parseLogLevel(flags[logLevel]))
 
 	f, err := os.Open(flags[deviceprofileFile])
 	exitIf(err, logger, "failed to open device profile configuration file")
@@ -245,6 +250,7 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	flags[listenAddress] = envOrDef(ctx, "LISTEN_ADDRESS", flags[listenAddress])
 	flags[controlPort] = envOrDef(ctx, "CONTROL_PORT", flags[controlPort])
 	flags[servicePort] = envOrDef(ctx, "SERVICE_PORT", flags[servicePort])
+	flags[logLevel] = envOrDef(ctx, "LOG_LEVEL", flags[logLevel])
 
 	flags[policiesFile] = envOrDef(ctx, "POLICIES_FILE", flags[policiesFile])
 
@@ -276,6 +282,7 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	flag.Func("policies", "an authorization policy file", apply(policiesFile))
 	flag.Func("deviceprofiles", "a device profile configuration file", apply(deviceprofileFile))
 	flag.Func("devmode", "enable dev mode", apply(devmode))
+	flag.Func("loglevel", "set the log level", apply(logLevel))
 	flag.Parse()
 
 	return ctx, flags
@@ -295,6 +302,21 @@ func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (map[string]app
 	}
 
 	return cfg, nil
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelDebug
+	}
 }
 
 func exitIf(err error, logger *slog.Logger, msg string, args ...any) {

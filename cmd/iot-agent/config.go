@@ -39,6 +39,8 @@ const (
 	oauth2ClientSecret
 	oauth2TokenUrl
 
+	logLevel
+
 	devmode
 )
 

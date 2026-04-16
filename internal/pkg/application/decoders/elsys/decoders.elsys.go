@@ -3,6 +3,7 @@ package elsys
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"math"
 	"slices"
@@ -113,6 +114,10 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 		p.SoundPeak = obj.SoundPeak
 		p.SoundAvg = obj.SoundAvg
 	} else {
+		if e.Payload.Data == nil {
+			return p, fmt.Errorf("payload contains no data")
+		}
+
 		p, err = decodePayload(e.Payload.Data)
 		if err != nil {
 			return nil, err
@@ -286,6 +291,13 @@ const (
 
 func decodePayload(data []byte) (ElsysPayload, error) {
 	p := ElsysPayload{}
+	require := func(i int, needed int, field string) error {
+		if i+needed >= len(data) {
+			return fmt.Errorf("truncated elsys payload: type 0x%02x (%s) at index %d requires %d more bytes, got %d", data[i], field, i, needed, len(data)-i-1)
+		}
+
+		return nil
+	}
 
 	neg16 := func(v int) int {
 		if v > 0x7FFF {
@@ -294,91 +306,149 @@ func decodePayload(data []byte) (ElsysPayload, error) {
 		return v
 	}
 
-	neg8 := func(v int8) int8 {
-		if v > 0x7F {
-			return int8(-(0x0100 - int16(v)))
+	neg8 := func(v byte) int8 {
+		if v&0x80 != 0 {
+			return int8(int16(v) - 0x0100)
 		}
+
 		return int8(v)
 	}
 
 	for i := 0; i < len(data); i++ {
 		switch data[i] {
 		case TYPE_TEMP:
+			if err := require(i, 2, "temperature"); err != nil {
+				return p, err
+			}
 			t := (int(data[i+1]) << 8) | (int(data[i+2]))
 			result := float32(neg16(t)) / 10
 			p.Temperature = &result
 			i += 2
 		case TYPE_RH:
+			if err := require(i, 1, "humidity"); err != nil {
+				return p, err
+			}
 			result := int8(int(data[i+1]))
 			p.Humidity = &result
 			i += 1
 		case TYPE_ACC:
-			x := neg8(int8(int(data[i+1])))
-			y := neg8(int8(int(data[i+2])))
-			z := neg8(int8(int(data[i+3])))
+			if err := require(i, 3, "acceleration"); err != nil {
+				return p, err
+			}
+			x := neg8(data[i+1])
+			y := neg8(data[i+2])
+			z := neg8(data[i+3])
 			p.X = &x
 			p.Y = &y
 			p.Z = &z
 			i += 3
 		case TYPE_LIGHT:
+			if err := require(i, 2, "light"); err != nil {
+				return p, err
+			}
 			result := uint16(int(data[i+1])<<8 | int(data[i+2]))
 			p.Light = &result
 			i += 2
 		case TYPE_MOTION:
+			if err := require(i, 1, "motion"); err != nil {
+				return p, err
+			}
 			result := uint8(int(data[i+1]))
 			p.Motion = &result
 			i += 1
 		case TYPE_CO2:
+			if err := require(i, 2, "co2"); err != nil {
+				return p, err
+			}
 			result := uint16(int(data[i+1])<<8 | int(data[i+2]))
 			p.CO2 = &result
 			i += 2
 		case TYPE_VDD:
+			if err := require(i, 2, "vdd"); err != nil {
+				return p, err
+			}
 			result := uint16(int(data[i+1])<<8 | int(data[i+2]))
 			p.VDD = &result
 			i += 2
 		case TYPE_ANALOG1:
+			if err := require(i, 2, "analog1"); err != nil {
+				return p, err
+			}
 			a := uint16(int(data[i+1])<<8 | int(data[i+2]))
 			p.Analog1 = &a
 			i += 2
 		case TYPE_GPS:
+			if err := require(i, 6, "gps"); err != nil {
+				return p, err
+			}
 			i += 6
 		case TYPE_PULSE1:
+			if err := require(i, 2, "pulse1"); err != nil {
+				return p, err
+			}
 			pulse := uint16(int(data[i+1])<<8 | int(data[i+2]))
 			p.Pulse = &pulse
 			i += 2
 		case TYPE_PULSE1_ABS:
+			if err := require(i, 4, "pulseAbs"); err != nil {
+				return p, err
+			}
 			pulseAbs := uint32(int(data[i+1])<<24 | int(data[i+2])<<16 | int(data[i+3])<<8 | int(data[i+4]))
 			p.PulseAbs = &pulseAbs
 			i += 4
 		case TYPE_EXT_TEMP1:
+			if err := require(i, 2, "externalTemperature"); err != nil {
+				return p, err
+			}
 			result := float32(neg16(int(data[i+1])<<8|int(data[i+2]))) / 10
 			p.ExternalTemperature = &result
 			i += 2
 		case TYPE_EXT_TEMP2:
+			if err := require(i, 2, "externalTemperature2"); err != nil {
+				return p, err
+			}
 			result := float32(neg16(int(data[i+1])<<8|int(data[i+2]))) / 10
 			p.ExternalTemperature2 = &result
 			i += 2
 		case TYPE_PRESSURE:
+			if err := require(i, 4, "pressure"); err != nil {
+				return p, err
+			}
 			pressure := float32(int(data[i+1])<<24|int(data[i+2])<<16|int(data[i+3])<<8|int(data[i+4])) / 1000
 			p.Pressure = &pressure
 			i += 4
 		case TYPE_OCCUPANCY:
+			if err := require(i, 1, "occupancy"); err != nil {
+				return p, err
+			}
 			result := uint8(int(data[i+1]))
 			p.Occupancy = &result
 			i += 1
 		case TYPE_WATERLEAK:
+			if err := require(i, 1, "waterleak"); err != nil {
+				return p, err
+			}
 			w := uint8(int(data[i+1]))
 			p.Waterleak = &w
 			i += 1
 		case TYPE_EXT_DIGITAL:
+			if err := require(i, 1, "digital"); err != nil {
+				return p, err
+			}
 			result := data[i+1] == 1
 			p.DigitalInput = &result
 			i += 1
 		case TYPE_EXT_DIGITAL2:
+			if err := require(i, 1, "digital2"); err != nil {
+				return p, err
+			}
 			result := data[i+1] == 1
 			p.DigitalInput2 = &result
 			i += 1
 		case TYPE_SOUND:
+			if err := require(i, 2, "sound"); err != nil {
+				return p, err
+			}
 			soundPeak := uint8(int(data[i+1]))
 			soundAvg := uint8(int(data[i+2]))
 			p.SoundPeak = &soundPeak

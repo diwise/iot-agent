@@ -25,8 +25,8 @@ import (
 var tracer = otel.Tracer("iot-agent/mqtt/message-handler")
 
 const (
-	defaultForwarderWorkerCount = 4
-	defaultForwarderQueueDepth  = 128
+	defaultForwarderWorkerCount = 1
+	defaultForwarderQueueDepth  = 256
 	forwardRequestTimeout       = 15 * time.Second
 )
 
@@ -91,7 +91,7 @@ func newMessageForwarder(ctx context.Context, forwardingEndpoint string, workerC
 		jobs: make(chan queuedMessage, queueDepth),
 	}
 
-	for range workerCount {
+	for i := 0; i < workerCount; i++ {
 		f.wg.Add(1)
 		go f.run()
 	}
@@ -171,9 +171,19 @@ func (f *messageForwarder) forward(job queuedMessage) {
 
 	req.Header.Add("Content-Type", "application/json")
 
-	resp, err := f.httpClient.Do(req)
+	var resp *http.Response
+
+	resp, err = f.httpClient.Do(req)
 	if err != nil {
-		log.Error("forwarding request failed", "err", err.Error())
+		log.Warn("forwarding request failed",
+			"topic", job.topic,
+			"message_id", job.messageID,
+			"payload_snippet", string(job.payload[:min(100, len(job.payload))]),
+			"payload_bytes", len(job.payload),
+			"error_type", fmt.Sprintf("%T", err),
+			"err", err,
+		)
+
 		return
 	}
 	defer func() {

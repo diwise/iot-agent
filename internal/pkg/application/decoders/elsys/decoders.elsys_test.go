@@ -148,6 +148,20 @@ func TestElsysSoundDecoder(t *testing.T) {
 	is.Equal(63.0, *loudness.MaxMeasuredValue)
 }
 
+func TestElsysSoundDecoderReturnsErrorOnTruncatedPayload(t *testing.T) {
+	is, _ := testSetup(t)
+
+	_, err := decodePayload([]byte{TYPE_SOUND, 63})
+	is.True(err != nil)
+}
+
+func TestElsysPressureDecoderReturnsErrorOnTruncatedPayload(t *testing.T) {
+	is, _ := testSetup(t)
+
+	_, err := decodePayload([]byte{TYPE_PRESSURE, 0x00, 0x0F, 0x72})
+	is.True(err != nil)
+}
+
 func TestElsysSoundDecoderFromObject(t *testing.T) {
 	is, _ := testSetup(t)
 
