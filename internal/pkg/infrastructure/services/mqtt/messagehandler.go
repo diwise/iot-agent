@@ -165,8 +165,7 @@ func (f *messageForwarder) forward(job queuedMessage) {
 	resp, err := f.httpClient.Do(req)
 	if err != nil {
 		log.Warn("forwarding request failed",
-			"topic", job.topic,			
-			"duplicate", job.duplicate,
+			"topic", job.topic,						
 			"payload_snippet", string(job.payload[:min(100, len(job.payload))]),
 			"payload_bytes", len(job.payload),
 			"error_type", fmt.Sprintf("%T", err),
@@ -203,8 +202,7 @@ func (f *messageForwarder) forward(job queuedMessage) {
 	}
 
 	log.Error(fmt.Sprintf("unexpected response code %d", resp.StatusCode),
-		"topic", job.topic,
-		"duplicate", job.duplicate,
+		"topic", job.topic,		
 		"payload_snippet", string(job.payload[:min(100, len(job.payload))]),
 		"payload_bytes", len(job.payload))
 }
