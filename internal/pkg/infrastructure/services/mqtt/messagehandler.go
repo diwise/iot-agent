@@ -34,6 +34,7 @@ type queuedMessage struct {
 	payload   []byte
 	qos       byte
 	messageID uint16
+	duplicate bool
 	ack       func()
 }
 
@@ -97,6 +98,7 @@ func (f *messageForwarder) Handle(client mqtt.Client, msg mqtt.Message) {
 		payload:   append([]byte(nil), msg.Payload()...),
 		qos:       msg.Qos(),
 		messageID: msg.MessageID(),
+		duplicate: msg.Duplicate(),
 	}
 	if msg.Qos() > 0 {
 		job.ack = msg.Ack
@@ -144,7 +146,7 @@ func (f *messageForwarder) forward(job queuedMessage) {
 		Data:   job.payload,
 	}
 
-	ctx = logging.NewContextWithLogger(ctx, log, "message_id", im.ID, "received_at", time.Now().Format(time.RFC3339Nano))
+	ctx = logging.NewContextWithLogger(ctx, log, "message_id", job.messageID, "duplicate", job.duplicate, "received_at", time.Now().Format(time.RFC3339Nano))
 
 	b, err := json.Marshal(im)
 	if err != nil {
@@ -164,6 +166,7 @@ func (f *messageForwarder) forward(job queuedMessage) {
 	if err != nil {
 		log.Warn("forwarding request failed",
 			"topic", job.topic,			
+			"duplicate", job.duplicate,
 			"payload_snippet", string(job.payload[:min(100, len(job.payload))]),
 			"payload_bytes", len(job.payload),
 			"error_type", fmt.Sprintf("%T", err),
@@ -188,19 +191,20 @@ func (f *messageForwarder) forward(job queuedMessage) {
 	}
 
 	if resp.StatusCode == http.StatusUnprocessableEntity {
-		log.Warn("error while processing message", "topic", im.Source, "status_code", http.StatusUnprocessableEntity)
+		log.Warn("error while processing message", "topic", im.Source, "duplicate", job.duplicate, "status_code", http.StatusUnprocessableEntity)
 		ack(job)
 		return
 	}
 
 	if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
-		log.Warn("dropping message after non-retryable response", "status_code", resp.StatusCode)
+		log.Warn("dropping message after non-retryable response", "status_code", resp.StatusCode, "duplicate", job.duplicate)
 		ack(job)
 		return
 	}
 
 	log.Error(fmt.Sprintf("unexpected response code %d", resp.StatusCode),
 		"topic", job.topic,
+		"duplicate", job.duplicate,
 		"payload_snippet", string(job.payload[:min(100, len(job.payload))]),
 		"payload_bytes", len(job.payload))
 }
