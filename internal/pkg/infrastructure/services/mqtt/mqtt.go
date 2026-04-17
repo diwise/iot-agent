@@ -55,7 +55,7 @@ func NewClient(ctx context.Context, cfg Config, forwardingEndpoint string) (Clie
 	}
 	options.SetClientID(clientID)
 
-	forwarder := newMessageForwarder(ctx, forwardingEndpoint, defaultForwarderWorkerCount, defaultForwarderQueueDepth)
+	forwarder := newMessageForwarder(ctx, forwardingEndpoint, defaultForwarderQueueDepth)
 	options.SetDefaultPublishHandler(forwarder.Handle)
 
 	options.SetCleanSession(!cfg.isDurable())

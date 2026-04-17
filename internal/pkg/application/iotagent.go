@@ -115,6 +115,8 @@ func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error
 }
 
 func (a *app) decodeAndConvert(ctx context.Context, se types.Event) (dmc.Device, types.SensorPayload, []lwm2m.Lwm2mObject, error) {
+	log := logging.GetFromContext(ctx)
+
 	device, err := a.findDevice(ctx, se.DevEUI, a.client.FindDeviceFromDevEUI)
 	if err != nil {
 		return nil, nil, nil, err
@@ -128,6 +130,9 @@ func (a *app) decodeAndConvert(ctx context.Context, se types.Event) (dmc.Device,
 	if se.Payload == nil {
 		return device, nil, nil, types.ErrPayloadContainsNoData
 	}
+
+	log = log.With("device_id", device.ID())
+	ctx = logging.NewContextWithLogger(ctx, log)
 
 	decoder, converter, ok := a.registry.Get(ctx, device.SensorType())
 	if !ok {
@@ -155,6 +160,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	var errs []error
 
 	log := logging.GetFromContext(ctx).With(slog.String("sensor_id", se.DevEUI))
+	ctx = logging.NewContextWithLogger(ctx, log)
 
 	var device dmc.Device
 	var payload types.SensorPayload
@@ -180,7 +186,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	}
 
 	if errors.Is(err, types.ErrDeviceIgnored) {
-		log.Debug("device is ignored since the type is unknown", "sensor_id", se.DevEUI, slog.Bool("create_unknown_devices", a.createUnknownDeviceEnabled))
+		log.Debug("device is ignored since the type is unknown", slog.Bool("create_unknown_devices", a.createUnknownDeviceEnabled))
 		return nil
 	}
 
@@ -191,12 +197,12 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 			return err
 		}
 
-		log.Info("created new device of unknown type", "sensor_id", se.DevEUI, "tenant", a.createUnknownDeviceTenant)
+		log.Info("created new device of unknown type", "tenant", a.createUnknownDeviceTenant)
 		return nil
 	}
 
 	if errors.Is(err, types.ErrNoDevice) {
-		log.Debug("no device found for sensor id", "sensor_id", se.DevEUI)
+		log.Debug("no device found for sensor id")
 		return types.ErrNoDevice
 	}
 
@@ -210,7 +216,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	}
 
 	if !device.IsActive() {
-		log.Debug("device is not active", "device_id", device.ID(), "sensor_id", se.DevEUI)
+		log.Debug("device is not active")
 		return nil
 	}
 
@@ -233,7 +239,7 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 		}
 	}
 
-	log.Debug("sensor measurements processed", "device_id", device.ID())
+	log.Debug("sensor measurements processed", "processed_at", time.Now().Format(time.RFC3339Nano))
 
 	return errors.Join(errs...)
 }

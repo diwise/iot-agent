@@ -25,9 +25,8 @@ import (
 var tracer = otel.Tracer("iot-agent/mqtt/message-handler")
 
 const (
-	defaultForwarderWorkerCount = 1
-	defaultForwarderQueueDepth  = 256
-	forwardRequestTimeout       = 15 * time.Second
+	defaultForwarderQueueDepth = 256
+	forwardRequestTimeout      = 15 * time.Second
 )
 
 type queuedMessage struct {
@@ -47,16 +46,14 @@ type messageForwarder struct {
 	httpClient         *http.Client
 	jobs               chan queuedMessage
 	closeOnce          sync.Once
-	wg                 sync.WaitGroup
 }
 
 func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
-	forwarder := newMessageForwarder(ctx, forwardingEndpoint, defaultForwarderWorkerCount, defaultForwarderQueueDepth)
+	forwarder := newMessageForwarder(ctx, forwardingEndpoint, defaultForwarderQueueDepth)
 	return forwarder.Handle
 }
 
-func newMessageForwarder(ctx context.Context, forwardingEndpoint string, workerCount int, queueDepth int) *messageForwarder {
-
+func newMessageForwarder(ctx context.Context, forwardingEndpoint string, queueDepth int) *messageForwarder {
 	messageCounter, err := otel.Meter("iot-agent/mqtt").Int64Counter(
 		"diwise.mqtt.messages.total",
 		metric.WithUnit("1"),
@@ -67,10 +64,6 @@ func newMessageForwarder(ctx context.Context, forwardingEndpoint string, workerC
 
 	if err != nil {
 		logger.Error("failed to create otel message counter", "err", err.Error())
-	}
-
-	if workerCount < 1 {
-		workerCount = 1
 	}
 
 	if queueDepth < 1 {
@@ -91,10 +84,7 @@ func newMessageForwarder(ctx context.Context, forwardingEndpoint string, workerC
 		jobs: make(chan queuedMessage, queueDepth),
 	}
 
-	for i := 0; i < workerCount; i++ {
-		f.wg.Add(1)
-		go f.run()
-	}
+	go f.run()
 
 	return f
 }
@@ -124,13 +114,10 @@ func (f *messageForwarder) Handle(client mqtt.Client, msg mqtt.Message) {
 func (f *messageForwarder) Close() {
 	f.closeOnce.Do(func() {
 		f.cancel()
-		f.wg.Wait()
 	})
 }
 
 func (f *messageForwarder) run() {
-	defer f.wg.Done()
-
 	for {
 		select {
 		case <-f.ctx.Done():
@@ -157,6 +144,8 @@ func (f *messageForwarder) forward(job queuedMessage) {
 		Data:   job.payload,
 	}
 
+	ctx = logging.NewContextWithLogger(ctx, log, "message_id", im.ID, "received_at", time.Now().Format(time.RFC3339Nano))
+
 	b, err := json.Marshal(im)
 	if err != nil {
 		log.Error("failed to marshal incoming message", "err", err.Error())
@@ -171,13 +160,10 @@ func (f *messageForwarder) forward(job queuedMessage) {
 
 	req.Header.Add("Content-Type", "application/json")
 
-	var resp *http.Response
-
-	resp, err = f.httpClient.Do(req)
+	resp, err := f.httpClient.Do(req)
 	if err != nil {
 		log.Warn("forwarding request failed",
-			"topic", job.topic,
-			"message_id", job.messageID,
+			"topic", job.topic,			
 			"payload_snippet", string(job.payload[:min(100, len(job.payload))]),
 			"payload_bytes", len(job.payload),
 			"error_type", fmt.Sprintf("%T", err),
@@ -213,8 +199,10 @@ func (f *messageForwarder) forward(job queuedMessage) {
 		return
 	}
 
-	err = fmt.Errorf("unexpected response code %d", resp.StatusCode)
-	log.Error("failed to forward message", "err", err.Error())
+	log.Error(fmt.Sprintf("unexpected response code %d", resp.StatusCode),
+		"topic", job.topic,
+		"payload_snippet", string(job.payload[:min(100, len(job.payload))]),
+		"payload_bytes", len(job.payload))
 }
 
 func ack(job queuedMessage) {

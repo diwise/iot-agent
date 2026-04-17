@@ -46,7 +46,6 @@ func NewIncomingMessageHandler(ctx context.Context, app application.App, facade 
 
 		ctx, span := tracer.Start(r.Context(), "incoming-message")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		b, err := io.ReadAll(r.Body)
