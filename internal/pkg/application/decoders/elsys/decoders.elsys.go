@@ -114,8 +114,12 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 		p.SoundPeak = obj.SoundPeak
 		p.SoundAvg = obj.SoundAvg
 	} else {
+		if e.Payload.FPort != 5 {
+			return p, types.ErrInvalidFPort
+		}
+
 		if e.Payload.Data == nil {
-			return p, fmt.Errorf("payload contains no data")
+			return p, types.ErrPayloadContainsNoData
 		}
 
 		p, err = decodePayload(e.Payload.Data)
