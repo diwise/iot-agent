@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"strconv"
-	"strings"
 
 	"fmt"
 	"time"
@@ -190,16 +189,6 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *WaterMeterRe
 
 	log := logging.GetFromContext(ctx)
 
-	contains := func(strs []string, s string) *bool {
-		for _, v := range strs {
-			if strings.EqualFold(v, s) {
-				b := true
-				return &b
-			}
-		}
-		return nil
-	}
-
 	if p != nil {
 		for _, d := range p.Volumes {
 			if d.Timestamp.UTC().After(time.Now().UTC()) {
@@ -211,8 +200,7 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *WaterMeterRe
 
 			wm := lwm2m.NewWaterMeter(deviceID, m3, d.Timestamp)
 			wm.TypeOfMeter = &p.Type
-			wm.LeakDetected = contains(p.Messages, "Leak")
-			wm.BackFlowDetected = contains(p.Messages, "Backflow")
+			applyReadingStatusCode(&wm, p.StatusCode)
 
 			objects = append(objects, wm)
 		}
@@ -227,18 +215,83 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *WaterMeterRe
 	}
 
 	if ap != nil {
-		log.Warn("unhandled alarm from device", "code", ap.StatusCode, "messages", ap.Messages)
-		/*objects = append(objects, lwm2m.Alarm{
-			ID_:        deviceID,
-			Timestamp_: e.Timestamp,
-			AlarmCode:  ap.StatusCode,
-			AlarmText:  ap.Messages,
-		})*/
+		wm := lwm2m.WaterMeter{
+			DeviceInfo: lwm2m.DeviceInfo{
+				ID_:        deviceID,
+				Timestamp_: ap.Timestamp,
+			},
+		}
+		applyAlarmPacketCode(&wm, ap.StatusCode)
+
+		if hasAnyWaterMeterAlarm(wm) {
+			objects = append(objects, wm)
+		} else {
+			log.Warn("unhandled alarm from device", "code", ap.StatusCode, "messages", ap.Messages)
+		}
 	}
 
 	log.Debug("converted objects", slog.Int("count", len(objects)))
 
 	return objects
+}
+
+func boolPointer(value bool) *bool {
+	if !value {
+		return nil
+	}
+
+	b := true
+	return &b
+}
+
+func applyReadingStatusCode(wm *lwm2m.WaterMeter, code uint8) {
+	const (
+		powerLow       = 0x04
+		permanentError = 0x08
+		emptySpool     = 0x10
+		leak           = 0x20
+		backflow       = 0x60
+		freeze         = 0x80
+		burst          = 0xA0
+	)
+
+	wm.PowerLow = boolPointer(code&powerLow == powerLow)
+	wm.PermanentError = boolPointer(code&permanentError == permanentError)
+	wm.EmptySpool = boolPointer(code&emptySpool == emptySpool && code&freeze != freeze && code&leak != leak && code&burst != burst && code&backflow != backflow)
+	wm.Freeze = boolPointer(code&freeze == freeze && code&leak != leak && code&burst != burst && code&backflow != backflow)
+	wm.LeakSuspected = boolPointer(code&leak == leak && code&freeze != freeze && code&burst != burst && code&backflow != backflow)
+	wm.LeakDetected = boolPointer(code&burst == burst)
+	wm.BackFlowDetected = boolPointer(code&backflow == backflow)
+}
+
+func applyAlarmPacketCode(wm *lwm2m.WaterMeter, code uint8) {
+	const (
+		leakage        = 0x01
+		burst          = 0x02
+		lowTemperature = 0x04
+		tamper         = 0x08
+		negativeFlow   = 0x20
+	)
+
+	wm.LeakSuspected = boolPointer(code&leakage == leakage)
+	wm.LeakDetected = boolPointer(code&burst == burst)
+	wm.BackFlowDetected = boolPointer(code&negativeFlow == negativeFlow)
+	wm.LowTemperatureAlarm = boolPointer(code&lowTemperature == lowTemperature)
+	wm.TamperDetected = boolPointer(code&tamper == tamper)
+}
+
+func hasAnyWaterMeterAlarm(wm lwm2m.WaterMeter) bool {
+	return wm.LeakSuspected != nil ||
+		wm.LeakDetected != nil ||
+		wm.BackFlowDetected != nil ||
+		wm.BlockedMeter != nil ||
+		wm.FraudDetected != nil ||
+		wm.PowerLow != nil ||
+		wm.PermanentError != nil ||
+		wm.EmptySpool != nil ||
+		wm.Freeze != nil ||
+		wm.LowTemperatureAlarm != nil ||
+		wm.TamperDetected != nil
 }
 
 func decode(_ context.Context, ue types.Event) (*WaterMeterReading, *Alarm, error) {
