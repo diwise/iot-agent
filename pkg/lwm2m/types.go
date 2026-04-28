@@ -191,13 +191,13 @@ func NewWaterMeter(deviceID string, cumulatedWaterVolume float64, ts time.Time) 
 			ID_:        deviceID,
 			Timestamp_: ts,
 		},
-		CumulatedWaterVolume: cumulatedWaterVolume,
+		CumulatedWaterVolume: &cumulatedWaterVolume,
 	}
 }
 
 type WaterMeter struct {
 	DeviceInfo
-	CumulatedWaterVolume float64  `lwm2m:"1,m3"`
+	CumulatedWaterVolume *float64 `lwm2m:"1,m3"`
 	TypeOfMeter          *string  `lwm2m:"3"`
 	CumulatedPulseValue  *int     `lwm2m:"4"`
 	PulseRatio           *int     `lwm2m:"5"`
@@ -208,6 +208,12 @@ type WaterMeter struct {
 	BackFlowDetected     *bool    `lwm2m:"11"`
 	BlockedMeter         *bool    `lwm2m:"12"`
 	FraudDetected        *bool    `lwm2m:"13"`
+	PowerLow             *bool    `lwm2m:"64001"`
+	PermanentError       *bool    `lwm2m:"64002"`
+	EmptySpool           *bool    `lwm2m:"64004"`
+	Freeze               *bool    `lwm2m:"64005"`
+	LowTemperatureAlarm  *bool    `lwm2m:"64006"`
+	TamperDetected       *bool    `lwm2m:"64007"`
 }
 
 func (w WaterMeter) ID() string {

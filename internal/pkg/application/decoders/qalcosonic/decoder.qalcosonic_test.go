@@ -13,6 +13,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
+	"github.com/diwise/senml"
 
 	"github.com/matryer/is"
 )
@@ -68,7 +69,9 @@ func TestQalcosonic_w1h_lwm2m(t *testing.T) {
 	objects := convertToLwm2mObjects(context.Background(), "", p, nil)
 	is.Equal(24, len(objects))
 
-	is.Equal(float64(560.639), objects[16].(lwm2m.WaterMeter).CumulatedWaterVolume)
+	wm := objects[16].(lwm2m.WaterMeter)
+	is.True(wm.CumulatedWaterVolume != nil)
+	is.Equal(float64(560.639), *wm.CumulatedWaterVolume)
 }
 
 func TestQalcosonic_w1e(t *testing.T) {
@@ -95,7 +98,9 @@ func TestQalcosonic_w1e_lwm2m(t *testing.T) {
 	objects := convertToLwm2mObjects(context.Background(), "", &p, nil)
 	is.Equal(16, len(objects))
 
-	is.Equal(float64(13.492), objects[15].(lwm2m.WaterMeter).CumulatedWaterVolume)
+	wm := objects[15].(lwm2m.WaterMeter)
+	is.True(wm.CumulatedWaterVolume != nil)
+	is.Equal(float64(13.492), *wm.CumulatedWaterVolume)
 }
 
 func TestQalcosonicAlarmMessage(t *testing.T) {
@@ -342,6 +347,141 @@ func TestQalcosonicStatusCodes(t *testing.T) {
 	is.Equal("Freeze", getStatusMessage(0x88)[1])
 
 	is.Equal("Unknown", getStatusMessage(0x02)[0])
+}
+
+func TestQalcosonicStatusCodesMapToWaterMeterAlarms(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ts := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name             string
+		code             uint8
+		leakSuspected    bool
+		leakDetected     bool
+		backflowDetected bool
+	}{
+		{
+			name:          "leak maps to suspected leak",
+			code:          0x20,
+			leakSuspected: true,
+		},
+		{
+			name:         "burst maps to detected leak",
+			code:         0xA0,
+			leakDetected: true,
+		},
+		{
+			name:             "backflow maps to backflow alarm",
+			code:             0x60,
+			backflowDetected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			is := is.New(t)
+
+			objects := convertToLwm2mObjects(context.Background(), "device-1", &WaterMeterReading{
+				StatusCode: tt.code,
+				Messages:   getStatusMessage(tt.code),
+				Volumes: []Value{{
+					Timestamp: ts,
+					Volume:    1234,
+				}},
+			}, nil)
+
+			is.Equal(1, len(objects))
+
+			wm := objects[0].(lwm2m.WaterMeter)
+
+			is.Equal(tt.leakSuspected, wm.LeakSuspected != nil && *wm.LeakSuspected)
+			is.Equal(tt.leakDetected, wm.LeakDetected != nil && *wm.LeakDetected)
+			is.Equal(tt.backflowDetected, wm.BackFlowDetected != nil && *wm.BackFlowDetected)
+		})
+	}
+}
+
+func TestQalcosonicStatusCodesMapToPrivateWaterMeterAlarms(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ts := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name           string
+		code           uint8
+		powerLow       bool
+		permanentError bool
+		emptySpool     bool
+		freeze         bool
+	}{
+		{
+			name:     "power low maps to private alarm",
+			code:     0x04,
+			powerLow: true,
+		},
+		{
+			name:           "permanent error maps to private alarm",
+			code:           0x08,
+			permanentError: true,
+		},
+		{
+			name:       "empty spool maps to private alarm",
+			code:       0x10,
+			emptySpool: true,
+		},
+		{
+			name:   "freeze maps to private alarm",
+			code:   0x80,
+			freeze: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			is := is.New(t)
+
+			objects := convertToLwm2mObjects(context.Background(), "device-1", &WaterMeterReading{
+				StatusCode: tt.code,
+				Messages:   getStatusMessage(tt.code),
+				Volumes: []Value{{
+					Timestamp: ts,
+					Volume:    1234,
+				}},
+			}, nil)
+
+			is.Equal(1, len(objects))
+
+			wm := objects[0].(lwm2m.WaterMeter)
+
+			is.Equal(tt.powerLow, wm.PowerLow != nil && *wm.PowerLow)
+			is.Equal(tt.permanentError, wm.PermanentError != nil && *wm.PermanentError)
+			is.Equal(tt.emptySpool, wm.EmptySpool != nil && *wm.EmptySpool)
+			is.Equal(tt.freeze, wm.Freeze != nil && *wm.Freeze)
+		})
+	}
+}
+
+func TestQalcosonicAlarmPacketMapsToPrivateWaterMeterAlarms(t *testing.T) {
+	is, _ := testSetup(t)
+
+	ts := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	objects := convertToLwm2mObjects(context.Background(), "device-1", nil, &Alarm{
+		Timestamp:  ts,
+		StatusCode: 0x0C,
+	})
+
+	is.Equal(1, len(objects))
+
+	wm := objects[0].(lwm2m.WaterMeter)
+	is.True(wm.CumulatedWaterVolume == nil)
+	is.True(wm.LowTemperatureAlarm != nil && *wm.LowTemperatureAlarm)
+	is.True(wm.TamperDetected != nil && *wm.TamperDetected)
+
+	pack := lwm2m.ToPack(wm)
+	_, hasVolume := pack.GetRecord(senml.FindByName("1"))
+	is.True(!hasVolume)
 }
 
 func testSetup(t *testing.T) (*is.I, *slog.Logger) {
