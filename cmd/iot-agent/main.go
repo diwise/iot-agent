@@ -59,11 +59,11 @@ func defaultFlags() flagMap {
 }
 
 func main() {
-	serviceVersion := buildinfo.SourceVersion()
-	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
-	defer cleanup()
+	ctx, flags := parseExternalConfig(context.Background(), defaultFlags())
 
-	ctx, flags := parseExternalConfig(ctx, defaultFlags())
+	serviceVersion := buildinfo.SourceVersion()
+	ctx, logger, cleanup := o11y.Init(ctx, serviceName, serviceVersion, "json")
+	defer cleanup()
 
 	logging.SetLogLevel(parseLogLevel(flags[logLevel]))
 
