@@ -412,7 +412,7 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 	}
 
 	if s.SensorProfileID == UNKNOWN {
-		log.Debug("we will not create a device for a sensor of unknown profile")
+		log.Debug("we will not create a device for a sensor of unknown profile", "sensor_type", se.SensorType)
 		return nil
 	}
 
@@ -473,10 +473,12 @@ func (a *app) createUnknownDevice(ctx context.Context, se types.Event) error {
 				}
 
 				if i := slices.IndexFunc(d.Metadata, func(m dmtypes.Metadata) bool { return m.Key == key }); i == -1 {
-					d.Metadata = append(d.Metadata, dmtypes.Metadata{
-						Key:   key,
-						Value: v[0],
-					})
+					if len(v) > 0 {
+						d.Metadata = append(d.Metadata, dmtypes.Metadata{
+							Key:   key,
+							Value: v[0],
+						})
+					}
 				} else {
 					d.Metadata[i].Value = v[0]
 				}
