@@ -45,10 +45,10 @@ func handleErrorEvent(b []byte) (types.Event, error) {
 	}
 
 	e := types.Event{
-		DevEUI:    errorEvent.DeviceInfo.DevEUI,
-		Name:      errorEvent.DeviceInfo.DeviceName,
-		Tags:      mapToMapArr(errorEvent.DeviceInfo.Tags),
-		Timestamp: time.Now().UTC(),
+		DevEUI:     errorEvent.DeviceInfo.DevEUI,
+		Name:       errorEvent.DeviceInfo.DeviceName,
+		Tags:       mapToMapArr(errorEvent.DeviceInfo.Tags),
+		Timestamp:  time.Now().UTC(),
 		Error: &types.Error{
 			Level:   errorEvent.Level,
 			Type:    errorEvent.Code,
@@ -67,14 +67,15 @@ func handleStatusEvent(b []byte) (types.Event, error) {
 	}
 
 	e := types.Event{
-		DevEUI:    statusEvent.DeviceInfo.DevEUI,
-		Name:      statusEvent.DeviceInfo.DeviceName,
-		Tags:      mapToMapArr(statusEvent.DeviceInfo.Tags),
-		Timestamp: time.Now().UTC(),
+		DevEUI:     statusEvent.DeviceInfo.DevEUI,
+		Name:       statusEvent.DeviceInfo.DeviceName,
+		SensorType: statusEvent.DeviceInfo.DeviceProfileName,		
+		Tags:       mapToMapArr(statusEvent.DeviceInfo.Tags),
+		Timestamp:  statusEvent.Time.UTC(),
 		Status: &types.Status{
 			Margin:                  statusEvent.Margin,
 			BatteryLevel:            statusEvent.BatteryLevel,
-			BatteryLevelUnavailable: statusEvent.BatteryLevel != 0.0,
+			BatteryLevelUnavailable: statusEvent.BatteryLevel == 0.0,
 		},
 	}
 
