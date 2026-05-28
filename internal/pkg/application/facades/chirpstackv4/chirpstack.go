@@ -15,7 +15,7 @@ func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event
 	log := logging.GetFromContext(ctx)
 
 	switch messageType {
-	case "up":
+	case "up", "uplink":
 		log.Debug("Handling uplink event")
 		evt, err := handleUplinkEvent(b)
 		if err != nil {
@@ -25,7 +25,7 @@ func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event
 	case "status":
 		log.Debug("Handling status event")
 		return handleStatusEvent(b)
-	case "error":
+	case "log", "error":
 		log.Debug("Handling error event")
 		return handleErrorEvent(b)
 	case "txack", "down", "join":
@@ -38,20 +38,21 @@ func HandleEvent(ctx context.Context, messageType string, b []byte) (types.Event
 }
 
 func handleErrorEvent(b []byte) (types.Event, error) {
-	var errorEvent ErrorEvent
+	var errorEvent LogEvent
 	err := json.Unmarshal(b, &errorEvent)
 	if err != nil {
 		return types.Event{}, err
 	}
 
 	e := types.Event{
-		DevEUI:    errorEvent.DevEUI,
-		Name:      errorEvent.DeviceName,
-		Tags:      mapToMapArr(errorEvent.Tags),
+		DevEUI:    errorEvent.DeviceInfo.DevEUI,
+		Name:      errorEvent.DeviceInfo.DeviceName,
+		Tags:      mapToMapArr(errorEvent.DeviceInfo.Tags),
 		Timestamp: time.Now().UTC(),
 		Error: &types.Error{
-			Type:    errorEvent.Type,
-			Message: errorEvent.Error,
+			Level:   errorEvent.Level,
+			Type:    errorEvent.Code,
+			Message: errorEvent.Description,
 		},
 	}
 
@@ -66,14 +67,14 @@ func handleStatusEvent(b []byte) (types.Event, error) {
 	}
 
 	e := types.Event{
-		DevEUI:    statusEvent.DevEUI,
-		Name:      statusEvent.DeviceName,
-		Tags:      mapToMapArr(statusEvent.Tags),
+		DevEUI:    statusEvent.DeviceInfo.DevEUI,
+		Name:      statusEvent.DeviceInfo.DeviceName,
+		Tags:      mapToMapArr(statusEvent.DeviceInfo.Tags),
 		Timestamp: time.Now().UTC(),
 		Status: &types.Status{
 			Margin:                  statusEvent.Margin,
 			BatteryLevel:            statusEvent.BatteryLevel,
-			BatteryLevelUnavailable: statusEvent.BatteryLevelUnavailable,
+			BatteryLevelUnavailable: statusEvent.BatteryLevel != 0.0,
 		},
 	}
 
@@ -87,7 +88,7 @@ func handleUplinkEvent(b []byte) (types.Event, error) {
 		return types.Event{}, err
 	}
 
-	if uplinkEvent.DevEUI == "" {
+	if uplinkEvent.DeviceInfo.DevEUI == "" {
 		return types.Event{}, types.ErrSensorIDMissing
 	}
 
@@ -114,12 +115,12 @@ func handleUplinkEvent(b []byte) (types.Event, error) {
 	}
 
 	e := types.Event{
-		DevEUI:     uplinkEvent.DevEUI,
-		Name:       uplinkEvent.DeviceName,
-		SensorType: uplinkEvent.DeviceProfileName,
-		FCnt:       uplinkEvent.FCnt,
-		Tags:       mapToMapArr(uplinkEvent.Tags),
-		Timestamp:  time.Now().UTC(),
+		DevEUI:     uplinkEvent.DeviceInfo.DevEUI,
+		Name:       uplinkEvent.DeviceInfo.DeviceName,
+		SensorType: uplinkEvent.DeviceInfo.DeviceProfileName,
+		FCnt:       int(uplinkEvent.FCnt),
+		Tags:       mapToMapArr(uplinkEvent.DeviceInfo.Tags),
+		Timestamp:  uplinkEvent.Time.UTC(),
 
 		Payload: &types.Payload{
 			FPort:  uplinkEvent.FPort,
@@ -128,119 +129,89 @@ func handleUplinkEvent(b []byte) (types.Event, error) {
 		},
 
 		TX: &types.TX{
-			Frequency: int64(uplinkEvent.TxInfo.Frequency),
-			DR:        uplinkEvent.Dr,
+			Frequency: int64(uplinkEvent.TXInfo.Frequency),
+			DR:        uplinkEvent.DR,
 		},
 	}
 
-	if len(uplinkEvent.RxInfo) > 0 {
-		e.Location = types.Location{
-			Latitude:  uplinkEvent.RxInfo[0].Location.Latitude,
-			Longitude: uplinkEvent.RxInfo[0].Location.Longitude,
-		}
-
+	if len(uplinkEvent.RXInfo) > 0 {
+		e.Location = types.Location{} // no such information in ChirpStack v4 uplink event
 		e.RX = &types.RX{
-			RSSI:    float64(uplinkEvent.RxInfo[0].RSSI),
-			LoRaSNR: uplinkEvent.RxInfo[0].LoRaSNR,
+			RSSI:    float64(uplinkEvent.RXInfo[0].RSSI),
+			LoRaSNR: uplinkEvent.RXInfo[0].SNR,
 		}
 	}
 
 	return e, nil
 }
 
-// UplinkEvent representerar ett fullständigt uplink-meddelande från ChirpStack v4.
 type UplinkEvent struct {
-	// Grundinformation
-	ApplicationID   string `json:"applicationID"`
-	ApplicationName string `json:"applicationName"`
-	DeviceName      string `json:"deviceName"`
-	DevEUI          string `json:"devEUI"`
+	DeduplicationID string     `json:"deduplicationId"`
+	Time            time.Time  `json:"time"`
+	DeviceInfo      DeviceInfo `json:"deviceInfo"`
+	DevAddr         string     `json:"devAddr"`
+	DR              int        `json:"dr"`
+	FPort           int        `json:"fPort"`
+	FCnt            uint32     `json:"fCnt"`
+	Data            string     `json:"data"`
+	RXInfo          []RXInfo   `json:"rxInfo"`
+	TXInfo          TXInfo     `json:"txInfo"`
 
-	// Mottagningsinformation
-	RxInfo []RxInfo `json:"rxInfo"`
-
-	// Sändningsinformation
-	TxInfo TxInfo `json:"txInfo"`
-
-	// Nätverksegenskaper
-	Adr        bool              `json:"adr"`
-	Dr         int               `json:"dr"`
-	FCnt       int               `json:"fCnt"`
-	FPort      int               `json:"fPort"`
-	Data       string            `json:"data"`   // Base64‑kodat
-	Object     json.RawMessage   `json:"object"` // JSON-objekt
-	ObjectJSON json.RawMessage   `json:"objectJSON"`
-	Tags       map[string]string `json:"tags"`
-
-	// Ytterligare fält
-	ConfirmedUplink   bool      `json:"confirmed_uplink"`
-	DevAddr           string    `json:"dev_addr"`
-	PublishedAt       time.Time `json:"published_at"`
-	DeviceProfileID   string    `json:"deviceProfileID"`
-	DeviceProfileName string    `json:"deviceProfileName"`
+	Object     json.RawMessage `json:"object"`
+	ObjectJSON json.RawMessage `json:"objectJSON"`
 }
 
-// RxInfo representerar ett mottaget RX-objekt (gateway-specifik metadata).
-type RxInfo struct {
-	GatewayID         string    `json:"gatewayID"`
-	Time              time.Time `json:"time"`
-	TimeSinceGPSEpoch *int64    `json:"timeSinceGPSEpoch"`
-	RSSI              int       `json:"rssi"`
-	LoRaSNR           float64   `json:"loRaSNR"`
-	Channel           int       `json:"channel"`
-	RFChain           int       `json:"rfChain"`
-	Board             int       `json:"board"`
-	Antenna           int       `json:"antenna"`
-	Location          Location  `json:"location"`
-	FineTimestampType string    `json:"fineTimestampType"`
-	Context           string    `json:"context"`
-	UplinkID          string    `json:"uplinkID"`
-}
-
-// Location representerar geografisk plats med latitude, longitude och altitude.
-type Location struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Altitude  float64 `json:"altitude"`
-}
-
-// TxInfo representerar sändningsinformation från enheten.
-type TxInfo struct {
-	Frequency          int                `json:"frequency"`
-	Modulation         string             `json:"modulation"`
-	LoRaModulationInfo LoRaModulationInfo `json:"loRaModulationInfo"`
-}
-
-// LoRaModulationInfo innehåller specifika inställningar för LoRa-moduleringen.
-type LoRaModulationInfo struct {
-	Bandwidth             int    `json:"bandwidth"`
-	SpreadingFactor       int    `json:"spreadingFactor"`
-	CodeRate              string `json:"codeRate"`
-	PolarizationInversion bool   `json:"polarizationInversion"`
-}
-
-// StatusEvent representerar statusinformationen för en enhet.
 type StatusEvent struct {
-	ApplicationID           string            `json:"applicationID"`
-	ApplicationName         string            `json:"applicationName"`
-	DeviceName              string            `json:"deviceName"`
-	DevEUI                  string            `json:"devEUI"`
-	Margin                  int               `json:"margin"`
-	ExternalPowerSource     bool              `json:"externalPowerSource"`
-	BatteryLevelUnavailable bool              `json:"batteryLevelUnavailable"`
-	BatteryLevel            float64           `json:"batteryLevel"`
-	Tags                    map[string]string `json:"tags"`
+	DeduplicationID string     `json:"deduplicationId"`
+	Time            time.Time  `json:"time"`
+	DeviceInfo      DeviceInfo `json:"deviceInfo"`
+	Margin          int        `json:"margin"`
+	BatteryLevel    float64    `json:"batteryLevel"`
 }
 
-// ErrorEvent representerar information om ett error-meddelande.
-type ErrorEvent struct {
-	ApplicationID   string            `json:"applicationID"`
-	ApplicationName string            `json:"applicationName"`
-	DeviceName      string            `json:"deviceName"`
-	DevEUI          string            `json:"devEUI"`
-	Type            string            `json:"type"`
-	Error           string            `json:"error"`
-	Tags            map[string]string `json:"tags"`
+type LogEvent struct {
+	Time        time.Time         `json:"time"`
+	DeviceInfo  DeviceInfo        `json:"deviceInfo"`
+	Level       string            `json:"level"`
+	Code        string            `json:"code"`
+	Description string            `json:"description"`
+	Context     map[string]string `json:"context"`
+}
+
+type DeviceInfo struct {
+	TenantID          string            `json:"tenantId"`
+	TenantName        string            `json:"tenantName"`
+	ApplicationID     string            `json:"applicationId"`
+	ApplicationName   string            `json:"applicationName"`
+	DeviceProfileID   string            `json:"deviceProfileId"`
+	DeviceProfileName string            `json:"deviceProfileName"`
+	DeviceName        string            `json:"deviceName"`
+	DevEUI            string            `json:"devEui"`
+	Tags              map[string]string `json:"tags"`
+}
+
+type RXInfo struct {
+	GatewayID string            `json:"gatewayId"`
+	UplinkID  uint32            `json:"uplinkId"`
+	RSSI      int               `json:"rssi"`
+	SNR       float64           `json:"snr"`
+	Context   string            `json:"context"`
+	Metadata  map[string]string `json:"metadata"`
+}
+
+type TXInfo struct {
+	Frequency  uint64     `json:"frequency"`
+	Modulation Modulation `json:"modulation"`
+}
+
+type Modulation struct {
+	LoRa LoRaModulation `json:"lora"`
+}
+
+type LoRaModulation struct {
+	Bandwidth       int    `json:"bandwidth"`
+	SpreadingFactor int    `json:"spreadingFactor"`
+	CodeRate        string `json:"codeRate"`
 }
 
 func mapToMapArr(m map[string]string) map[string][]string {
