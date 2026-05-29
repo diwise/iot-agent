@@ -146,11 +146,11 @@ func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	poolConfig.MaxConns = 10
-	poolConfig.MinConns = 2
-	poolConfig.MaxConnLifetime = 30 * time.Minute
-	poolConfig.MaxConnIdleTime = 5 * time.Minute
-	poolConfig.HealthCheckPeriod = 30 * time.Second
+	poolConfig.MaxConns = env.GetVariableOrDefaultT(ctx, "POSTGRES_MAX_CONNS", int32(10))
+	poolConfig.MinConns = env.GetVariableOrDefaultT(ctx, "POSTGRES_MIN_CONNS", int32(2))
+	poolConfig.MaxConnLifetime = env.GetVariableOrDefaultT(ctx, "POSTGRES_MAX_CONN_LIFETIME", 30*time.Minute)
+	poolConfig.MaxConnIdleTime = env.GetVariableOrDefaultT(ctx, "POSTGRES_MAX_CONN_IDLE_TIME", 5*time.Minute)
+	poolConfig.HealthCheckPeriod = env.GetVariableOrDefaultT(ctx, "POSTGRES_HEALTH_CHECK_PERIOD", 30*time.Second)
 
 	p, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
