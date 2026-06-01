@@ -93,6 +93,7 @@ type TXInfo struct {
 }
 
 type Error struct {
+	Level   string `json:"level,omitempty"`
 	Type    string `json:"type,omitempty"`
 	Message string `json:"message,omitempty"`
 }
