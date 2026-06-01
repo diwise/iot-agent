@@ -89,7 +89,7 @@ func (d *devmodeDeviceMgmtClient) FindDeviceFromDevEUI(ctx context.Context, devE
 }
 
 func (d *devmodeDeviceMgmtClient) Client() *http.Client {
-  return &http.Client{}
+	return &http.Client{}
 }
 
 func newDeviceMock(device types.Device) devicemgmtclient.Device {

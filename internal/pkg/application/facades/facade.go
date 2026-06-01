@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/facades/chirpstack"
+	"github.com/diwise/iot-agent/internal/pkg/application/facades/chirpstackv4"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades/netmore"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades/servanet"
 
@@ -17,6 +18,8 @@ func New(as string) EventFunc {
 	switch strings.ToLower(as) {
 	case "chirpstack":
 		return chirpstack.HandleEvent
+	case "chirpstackv4":
+		return chirpstackv4.HandleEvent
 	case "netmore":
 		return netmore.HandleEvent
 	case "servanet":
