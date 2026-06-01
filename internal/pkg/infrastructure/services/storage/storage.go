@@ -152,6 +152,8 @@ func connect(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 	poolConfig.MaxConnIdleTime = env.GetVariableOrDefaultAs(ctx, "POSTGRES_MAX_CONN_IDLE_TIME", 5*time.Minute)
 	poolConfig.HealthCheckPeriod = env.GetVariableOrDefaultAs(ctx, "POSTGRES_HEALTH_CHECK_PERIOD", 30*time.Second)
 
+	poolConfig.ConnConfig.RuntimeParams["application_name"] = "iot-agent"
+
 	p, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, err
