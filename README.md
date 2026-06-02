@@ -1,4 +1,5 @@
 # iot-agent
+
 A service that handles (decodes and converts) incoming data from multiple sources.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://github.com/diwise/iot-agent/blob/main/LICENSE)
