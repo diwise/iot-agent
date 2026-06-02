@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/diwise/messaging-golang v0.0.0-20250628135946-f23f34d06003
-	github.com/diwise/service-chassis v0.0.0-20260601131324-5a8797d98a03
+	github.com/diwise/service-chassis v0.0.0-20260602135046-9f4adf349775
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/matryer/is v1.4.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0
