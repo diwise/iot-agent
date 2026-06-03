@@ -49,7 +49,7 @@ func TestElsysDigital1True_lwm2m(t *testing.T) {
 	is.NoErr(err)
 	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
 	is.NoErr(err)
-	is.Equal(true, objects[3].(lwm2m.DigitalInput).DigitalInputState)
+	is.Equal(true, objects[0].(lwm2m.DigitalInput).DigitalInputState)
 }
 
 func TestElsysDigital1False(t *testing.T) {
@@ -97,7 +97,7 @@ func TestElsysCO2Decoder(t *testing.T) {
 	is.NoErr(err)
 
 	is.Equal(len(objects), 5)
-	expected := 66
+	expected := 100
 	is.Equal(objects[4].(lwm2m.Device).BatteryLevel, &expected)
 }
 
@@ -162,35 +162,7 @@ func TestElsysPressureDecoderReturnsErrorOnTruncatedPayload(t *testing.T) {
 	is.True(err != nil)
 }
 
-func TestElsysSoundDecoderFromObject(t *testing.T) {
-	is, _ := testSetup(t)
 
-	ue, err := facades.New("servanet")(context.Background(), "up", []byte(`{
-		"data": "",
-		"fPort": 5,
-		"devEui": "abc123",
-		"object": {
-			"soundPeak": 61,
-			"soundAvg": 55
-		},
-		"timestamp": "2024-08-05T11:18:37.650212638Z",
-		"deviceName": "abc123",
-		"sensorType": "Elsys_codec"
-	}`))
-	is.NoErr(err)
-
-	payload, err := Decoder(context.Background(), ue)
-	is.NoErr(err)
-
-	objects, err := Converter(context.Background(), "abc123", payload, ue.Timestamp)
-	is.NoErr(err)
-	is.Equal(len(objects), 1)
-
-	loudness := objects[0].(lwm2m.Loudness)
-	is.Equal(55.0, loudness.SensorValue)
-	is.True(loudness.MaxMeasuredValue != nil)
-	is.Equal(61.0, *loudness.MaxMeasuredValue)
-}
 
 func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is, _ := testSetup(t)
@@ -385,6 +357,7 @@ const elsysCO2 string = `{
 	"deviceProfileName":"ELSYS",
 	"deviceProfileID":"0b765672-274a-41eb-b1c5-bb2bec9d14e8",
 	"devEUI":"a81758fffe05e6fb",
+	"fPort":5,
 	"data":"AQDoAgwEAFoFAgYBqwcONA==",
 	"object": {
 		"co2":427,

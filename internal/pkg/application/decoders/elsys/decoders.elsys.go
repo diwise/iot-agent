@@ -2,7 +2,6 @@ package elsys
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -63,69 +62,17 @@ func Decoder(ctx context.Context, e types.Event) (types.SensorPayload, error) {
 	var p ElsysPayload
 	var err error
 
-	if e.Payload != nil && e.Payload.Object != nil {
-		obj := struct {
-			Temperature          *float32 `json:"temperature,omitempty"`
-			ExternalTemperature  *float32 `json:"externalTemperature,omitempty"`
-			ExternalTemperature2 *float32 `json:"externalTemperature2,omitempty"`
-			Humidity             *int8    `json:"humidity,omitempty"`
-			Light                *uint16  `json:"light,omitempty"`
-			Motion               *uint8   `json:"motion,omitempty"`
-			CO2                  *uint16  `json:"co2,omitempty"`
-			VDD                  *uint16  `json:"vdd,omitempty"`
-			Analog1              *uint16  `json:"analog1,omitempty"`
-			Pulse                *uint16  `json:"pulse1,omitempty"`
-			PulseAbs             *uint32  `json:"pulseAbs,omitempty"`
-			Pressure             *float32 `json:"pressure,omitempty"`
-			Occupancy            *uint8   `json:"occupancy,omitempty"`
-			DigitalInput         *int     `json:"digital,omitempty"`
-			DigitalInput2        *int     `json:"digital2,omitempty"`
-			Waterleak            *uint8   `json:"waterleak,omitempty"`
-			SoundPeak            *uint8   `json:"soundPeak,omitempty"`
-			SoundAvg             *uint8   `json:"soundAvg,omitempty"`
-		}{}
-		err := json.Unmarshal(e.Payload.Object, &obj)
-		if err != nil {
-			return nil, err
-		}
+	if e.Payload.FPort != 5 {
+		return p, types.ErrInvalidFPort
+	}
 
-		p.Temperature = obj.Temperature
-		p.ExternalTemperature = obj.ExternalTemperature
-		p.ExternalTemperature2 = obj.ExternalTemperature2
-		p.Humidity = obj.Humidity
-		p.Light = obj.Light
-		p.Motion = obj.Motion
-		p.CO2 = obj.CO2
-		p.VDD = obj.VDD
-		p.Analog1 = obj.Analog1
-		p.Pulse = obj.Pulse
-		p.PulseAbs = obj.PulseAbs
-		p.Pressure = obj.Pressure
-		p.Occupancy = obj.Occupancy
-		if obj.DigitalInput != nil {
-			b := *obj.DigitalInput == 1
-			p.DigitalInput = &b
-		}
-		if obj.DigitalInput2 != nil {
-			b := *obj.DigitalInput2 == 1
-			p.DigitalInput2 = &b
-		}
-		p.Waterleak = obj.Waterleak
-		p.SoundPeak = obj.SoundPeak
-		p.SoundAvg = obj.SoundAvg
-	} else {
-		if e.Payload.FPort != 5 {
-			return p, types.ErrInvalidFPort
-		}
+	if e.Payload.Data == nil {
+		return p, types.ErrPayloadContainsNoData
+	}
 
-		if e.Payload.Data == nil {
-			return p, types.ErrPayloadContainsNoData
-		}
-
-		p, err = decodePayload(e.Payload.Data)
-		if err != nil {
-			return nil, err
-		}
+	p, err = decodePayload(e.Payload.Data)
+	if err != nil {
+		return nil, err
 	}
 
 	return p, nil

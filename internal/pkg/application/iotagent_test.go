@@ -580,6 +580,7 @@ const ers string = `
     "deviceProfileID": "0b765672-274a-41eb-b1c5-bb2bec9d14e8",
     "devEUI": "a81758fffe05e6fb",
     "data": "AQDuAhYEALIFAgYBxAcONA==",
+	"fPort":5,
     "object": {
         "co2": 452,
         "humidity": 22,

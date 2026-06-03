@@ -14,11 +14,11 @@ import (
 
 type EnviotPayload struct {
 	Payload struct {
-		Battery      *int     `json:"battery,omitempty"`
-		Humidity     *float32 `json:"humidity,omitempty"`
-		SensorStatus int      `json:"sensorStatus"`
-		SnowHeight   *int     `json:"snowHeight,omitempty"`
-		Temperature  *float32 `json:"temperature,omitempty"`
+		Battery      *float64     `json:"battery,omitempty"`
+		Humidity     *float64 `json:"humidity,omitempty"`
+		SensorStatus float64      `json:"sensorStatus"`
+		SnowHeight   *float64     `json:"snowHeight,omitempty"`
+		Temperature  *float64 `json:"temperature,omitempty"`
 	} `json:"payload"`
 }
 
