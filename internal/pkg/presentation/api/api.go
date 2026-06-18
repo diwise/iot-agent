@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/diwise/iot-agent/assets/docs"
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	"github.com/diwise/iot-agent/internal/pkg/application/types"
@@ -29,6 +30,8 @@ var tracer = otel.Tracer("iot-agent/api")
 
 func RegisterHandlers(ctx context.Context, rootMux *http.ServeMux, app application.App, facade facades.EventFunc) error {
 	const apiPrefix string = "/api/v0"
+
+	docs.RegisterHandlers(ctx, rootMux)
 
 	r := router.New(rootMux, router.WithPrefix(apiPrefix), router.WithTaggedRoutes(true))
 

@@ -3,6 +3,7 @@ package qalcosonic
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,6 +18,32 @@ import (
 
 	"github.com/matryer/is"
 )
+
+func TestFrameVersion(t *testing.T) {
+
+	const frameversionOne = "Af41+2kA2/0WABSAAlABYAAuwA8AB7QBRMAKgALAADjAEmADuAA6ABigBggBZwAQIAMA"
+	const frameversionNotOne = "70xPqOEbhNtpIe9l58zS2XBXKD/zmT1yKvbeHHBgQsfaI2c95WEiMTTTz77x9ERJ6waw"
+
+	one, err := base64.StdEncoding.DecodeString(frameversionOne)
+	if err != nil {
+		t.Fatalf("failed to decode \"one\" base64: %v", err)
+	}
+
+	notOne, err := base64.StdEncoding.DecodeString(frameversionNotOne)
+	if err != nil {
+		t.Fatalf("failed to decode \"not one\" base64: %v", err)
+	}
+
+	_, err = w1h(bytes.NewReader(one))
+	if err != nil {
+		t.Fatalf("failed to decode \"one\": %v", err)
+	}
+
+	_, err = w1h(bytes.NewReader(notOne))
+	if err == nil {
+		t.Fatalf("there should be an error")
+	}
+}
 
 func TestQalcosonic_w1t(t *testing.T) {
 	is, _ := testSetup(t)

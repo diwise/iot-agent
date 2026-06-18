@@ -574,6 +574,10 @@ func w1h(buf *bytes.Reader) (WaterMeterReading, error) {
 		return p, err
 	}
 
+	if p.FrameVersion != 1 {
+		return p, fmt.Errorf("unsupported frame version: %d", p.FrameVersion)
+	}
+
 	var sensorTime time.Time
 	var logDateTime time.Time
 	err = binary.Read(buf, binary.LittleEndian, &epoch)

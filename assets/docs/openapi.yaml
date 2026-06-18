@@ -1,0 +1,241 @@
+openapi: 3.0.3
+info:
+  title: IoT Agent API
+  version: 0.1.0
+  description: API for receiving decoded gateway messages and LwM2M SenML measurement packs.
+servers:
+  - url: /api/v0
+tags:
+  - name: Messages
+paths:
+  /messages:
+    post:
+      tags: [Messages]
+      summary: Receive an incoming gateway message
+      description: |
+        Accepts a normalized incoming message envelope. The `type` and binary `data` fields are passed to the configured facade decoder before the resulting sensor event is handled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncomingMessage'
+            examples:
+              mqtt:
+                value:
+                  id: '123'
+                  type: up
+                  source: /topic/456/up
+                  data: eyJkZXZFVUkiOiIyNGUxMjQzMjllMDkwMDIxIn0=
+      responses:
+        '201':
+          description: Message accepted and sensor event handled
+        '204':
+          description: Message decoded but no DevEUI was present, so nothing was handled
+        '400':
+          description: Invalid request body or JSON envelope
+        '404':
+          description: Device was not found or is not handled
+          content:
+            text/plain:
+              schema: { type: string }
+        '422':
+          description: Message facade or decoder rejected the payload
+          content:
+            text/plain:
+              schema: { type: string }
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema: { type: string }
+  /messages/lwm2m:
+    post:
+      tags: [Messages]
+      summary: Receive an LwM2M SenML measurement pack
+      description: Accepts a non-empty SenML pack and forwards it to the LwM2M measurement handler.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SenMLPack'
+            examples:
+              temperature:
+                value:
+                  - bn: urn:oma:lwm2m:ext:3303
+                    bt: 1677079794
+                    n: '0'
+                    vs: net:serva:iot:a81758fffe051d02
+                  - n: '5700'
+                    v: -4.5
+                  - u: lat
+                    v: 62.36956
+                  - u: lon
+                    v: 17.31984
+                  - n: env
+                    vs: air
+                  - n: tenant
+                    vs: default
+      responses:
+        '201':
+          description: SenML pack accepted and handled
+        '400':
+          description: Invalid, malformed or empty SenML pack
+        '500':
+          description: Internal server error while handling measurement list
+components:
+  schemas:
+    IncomingMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: Message type consumed by the configured facade, for example `up`.
+        source:
+          type: string
+        data:
+          type: string
+          format: byte
+          description: Base64 encoded raw message payload. Go encodes []byte JSON fields as base64 strings.
+      required: [id, type, data]
+    Event:
+      type: object
+      description: Internal decoded event shape produced by facades. This is not returned by the API.
+      properties:
+        devEUI: { type: string }
+        name: { type: string }
+        sensorType: { type: string }
+        source: { type: string }
+        location:
+          $ref: '#/components/schemas/Location'
+        rx:
+          $ref: '#/components/schemas/RX'
+        tx:
+          $ref: '#/components/schemas/TX'
+        fCnt: { type: integer }
+        payload:
+          $ref: '#/components/schemas/Payload'
+        status:
+          $ref: '#/components/schemas/Status'
+        error:
+          $ref: '#/components/schemas/EventError'
+        tags:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+        timestamp:
+          type: string
+          format: date-time
+      required: [devEUI, location, fCnt, timestamp]
+    Location:
+      type: object
+      properties:
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+      required: [latitude, longitude]
+    RX:
+      type: object
+      properties:
+        rssi: { type: number, format: double }
+        loRaSNR: { type: number, format: double }
+      required: [rssi, loRaSNR]
+    TX:
+      type: object
+      properties:
+        frequency: { type: integer, format: int64 }
+        spreadingFactor: { type: number, format: double }
+        dr: { type: integer }
+      required: [frequency, spreadingFactor, dr]
+    Payload:
+      type: object
+      properties:
+        fPort: { type: integer }
+        data:
+          type: string
+          format: byte
+        object:
+          nullable: true
+          additionalProperties: true
+      required: [fPort, data]
+    Status:
+      type: object
+      properties:
+        margin: { type: integer }
+        batteryLevelUnavailable: { type: boolean }
+        batteryLevel: { type: number, format: double }
+      required: [margin, batteryLevelUnavailable, batteryLevel]
+    EventError:
+      type: object
+      properties:
+        level: { type: string }
+        type: { type: string }
+        message: { type: string }
+    SenMLPack:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/components/schemas/SenMLRecord'
+    SenMLRecord:
+      type: object
+      description: SenML record. The API accepts the JSON representation used by github.com/diwise/senml.
+      properties:
+        bn:
+          type: string
+          description: Base name.
+        bt:
+          type: number
+          format: double
+          description: Base time.
+        bu:
+          type: string
+          description: Base unit.
+        bv:
+          type: number
+          format: double
+          description: Base value.
+        bs:
+          type: number
+          format: double
+          description: Base sum.
+        bver:
+          type: integer
+          description: Base version.
+        n:
+          type: string
+          description: Name.
+        u:
+          type: string
+          description: Unit.
+        v:
+          type: number
+          format: double
+          nullable: true
+          description: Numeric value.
+        vs:
+          type: string
+          description: String value.
+        vb:
+          type: boolean
+          nullable: true
+          description: Boolean value.
+        vd:
+          type: string
+          description: Data value.
+        s:
+          type: number
+          format: double
+          nullable: true
+          description: Sum.
+        t:
+          type: number
+          format: double
+          description: Time.
+        ut:
+          type: number
+          format: double
+          description: Update time.
+      additionalProperties: true
