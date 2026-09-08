@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,50 @@ func TestMessageReceivedCommandContract(t *testing.T) {
 		is.Equal(m.TopicName(), "message.received")
 		is.True(strings.HasPrefix(m.ContentType(), "application/vnd.oma.lwm2m"))
 	}
+}
+
+// REV-016: locks the actual produced command body. The pack is fully
+// deterministic from the fixture; the wrapper timestamp is fresh per
+// message. Decoding happens through the real consumer type
+// (iot-core MessageReceived), which is how iot-core will read it.
+func TestMessageReceivedCommandBody(t *testing.T) {
+	is := is.New(t)
+	_, dmc, e, s, ctx := testSetup(t)
+
+	agent := New(dmc, e, s, true, "default", map[string]DeviceProfileConfig{})
+	ue, err := facades.New("netmore")(ctx, "payload", []byte(senlabT))
+	is.NoErr(err)
+
+	is.NoErr(agent.HandleSensorEvent(ctx, ue))
+
+	calls := e.SendCommandToCalls()
+	is.True(len(calls) > 0)
+
+	raw := calls[0].Command.(*iotcore.MessageReceived).Body()
+
+	// Consumer-side decode of the exact produced bytes.
+	var decoded iotcore.MessageReceived
+	is.NoErr(json.Unmarshal(raw, &decoded))
+	is.NoErr(decoded.Error())
+	is.Equal(decoded.DeviceID(), "internal-id-for-device")
+	is.Equal(decoded.ObjectID(), "3303")
+	is.Equal(decoded.ContentType(), "application/vnd.oma.lwm2m.ext.3303+json")
+	// Tenant enrichment happens in iot-core via device lookup; the
+	// agent command carries no tenant record.
+	is.Equal(decoded.Tenant(), "")
+
+	var envelope map[string]any
+	is.NoErr(json.Unmarshal(raw, &envelope))
+
+	packJSON, err := json.Marshal(envelope["pack"])
+	is.NoErr(err)
+	is.Equal(string(packJSON), `[{"bn":"internal-id-for-device/3303/","bt":1649740130,"n":"0","vs":"urn:oma:lwm2m:ext:3303"},{"n":"5700","u":"Cel","v":6.625}]`)
+
+	ts, ok := envelope["timestamp"].(string)
+	is.True(ok)
+	parsed, err := time.Parse(time.RFC3339Nano, ts)
+	is.NoErr(err)
+	is.True(time.Since(parsed) < time.Minute)
 }
 
 // BASE-010: the background cleanup goroutine must terminate on Stop,

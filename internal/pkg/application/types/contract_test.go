@@ -36,3 +36,32 @@ func TestStatusMessageWireContract(t *testing.T) {
 	_, ok := decoded["timestamp"]
 	is.True(ok)
 }
+
+// REV-016: locks the complete device-status wire representation with a
+// non-default tenant and fixed measurement time. Timestamp, tenant,
+// nested status fields or field renames change these bytes.
+func TestStatusMessageGoldenBody(t *testing.T) {
+	is := is.New(t)
+
+	battery := 87.0
+	code := "E1"
+	rssi := -110.0
+	m := &StatusMessage{
+		DeviceID:     "internal-id-for-device",
+		BatteryLevel: &battery,
+		Code:         &code,
+		Messages:     []string{"low battery"},
+		RSSI:         &rssi,
+		Tenant:       "acme",
+		Timestamp:    time.Date(2025, 4, 10, 11, 44, 1, 0, time.UTC),
+	}
+
+	const golden = `{"deviceID":"internal-id-for-device","batteryLevel":87,"statusCode":"E1","statusMessages":["low battery"],"rssi":-110,"tenant":"acme","timestamp":"2025-04-10T11:44:01Z"}`
+	is.Equal(string(m.Body()), golden)
+
+	var decoded map[string]any
+	is.NoErr(json.Unmarshal([]byte(golden), &decoded))
+	is.Equal(decoded["tenant"], "acme")
+	is.Equal(decoded["statusCode"], "E1")
+	is.Equal(decoded["timestamp"], "2025-04-10T11:44:01Z")
+}
