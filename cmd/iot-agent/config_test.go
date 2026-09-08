@@ -116,3 +116,31 @@ func TestParseLogLevel(t *testing.T) {
 	is.Equal(parseLogLevel("INFO"), slog.LevelInfo)
 	is.Equal(parseLogLevel("bogus"), slog.LevelDebug)
 }
+
+// REV-015: both toggles use exact "true" comparison. Tests target the
+// production seams so a changed interpretation breaks them.
+func TestBoolToggleInterpretations(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		value   string
+		enabled bool
+	}{
+		{"exact true", "true", true},
+		{"uppercase TRUE", "TRUE", false},
+		{"numeric 1", "1", false},
+		{"false", "false", false},
+		{"empty", "", false},
+		{"invalid", "bogus", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			is := is.New(t)
+
+			flags := defaultFlags()
+			flags[devmode] = tc.value
+			flags[createUnknownDeviceEnabled] = tc.value
+
+			is.Equal(devmodeEnabled(flags), tc.enabled)
+			is.Equal(createUnknownDevicesEnabled(flags), tc.enabled)
+		})
+	}
+}

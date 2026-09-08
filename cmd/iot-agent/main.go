@@ -84,7 +84,7 @@ func main() {
 		messengerCfg: &messengerConfig,
 		storageCfg:   &storageConfig,
 		dpCfg:        dpCfg,
-		devmode:      flags[devmode] == "true",
+		devmode:      devmodeEnabled(flags),
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg)
@@ -162,7 +162,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 				dmClient,
 				messenger,
 				store,
-				flags[createUnknownDeviceEnabled] == "true",
+				createUnknownDevicesEnabled(flags),
 				flags[createUnknownDeviceTenant],
 				ac.dpCfg,
 			)
@@ -204,6 +204,19 @@ func readinessProbes() map[string]k8shandlers.ServiceProber {
 		"timescale": func(context.Context) (string, error) { return "ok", nil },
 		"mqtt":      func(context.Context) (string, error) { return "ok", nil },
 	}
+}
+
+// devmodeEnabled is the minimal production seam for the dev-mode
+// toggle. Only the exact string "true" enables it.
+func devmodeEnabled(flags flagMap) bool {
+	return flags[devmode] == "true"
+}
+
+// createUnknownDevicesEnabled is the minimal production seam for the
+// unknown-device toggle. Only the exact string "true" enables it;
+// ParseBool spellings such as "TRUE" or "1" intentionally do not.
+func createUnknownDevicesEnabled(flags flagMap) bool {
+	return flags[createUnknownDeviceEnabled] == "true"
 }
 
 // startServices starts the messaging loop before the MQTT client, so no
