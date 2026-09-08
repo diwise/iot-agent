@@ -176,12 +176,40 @@ curl -X POST http://localhost:8080/api/v0/messages
 ```
 
 ## CLI flags
-
-none
+ - `policies` - An authorization policy file (overrides `POLICIES_FILE`)
+ - `deviceprofiles` - A device profile configuration file (overrides the `deviceprofiles.yaml` default path)
+ - `devmode` - Enable dev mode (in-memory storage and device management mock)
+ - `loglevel` - Set the log level (overrides `LOG_LEVEL`)
 
 ## Configuration files
+ - `deviceprofiles.yaml` (default `/opt/diwise/config/deviceprofiles.yaml`) - Required at startup, maps device profiles to decoders/converters.
 
-none
+## Faktisk konfiguration (kod ar facit, HARM-002)
+Precedens: default < miljovariabel < CLI-flagga.
+
+| Variabel | Default | Notering |
+| --- | --- | --- |
+| `LISTEN_ADDRESS` | `0.0.0.0` | Galler bade publik server och kontrollserver |
+| `SERVICE_PORT` | `8080` | Publik server (`POST /api/v0/messages`, `POST /api/v0/messages/lwm2m`, `/openapi.yaml`, `/docs`) |
+| `CONTROL_PORT` | `8000` | Kontrollserver: pprof, liveness, readiness (`rabbitmq`, `timescale`, `mqtt`) |
+| `LOG_LEVEL` | `debug` | `debug`, `info`, `warn`, `error`; okant varde faller tillbaka till `debug` |
+| `POLICIES_FILE` | `/opt/diwise/config/authz.rego` | Las in men anvands ej av API:t i nulaget |
+| `POSTGRES_HOST` | (tom) | Anvands via `storage.LoadConfiguration` |
+| `POSTGRES_PORT` | `5432` | Se ovan |
+| `POSTGRES_DBNAME` | `diwise` | Se ovan |
+| `POSTGRES_USER` | (tom) | Se ovan |
+| `POSTGRES_PASSWORD` | (tom) | Se ovan |
+| `POSTGRES_SSLMODE` | `disable` | Se ovan |
+| `CREATE_UNKNOWN_DEVICE_ENABLED` | `false` |  |
+| `CREATE_UNKNOWN_DEVICE_TENANT` | `default` |  |
+| `MSG_FWD_ENDPOINT` | `http://127.0.0.1/api/v0/messages` | Intern MQTT-forwarder mot eget API |
+| `APPSERVER_FACADE` | `servanet` | T.ex. `chirpstack`, `netmore`, `servanet` |
+| `DEV_MGMT_URL` | (tom) | Klient mot iot-device-mgmt |
+| `OAUTH2_TOKEN_URL` | (tom) |  |
+| `OAUTH2_CLIENT_ID` | (tom) |  |
+| `OAUTH2_CLIENT_SECRET` | (tom) |  |
+| `MQTT_*` | se `mqtt.NewConfigFromEnvironment` | T.ex. `MQTT_DISABLED`, `MQTT_HOST`, `MQTT_PORT`, `MQTT_TOPIC_0..n`, `MQTT_SESSION_MODE` |
+| `RABBITMQ_*` | se `messaging.LoadConfiguration` | T.ex. `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_DISABLED` |
 
 # Links
 [iot-agent](https://diwise.github.io/) on diwise.github.io
