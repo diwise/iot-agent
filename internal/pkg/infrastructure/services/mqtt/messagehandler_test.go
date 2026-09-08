@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -190,6 +191,45 @@ func TestMessageHandlerReturnsBeforeSlowForwardCompletes(t *testing.T) {
 
 	close(releaseRequest)
 	waitFor(t, func() bool { return msg.acked.Load() == 1 })
+}
+
+// REV-008: Close followed by Wait must observe the worker exit, even
+// with an in-flight forward against a stalled endpoint. The in-flight
+// request aborts on worker cancellation instead of hanging shutdown.
+func TestForwarderCloseJoinsWorker(t *testing.T) {
+	ctx := t.Context()
+
+	requestStarted := make(chan struct{})
+	var once sync.Once
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		once.Do(func() { close(requestStarted) })
+		time.Sleep(2 * time.Second)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer s.Close()
+
+	f := newMessageForwarder(ctx, s.URL, 4)
+	f.Handle(nil, &fakeMessage{topic: "a/b/up", payload: []byte(`{"k":"v"}`), qos: 0})
+
+	select {
+	case <-requestStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected worker to start forwarding the queued message")
+	}
+
+	f.Close()
+
+	done := make(chan bool, 1)
+	go func() { done <- f.Wait(5 * time.Second) }()
+
+	select {
+	case finished := <-done:
+		if !finished {
+			t.Fatal("forwarder worker did not exit within budget")
+		}
+	case <-time.After(6 * time.Second):
+		t.Fatal("Wait did not return within budget")
+	}
 }
 
 func waitFor(t *testing.T, condition func() bool) {

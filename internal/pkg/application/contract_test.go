@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
@@ -47,6 +48,20 @@ func TestAppStopIsIdempotent(t *testing.T) {
 
 	agent.Stop()
 	agent.Stop()
+
+	// Stop must also join the worker: a second Stop returns promptly
+	// instead of hanging on an abandoned ticker loop.
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		agent.Stop()
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Stop did not return after workers exited")
+	}
 }
 
 // HARM-003: locks the device-status publication contract towards

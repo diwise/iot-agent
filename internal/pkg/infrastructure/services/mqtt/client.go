@@ -70,5 +70,8 @@ func (c *mqttClient) Stop() {
 
 	if forwarder != nil {
 		forwarder.Close()
+		if !forwarder.Wait(forwarderShutdownTimeout) {
+			c.log.Warn("mqtt forwarder did not exit within budget")
+		}
 	}
 }

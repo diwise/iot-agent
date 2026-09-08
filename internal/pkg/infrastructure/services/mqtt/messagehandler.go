@@ -47,7 +47,13 @@ type messageForwarder struct {
 	httpClient         *http.Client
 	jobs               chan queuedMessage
 	closeOnce          sync.Once
+	done               chan struct{}
 }
+
+// forwarderShutdownTimeout bounds the worker join during shutdown. An
+// in-flight forward is already bounded by the 15s HTTP client timeout;
+// the join timeout is a backstop for abnormal stalls.
+const forwarderShutdownTimeout = 20 * time.Second
 
 func NewMessageHandler(ctx context.Context, forwardingEndpoint string) func(mqtt.Client, mqtt.Message) {
 	forwarder := newMessageForwarder(ctx, forwardingEndpoint, defaultForwarderQueueDepth)
@@ -83,9 +89,13 @@ func newMessageForwarder(ctx context.Context, forwardingEndpoint string, queueDe
 			Transport: otelhttp.NewTransport(http.DefaultTransport),
 		},
 		jobs: make(chan queuedMessage, queueDepth),
+		done: make(chan struct{}),
 	}
 
-	go f.run()
+	go func() {
+		defer close(f.done)
+		f.run()
+	}()
 
 	return f
 }
@@ -117,6 +127,18 @@ func (f *messageForwarder) Close() {
 	f.closeOnce.Do(func() {
 		f.cancel()
 	})
+}
+
+// Wait blocks until the worker loop has exited or the timeout elapses,
+// reporting whether the worker finished. Close must be called first;
+// Wait is safe to call more than once.
+func (f *messageForwarder) Wait(timeout time.Duration) bool {
+	select {
+	case <-f.done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 func (f *messageForwarder) run() {

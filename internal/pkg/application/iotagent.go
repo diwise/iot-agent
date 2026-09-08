@@ -52,6 +52,7 @@ type app struct {
 
 	stopCh   chan struct{}
 	stopOnce sync.Once
+	wg       sync.WaitGroup
 }
 
 type profile struct {
@@ -97,7 +98,10 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		}
 	}
 
+	a.wg.Add(1)
 	go func() {
+		defer a.wg.Done()
+
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 
@@ -120,11 +124,28 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 	return a
 }
 
-// Stop terminates the background cleanup goroutine. Safe to call twice.
+// appShutdownTimeout bounds the ticker join during Stop. The loop only
+// selects on channels, so it always exits promptly; the timeout is a
+// backstop, not an expected wait.
+const appShutdownTimeout = 5 * time.Second
+
+// Stop terminates the background cleanup goroutine and waits for it
+// within budget. Safe to call twice.
 func (a *app) Stop() {
 	a.stopOnce.Do(func() {
 		close(a.stopCh)
 	})
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		a.wg.Wait()
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(appShutdownTimeout):
+	}
 }
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {

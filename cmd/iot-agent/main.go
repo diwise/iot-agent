@@ -130,29 +130,31 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 			if err != nil {
 				return fmt.Errorf("failed to create storage: %w", err)
 			}
+			owned.store = store
 
 			mqttClient, err = mqtt.NewClient(ctx, *ac.mqttCfg, flags[forwardingEndpoint])
 			if err != nil {
-				store.Close()
+				owned.shutdown(ctx)
 				store = nil
 				return fmt.Errorf("failed to create mqtt client: %w", err)
 			}
+			owned.mqttClient = mqttClient
 
 			messenger, err = messaging.Initialize(ctx, *ac.messengerCfg)
 			if err != nil {
-				mqttClient.Stop()
-				store.Close()
-				store = nil
+				owned.shutdown(ctx)
+				store, mqttClient = nil, nil
 				return fmt.Errorf("failed to init messenger: %w", err)
 			}
+			owned.messenger = messenger
 
 			dmClient, err = newDeviceMgmtClient(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], flags[oauth2ClientId], flags[oauth2ClientSecret], ac.devmode)
 			if err != nil {
-				mqttClient.Stop()
-				store.Close()
-				store = nil
+				owned.shutdown(ctx)
+				store, mqttClient, messenger = nil, nil, nil
 				return fmt.Errorf("failed to create device management client: %w", err)
 			}
+			owned.dmClient = dmClient
 
 			facade = facades.New(flags[appServerFacade])
 
@@ -164,17 +166,20 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 				flags[createUnknownDeviceTenant],
 				ac.dpCfg,
 			)
-
 			owned.app = app
-			owned.mqttClient = mqttClient
-			owned.messenger = messenger
-			owned.dmClient = dmClient
-			owned.store = store
 
 			return nil
 		}),
 		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
 			logger.Debug("starting servicerunner")
+
+			// OnStarting failures bypass OnShutdown in the runner, so
+			// clean up acquired resources on error below.
+			defer func() {
+				if err != nil {
+					owned.shutdown(ctx)
+				}
+			}()
 
 			return startServices(messenger, mqttClient)
 		}),
