@@ -55,16 +55,18 @@ func (f *fakeStorage) Close() error {
 	return nil
 }
 
-// BASE-010: the messaging loop must start before the MQTT client, and an
-// MQTT start failure must abort startup.
-func TestStartServicesPropagatesMQTTError(t *testing.T) {
+// REV-009: the messaging loop must start before the MQTT client, and a
+// synchronous start failure must abort startup. The real client always
+// returns nil and connects asynchronously, so this exercises the error
+// path with a fake; broker outages never abort startup by design.
+func TestStartServicesPropagatesSynchronousStartError(t *testing.T) {
 	is := is.New(t)
 
 	var order []string
 	messenger := &messaging.MsgContextMock{
 		StartFunc: func() { order = append(order, "messenger") },
 	}
-	mqttClient := &fakeMQTTClient{startErr: errors.New("connect failed")}
+	mqttClient := &fakeMQTTClient{startErr: errors.New("synchronous start failed")}
 
 	err := startServices(messenger, mqttClient)
 	is.True(err != nil)

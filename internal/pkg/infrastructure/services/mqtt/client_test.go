@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -169,4 +170,39 @@ func (f *fakePahoClient) AddRoute(topic string, callback mqtt.MessageHandler) {}
 
 func (f *fakePahoClient) OptionsReader() mqtt.ClientOptionsReader {
 	return mqtt.ClientOptionsReader{}
+}
+
+// REV-009: startup completes once the loops are started. The broker
+// connection happens asynchronously with reconnect enabled, so an
+// unreachable broker must neither fail Start nor hang Stop.
+func TestStartAgainstDeadBrokerSucceeds(t *testing.T) {
+	ctx := context.Background()
+
+	c, err := NewClient(ctx, Config{
+		enabled:   true,
+		host:      "127.0.0.1",
+		port:      1,
+		keepAlive: 30,
+		topics:    []string{"test/#"},
+		session:   sessionModeEphemeral,
+	}, "http://127.0.0.1:1/api/v0/messages")
+	if err != nil {
+		t.Fatalf("expected client, got error: %v", err)
+	}
+
+	if err := c.Start(); err != nil {
+		t.Fatalf("expected nil start error against dead broker, got: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		c.Stop()
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Stop did not return within budget")
+	}
 }

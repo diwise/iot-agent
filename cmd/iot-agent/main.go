@@ -207,8 +207,12 @@ func readinessProbes() map[string]k8shandlers.ServiceProber {
 }
 
 // startServices starts the messaging loop before the MQTT client, so no
-// inbound message can arrive before the command path is running. An MQTT
-// start failure aborts startup instead of leaving the service half alive.
+// inbound message can arrive before the command path is running.
+//
+// Startup contract (REV-009): startup is complete once the loops are
+// started. The real MQTT client connects asynchronously and reconnects
+// in the background; connection failures are logged, never fatal.
+// Only synchronous start errors abort startup.
 func startServices(messenger messaging.MsgContext, mqttClient mqtt.Client) error {
 	messenger.Start()
 
