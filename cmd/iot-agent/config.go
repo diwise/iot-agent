@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-
 	"github.com/diwise/iot-agent/internal/pkg/application"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
@@ -56,7 +54,6 @@ type appConfig struct {
 	storageCfg   *storage.Config
 	dpCfg        map[string]application.DeviceProfileConfig
 	devmode      bool
-	cancel       context.CancelFunc
 }
 
 var oninit = servicerunner.OnInit[appConfig]

@@ -30,6 +30,9 @@ var _ App = &AppMock{}
 //			HandleSensorMeasurementListFunc: func(ctx context.Context, deviceID string, pack senml.Pack) error {
 //				panic("mock out the HandleSensorMeasurementList method")
 //			},
+//			StopFunc: func() {
+//				panic("mock out the Stop method")
+//			},
 //		}
 //
 //		// use mockedApp in code that requires App
@@ -45,6 +48,9 @@ type AppMock struct {
 
 	// HandleSensorMeasurementListFunc mocks the HandleSensorMeasurementList method.
 	HandleSensorMeasurementListFunc func(ctx context.Context, deviceID string, pack senml.Pack) error
+
+	// StopFunc mocks the Stop method.
+	StopFunc func()
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -71,10 +77,14 @@ type AppMock struct {
 			// Pack is the pack argument value.
 			Pack senml.Pack
 		}
+		// Stop holds details about calls to the Stop method.
+		Stop []struct {
+		}
 	}
 	lockGetDevice                   sync.RWMutex
 	lockHandleSensorEvent           sync.RWMutex
 	lockHandleSensorMeasurementList sync.RWMutex
+	lockStop                        sync.RWMutex
 }
 
 // GetDevice calls GetDeviceFunc.
@@ -186,5 +196,32 @@ func (mock *AppMock) HandleSensorMeasurementListCalls() []struct {
 	mock.lockHandleSensorMeasurementList.RLock()
 	calls = mock.calls.HandleSensorMeasurementList
 	mock.lockHandleSensorMeasurementList.RUnlock()
+	return calls
+}
+
+// Stop calls StopFunc.
+func (mock *AppMock) Stop() {
+	if mock.StopFunc == nil {
+		panic("AppMock.StopFunc: method is nil but App.Stop was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockStop.Lock()
+	mock.calls.Stop = append(mock.calls.Stop, callInfo)
+	mock.lockStop.Unlock()
+	mock.StopFunc()
+}
+
+// StopCalls gets all the calls that were made to Stop.
+// Check the length with:
+//
+//	len(mockedApp.StopCalls())
+func (mock *AppMock) StopCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockStop.RLock()
+	calls = mock.calls.Stop
+	mock.lockStop.RUnlock()
 	return calls
 }

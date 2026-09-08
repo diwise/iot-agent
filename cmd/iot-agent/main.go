@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/diwise/iot-agent/internal/pkg/application"
@@ -79,15 +80,12 @@ func main() {
 	messengerConfig := messaging.LoadConfiguration(ctx, serviceName, logger)
 	storageConfig := storage.LoadConfiguration(ctx)
 
-	ctx, cancel := context.WithCancel(ctx)
-
 	appCfg := appConfig{
 		mqttCfg:      &mqttConfig,
 		messengerCfg: &messengerConfig,
 		storageCfg:   &storageConfig,
 		dpCfg:        dpCfg,
 		devmode:      flags[devmode] == "true",
-		cancel:       cancel,
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg)
@@ -105,6 +103,9 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 	var mqttClient mqtt.Client
 	var store storage.Storage
 	var facade facades.EventFunc
+	var app application.App
+
+	owned := &ownedResources{}
 
 	probes := map[string]k8shandlers.ServiceProber{
 		"rabbitmq": func(ctx context.Context) (string, error) {
@@ -160,15 +161,6 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 			muxinit(func(ctx context.Context, identifier string, port string, appCfg *appConfig, handler *http.ServeMux) error {
 				logger.Debug("initializing public webserver")
 
-				app := application.New(
-					dmClient,
-					messenger,
-					store,
-					flags[createUnknownDeviceEnabled] == "true",
-					flags[createUnknownDeviceTenant],
-					appCfg.dpCfg,
-				)
-
 				api.RegisterHandlers(ctx, handler, app, facade)
 
 				return nil
@@ -186,44 +178,109 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 
 			mqttClient, err = mqtt.NewClient(ctx, *ac.mqttCfg, flags[forwardingEndpoint])
 			if err != nil {
+				store.Close()
+				store = nil
 				return fmt.Errorf("failed to create mqtt client: %w", err)
 			}
 
 			messenger, err = messaging.Initialize(ctx, *ac.messengerCfg)
 			if err != nil {
+				mqttClient.Stop()
+				store.Close()
+				store = nil
 				return fmt.Errorf("failed to init messenger: %w", err)
 			}
 
 			dmClient, err = newDeviceMgmtClient(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], flags[oauth2ClientId], flags[oauth2ClientSecret], ac.devmode)
 			if err != nil {
+				mqttClient.Stop()
+				store.Close()
+				store = nil
 				return fmt.Errorf("failed to create device management client: %w", err)
 			}
 
 			facade = facades.New(flags[appServerFacade])
 
+			app = application.New(
+				dmClient,
+				messenger,
+				store,
+				flags[createUnknownDeviceEnabled] == "true",
+				flags[createUnknownDeviceTenant],
+				ac.dpCfg,
+			)
+
+			owned.app = app
+			owned.mqttClient = mqttClient
+			owned.messenger = messenger
+			owned.dmClient = dmClient
+			owned.store = store
+
 			return nil
 		}),
 		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
 			logger.Debug("starting servicerunner")
-			messenger.Start()
-			mqttClient.Start()
 
-			return nil
+			return startServices(messenger, mqttClient)
 		}),
 		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
 			logger.Debug("shutting down servicerunner")
 
-			mqttClient.Stop()
-			messenger.Close()
-			dmClient.Close(ctx)
-			store.Close()
-			appCfg.cancel()
+			owned.shutdown(ctx)
 
 			return nil
 		}),
 	)
 
 	return runner, nil
+}
+
+// startServices starts the messaging loop before the MQTT client, so no
+// inbound message can arrive before the command path is running. An MQTT
+// start failure aborts startup instead of leaving the service half alive.
+func startServices(messenger messaging.MsgContext, mqttClient mqtt.Client) error {
+	messenger.Start()
+
+	if err := mqttClient.Start(); err != nil {
+		return fmt.Errorf("failed to start mqtt client: %w", err)
+	}
+
+	return nil
+}
+
+// ownedResources tracks the resources created during OnInit so shutdown
+// stops background work, then transports, then storage, exactly once.
+// Shutdown is nil-safe (partial OnInit) and idempotent: the underlying
+// messenger Close is not safe to call twice, hence the sync.Once guard.
+type ownedResources struct {
+	once       sync.Once
+	app        application.App
+	mqttClient mqtt.Client
+	messenger  messaging.MsgContext
+	dmClient   dmclient.DeviceManagementClient
+	store      storage.Storage
+}
+
+func (o *ownedResources) shutdown(ctx context.Context) {
+	o.once.Do(func() {
+		if o.app != nil {
+			o.app.Stop()
+		}
+		if o.mqttClient != nil {
+			o.mqttClient.Stop()
+		}
+		if o.messenger != nil {
+			o.messenger.Close()
+		}
+		if o.dmClient != nil {
+			o.dmClient.Close(ctx)
+		}
+		if o.store != nil {
+			if err := o.store.Close(); err != nil {
+				logging.GetFromContext(ctx).Debug("failed to close storage", "err", err.Error())
+			}
+		}
+	})
 }
 
 func newStorage(ctx context.Context, cfg storage.Config, devmode bool) (storage.Storage, error) {

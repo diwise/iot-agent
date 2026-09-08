@@ -33,6 +33,7 @@ type App interface {
 	HandleSensorEvent(ctx context.Context, se types.Event) error
 	HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error
 	GetDevice(ctx context.Context, deviceID string) (dmc.Device, error)
+	Stop()
 }
 
 type app struct {
@@ -48,6 +49,9 @@ type app struct {
 	createUnknownDeviceTenant  string
 	dpCfg                      map[string]profile
 	dpCfgMu                    sync.RWMutex
+
+	stopCh   chan struct{}
+	stopOnce sync.Once
 }
 
 type profile struct {
@@ -67,6 +71,7 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
 		createUnknownDeviceTenant:  createUnknownDeviceTenant,
 		dpCfg:                      make(map[string]profile),
+		stopCh:                     make(chan struct{}),
 	}
 
 	for sensorType, p := range dpCfg {
@@ -96,18 +101,30 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			a.notFoundDevicesMu.Lock()
-			for devEUI, ts := range a.notFoundDevices {
-				if time.Now().UTC().After(ts.UTC()) {
-					delete(a.notFoundDevices, devEUI)
+		for {
+			select {
+			case <-a.stopCh:
+				return
+			case <-ticker.C:
+				a.notFoundDevicesMu.Lock()
+				for devEUI, ts := range a.notFoundDevices {
+					if time.Now().UTC().After(ts.UTC()) {
+						delete(a.notFoundDevices, devEUI)
+					}
 				}
+				a.notFoundDevicesMu.Unlock()
 			}
-			a.notFoundDevicesMu.Unlock()
 		}
 	}()
 
 	return a
+}
+
+// Stop terminates the background cleanup goroutine. Safe to call twice.
+func (a *app) Stop() {
+	a.stopOnce.Do(func() {
+		close(a.stopCh)
+	})
 }
 
 func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error) {

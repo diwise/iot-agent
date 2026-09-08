@@ -8,6 +8,7 @@ import (
 	"github.com/diwise/iot-agent/internal/pkg/application/facades"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/messaging-golang/pkg/messaging"
+	"github.com/matryer/is"
 )
 
 // HARM-003: locks the agent -> iot-core command contract.
@@ -34,6 +35,18 @@ func TestMessageReceivedCommandContract(t *testing.T) {
 		is.Equal(m.TopicName(), "message.received")
 		is.True(strings.HasPrefix(m.ContentType(), "application/vnd.oma.lwm2m"))
 	}
+}
+
+// BASE-010: the background cleanup goroutine must terminate on Stop,
+// and Stop must be safe to call twice.
+func TestAppStopIsIdempotent(t *testing.T) {
+	is := is.New(t)
+
+	agent := New(nil, nil, nil, false, "default", map[string]DeviceProfileConfig{})
+	is.True(agent != nil)
+
+	agent.Stop()
+	agent.Stop()
 }
 
 // HARM-003: locks the device-status publication contract towards
