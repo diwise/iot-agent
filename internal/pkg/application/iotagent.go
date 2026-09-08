@@ -52,7 +52,7 @@ type app struct {
 
 	stopCh   chan struct{}
 	stopOnce sync.Once
-	wg       sync.WaitGroup
+	done     chan struct{}
 }
 
 type profile struct {
@@ -73,6 +73,7 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		createUnknownDeviceTenant:  createUnknownDeviceTenant,
 		dpCfg:                      make(map[string]profile),
 		stopCh:                     make(chan struct{}),
+		done:                       make(chan struct{}),
 	}
 
 	for sensorType, p := range dpCfg {
@@ -98,9 +99,8 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		}
 	}
 
-	a.wg.Add(1)
 	go func() {
-		defer a.wg.Done()
+		defer close(a.done)
 
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
@@ -136,14 +136,8 @@ func (a *app) Stop() {
 		close(a.stopCh)
 	})
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		a.wg.Wait()
-	}()
-
 	select {
-	case <-done:
+	case <-a.done:
 	case <-time.After(appShutdownTimeout):
 	}
 }

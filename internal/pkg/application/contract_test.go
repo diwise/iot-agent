@@ -49,8 +49,18 @@ func TestAppStopIsIdempotent(t *testing.T) {
 	agent.Stop()
 	agent.Stop()
 
-	// Stop must also join the worker: a second Stop returns promptly
-	// instead of hanging on an abandoned ticker loop.
+	// Stop must join the worker: the worker's done channel closes on
+	// exit, so a disabled sweep or a no-op Stop fails this test.
+	impl, ok := agent.(*app)
+	is.True(ok)
+
+	select {
+	case <-impl.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("worker did not exit after Stop")
+	}
+
+	// A second Stop after exit still returns promptly.
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
