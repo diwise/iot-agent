@@ -172,7 +172,7 @@ curl -X POST http://localhost:8080/api/v0/messages
 "OAUTH2_TOKEN_URL": "http://keycloak:8080/realms/diwise-local/protocol/openid-connect/token",
 "OAUTH2_CLIENT_ID": "diwise-devmgmt-api",
 "OAUTH2_CLIENT_SECRET": "<client secret>",
-"APPSERVER_FACADE": "<facade>" # configure application server, chirpstack (default) or netmore
+"APPSERVER_FACADE": "servanet" # configure application server, e.g. chirpstack, netmore or servanet (default)
 ```
 
 ## CLI flags
@@ -191,7 +191,7 @@ Precedens: default < miljovariabel < CLI-flagga.
 | --- | --- | --- |
 | `LISTEN_ADDRESS` | `0.0.0.0` | Galler bade publik server och kontrollserver |
 | `SERVICE_PORT` | `8080` | Publik server (`POST /api/v0/messages`, `POST /api/v0/messages/lwm2m`, `/openapi.yaml`, `/docs`) |
-| `CONTROL_PORT` | `8000` | Kontrollserver: pprof, liveness, readiness (`rabbitmq`, `timescale`, `mqtt`) |
+| `CONTROL_PORT` | `8000` | Kontrollserver: pprof, liveness, readiness-stubbar (`rabbitmq`, `timescale`, `mqtt`) som returnerar OK |
 | `LOG_LEVEL` | `debug` | `debug`, `info`, `warn`, `error`; okant varde faller tillbaka till `debug` |
 | `POLICIES_FILE` | `/opt/diwise/config/authz.rego` | Las in men anvands ej av API:t i nulaget |
 | `POSTGRES_HOST` | (tom) | Anvands via `storage.LoadConfiguration` |
@@ -208,8 +208,33 @@ Precedens: default < miljovariabel < CLI-flagga.
 | `OAUTH2_TOKEN_URL` | (tom) |  |
 | `OAUTH2_CLIENT_ID` | (tom) |  |
 | `OAUTH2_CLIENT_SECRET` | (tom) |  |
-| `MQTT_*` | se `mqtt.NewConfigFromEnvironment` | T.ex. `MQTT_DISABLED`, `MQTT_HOST`, `MQTT_PORT`, `MQTT_TOPIC_0..n`, `MQTT_SESSION_MODE` |
-| `RABBITMQ_*` | se `messaging.LoadConfiguration` | T.ex. `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_DISABLED` |
+| `MQTT_DISABLED` | `false` | `true` stanger av MQTT-ingress |
+| `MQTT_HOST` | (tom, kravs) | Broker hostname |
+| `MQTT_PORT` | `8883` |  |
+| `MQTT_USER` | (tom) |  |
+| `MQTT_PASSWORD` | (tom) |  |
+| `MQTT_CLIENT_ID` | (tom) | Kravs vid durable session |
+| `MQTT_SESSION_MODE` | `ephemeral` | `ephemeral` eller `durable` |
+| `MQTT_TOPIC_0..24` | (tom, minst en kravs) | T.ex. `MQTT_TOPIC_0=topic-01/#` |
+| `MQTT_KEEPALIVE` | `30` | Sekunder |
+| `RABBITMQ_HOST` | (tom, kravs om inte avstangd) |  |
+| `RABBITMQ_PORT` | `5672` |  |
+| `RABBITMQ_VHOST` | `/` |  |
+| `RABBITMQ_USER` | `user` |  |
+| `RABBITMQ_PASS` | `bitnami` |  |
+| `RABBITMQ_DISABLED` | `false` |  |
+| `RABBITMQ_INIT_TIMEOUT` | `10` | Sekunder |
+| `POSTGRES_MAX_CONNS` | `10` |  |
+| `POSTGRES_MIN_CONNS` | `2` |  |
+| `POSTGRES_MAX_CONN_LIFETIME` | `30m` |  |
+| `POSTGRES_MAX_CONN_IDLE_TIME` | `5m` |  |
+| `POSTGRES_HEALTH_CHECK_PERIOD` | `30s` |  |
+
+RabbitMQ konfigureras i ovrigt via `messaging.LoadConfiguration`. Poolvarden ovan tolkas av den laste `service-chassis`-versionens env-hjalpare.
+
+Health paths pa kontrollservern (`CONTROL_PORT`): `/health`, `/healthz`, `/livez`, `/readyz`, `/readyz/{check}`.
+
+Externa Kubernetes- och Compose-definitioner finns inte i detta repo och ar darfor inte inventerade har.
 
 # Links
 [iot-agent](https://diwise.github.io/) on diwise.github.io
