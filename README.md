@@ -38,6 +38,10 @@ Since application servers such as [Chirpstack](https://www.chirpstack.io/applica
 
 Support for Chirpstack v3 payloads.
 
+### Chirpstack v4
+
+Support for Chirpstack v4 payloads (`APPSERVER_FACADE=chirpstackv4`).
+
 ### Netmore
 
 Support for payloads from [netmore](https://netmoregroup.com/iot-network/)
@@ -125,6 +129,13 @@ Converters converts sensor data to lwm2m measurements.
 ```bash
 docker build -f deployments/Dockerfile -t diwise/iot-agent:latest .
 ```
+## Verify
+```bash
+gofmt -l cmd/ internal/ pkg/
+go test -count=1 ./...
+go vet ./...
+go build ./...
+```
 ## Test
 ```bash
 curl -X POST http://localhost:8080/api/v0/messages 
@@ -176,10 +187,11 @@ curl -X POST http://localhost:8080/api/v0/messages
 ```
 
 ## CLI flags
- - `policies` - An authorization policy file (overrides `POLICIES_FILE`)
  - `deviceprofiles` - A device profile configuration file (overrides the `deviceprofiles.yaml` default path)
  - `devmode` - Enable dev mode (in-memory storage and device management mock)
  - `loglevel` - Set the log level (overrides `LOG_LEVEL`)
+
+The dead `policies` flag (`POLICIES_FILE`) was removed in AGENT-003: the file was never opened and no OPA policy is used by this service. External calls passing `-policies` are now rejected at startup.
 
 ## Configuration files
  - `deviceprofiles.yaml` (default `/opt/diwise/config/deviceprofiles.yaml`) - Required at startup, maps device profiles to decoders/converters.
@@ -193,7 +205,6 @@ Precedens: default < miljovariabel < CLI-flagga.
 | `SERVICE_PORT` | `8080` | Publik server (`POST /api/v0/messages`, `POST /api/v0/messages/lwm2m`, `/openapi.yaml`, `/docs`) |
 | `CONTROL_PORT` | `8000` | Kontrollserver: pprof, liveness, readiness-stubbar (`rabbitmq`, `timescale`, `mqtt`) som returnerar OK |
 | `LOG_LEVEL` | `debug` | `debug`, `info`, `warn`, `error`; okant varde faller tillbaka till `debug` |
-| `POLICIES_FILE` | `/opt/diwise/config/authz.rego` | Las in men anvands ej av API:t i nulaget |
 | `POSTGRES_HOST` | (tom) | Anvands via `storage.LoadConfiguration` |
 | `POSTGRES_PORT` | `5432` | Se ovan |
 | `POSTGRES_DBNAME` | `diwise` | Se ovan |
@@ -203,7 +214,7 @@ Precedens: default < miljovariabel < CLI-flagga.
 | `CREATE_UNKNOWN_DEVICE_ENABLED` | `false` |  |
 | `CREATE_UNKNOWN_DEVICE_TENANT` | `default` |  |
 | `MSG_FWD_ENDPOINT` | `http://127.0.0.1/api/v0/messages` | Intern MQTT-forwarder mot eget API |
-| `APPSERVER_FACADE` | `servanet` | T.ex. `chirpstack`, `netmore`, `servanet` |
+| `APPSERVER_FACADE` | `servanet` | `chirpstack`, `chirpstackv4`, `netmore`, `servanet`; okant varde faller tillbaka till `chirpstack` |
 | `DEV_MGMT_URL` | (tom) | Klient mot iot-device-mgmt |
 | `OAUTH2_TOKEN_URL` | (tom) |  |
 | `OAUTH2_CLIENT_ID` | (tom) |  |
