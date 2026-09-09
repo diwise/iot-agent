@@ -162,8 +162,6 @@ func TestElsysPressureDecoderReturnsErrorOnTruncatedPayload(t *testing.T) {
 	is.True(err != nil)
 }
 
-
-
 func TestElsysPumpbrunnarDecoder(t *testing.T) {
 	is, _ := testSetup(t)
 
