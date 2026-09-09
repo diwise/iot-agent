@@ -16,7 +16,7 @@ import (
 	"github.com/diwise/iot-agent/internal/application/facades"
 	"github.com/diwise/iot-agent/internal/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/infrastructure/services/storage"
-	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
+	"github.com/diwise/iot-agent/internal/presentation/api"
 	dmclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
