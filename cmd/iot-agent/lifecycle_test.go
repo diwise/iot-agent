@@ -7,7 +7,7 @@ import (
 
 	"github.com/diwise/iot-agent/internal/application"
 	"github.com/diwise/iot-agent/internal/application/types"
-	"github.com/diwise/iot-agent/internal/infrastructure/services/mqtt"
+	"github.com/diwise/iot-agent/internal/infrastructure/mqtt"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	dmc "github.com/diwise/iot-device-mgmt/pkg/client"
 	dmctest "github.com/diwise/iot-device-mgmt/pkg/test"

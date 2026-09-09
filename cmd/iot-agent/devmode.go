@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	apptypes "github.com/diwise/iot-agent/internal/application/types"
-	"github.com/diwise/iot-agent/internal/infrastructure/services/storage"
+	"github.com/diwise/iot-agent/internal/infrastructure/storage"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	test "github.com/diwise/iot-device-mgmt/pkg/test"

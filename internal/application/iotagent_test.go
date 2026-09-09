@@ -10,7 +10,7 @@ import (
 	"github.com/diwise/iot-agent/internal/application/decoders"
 	"github.com/diwise/iot-agent/internal/application/facades"
 	"github.com/diwise/iot-agent/internal/application/types"
-	"github.com/diwise/iot-agent/internal/infrastructure/services/storage"
+	"github.com/diwise/iot-agent/internal/infrastructure/storage"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	iotcore "github.com/diwise/iot-core/pkg/messaging/events"
 	"github.com/diwise/iot-device-mgmt/pkg/client"
