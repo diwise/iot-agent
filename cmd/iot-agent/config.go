@@ -18,13 +18,6 @@ const (
 
 	policiesFile
 
-	dbHost
-	dbUser
-	dbPassword
-	dbPort
-	dbName
-	dbSSLMode
-
 	createUnknownDeviceEnabled
 	createUnknownDeviceTenant
 	deviceprofileFile

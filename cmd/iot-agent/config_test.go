@@ -24,9 +24,9 @@ func withCleanFlags(t *testing.T, args []string) {
 	os.Args = args
 }
 
-// HARM-004: locks all current defaults, including flagMap fields that are
-// currently shadowed by storage.LoadConfiguration (dbHost..dbSSLMode).
-// Removing a field requires proving it has no effect.
+// HARM-004: locks all current defaults. AGENT-003: the dbHost..dbSSLMode
+// fields were removed after proving they had no effect; storage reads
+// POSTGRES_* directly via storage.LoadConfiguration.
 func TestDefaultFlags(t *testing.T) {
 	is := is.New(t)
 
@@ -37,12 +37,6 @@ func TestDefaultFlags(t *testing.T) {
 		servicePort:                "8080",
 		controlPort:                "8000",
 		policiesFile:               "/opt/diwise/config/authz.rego",
-		dbHost:                     "",
-		dbUser:                     "",
-		dbPassword:                 "",
-		dbPort:                     "5432",
-		dbName:                     "diwise",
-		dbSSLMode:                  "disable",
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",

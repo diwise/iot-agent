@@ -38,13 +38,6 @@ func defaultFlags() flagMap {
 
 		policiesFile: "/opt/diwise/config/authz.rego",
 
-		dbHost:     "",
-		dbUser:     "",
-		dbPassword: "",
-		dbPort:     "5432",
-		dbName:     "diwise",
-		dbSSLMode:  "disable",
-
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
@@ -298,13 +291,6 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	flags[logLevel] = envOrDef(ctx, "LOG_LEVEL", flags[logLevel])
 
 	flags[policiesFile] = envOrDef(ctx, "POLICIES_FILE", flags[policiesFile])
-
-	flags[dbHost] = envOrDef(ctx, "POSTGRES_HOST", flags[dbHost])
-	flags[dbPort] = envOrDef(ctx, "POSTGRES_PORT", flags[dbPort])
-	flags[dbName] = envOrDef(ctx, "POSTGRES_DBNAME", flags[dbName])
-	flags[dbUser] = envOrDef(ctx, "POSTGRES_USER", flags[dbUser])
-	flags[dbPassword] = envOrDef(ctx, "POSTGRES_PASSWORD", flags[dbPassword])
-	flags[dbSSLMode] = envOrDef(ctx, "POSTGRES_SSLMODE", flags[dbSSLMode])
 
 	flags[createUnknownDeviceEnabled] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", flags[createUnknownDeviceEnabled])
 	flags[createUnknownDeviceTenant] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", flags[createUnknownDeviceTenant])
