@@ -16,8 +16,6 @@ const (
 	servicePort
 	controlPort
 
-	policiesFile
-
 	createUnknownDeviceEnabled
 	createUnknownDeviceTenant
 	deviceprofileFile

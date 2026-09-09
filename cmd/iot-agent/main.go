@@ -36,8 +36,6 @@ func defaultFlags() flagMap {
 		servicePort:   "8080",
 		controlPort:   "8000",
 
-		policiesFile: "/opt/diwise/config/authz.rego",
-
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
@@ -290,8 +288,6 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	flags[servicePort] = envOrDef(ctx, "SERVICE_PORT", flags[servicePort])
 	flags[logLevel] = envOrDef(ctx, "LOG_LEVEL", flags[logLevel])
 
-	flags[policiesFile] = envOrDef(ctx, "POLICIES_FILE", flags[policiesFile])
-
 	flags[createUnknownDeviceEnabled] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", flags[createUnknownDeviceEnabled])
 	flags[createUnknownDeviceTenant] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", flags[createUnknownDeviceTenant])
 	flags[forwardingEndpoint] = envOrDef(ctx, "MSG_FWD_ENDPOINT", flags[forwardingEndpoint])
@@ -310,7 +306,6 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	}
 
 	// Allow command line arguments to override defaults and environment variables
-	flag.Func("policies", "an authorization policy file", apply(policiesFile))
 	flag.Func("deviceprofiles", "a device profile configuration file", apply(deviceprofileFile))
 	flag.Func("devmode", "enable dev mode", apply(devmode))
 	flag.Func("loglevel", "set the log level", apply(logLevel))

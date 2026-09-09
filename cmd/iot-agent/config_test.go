@@ -36,7 +36,6 @@ func TestDefaultFlags(t *testing.T) {
 		listenAddress:              "0.0.0.0",
 		servicePort:                "8080",
 		controlPort:                "8000",
-		policiesFile:               "/opt/diwise/config/authz.rego",
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
@@ -84,10 +83,11 @@ func TestEnvOverrides(t *testing.T) {
 	is.Equal(flags[devMgmtUrl], "http://dm:8080")
 }
 
-// HARM-004: locks CLI-over-env precedence.
+// HARM-004: locks CLI-over-env precedence. AGENT-003: the dead
+// -policies flag was removed; the remaining CLI flags still win.
 func TestCLIOverridesEnv(t *testing.T) {
 	is := is.New(t)
-	withCleanFlags(t, []string{"iot-agent", "-loglevel=error", "-devmode=true", "-policies=/tmp/p.rego"})
+	withCleanFlags(t, []string{"iot-agent", "-loglevel=error", "-devmode=true"})
 
 	t.Setenv("LOG_LEVEL", "info")
 
@@ -95,7 +95,6 @@ func TestCLIOverridesEnv(t *testing.T) {
 
 	is.Equal(flags[logLevel], "error")
 	is.Equal(flags[devmode], "true")
-	is.Equal(flags[policiesFile], "/tmp/p.rego")
 }
 
 // HARM-004: locks log level parsing, including the silent debug fallback.
