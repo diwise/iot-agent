@@ -70,12 +70,20 @@ func main() {
 	messengerConfig := messaging.LoadConfiguration(ctx, serviceName, logger)
 	storageConfig := storage.LoadConfiguration(ctx)
 
+	deviceMgmtCfg := deviceMgmtConfig{
+		url:          flags[devMgmtUrl],
+		tokenURL:     flags[oauth2TokenUrl],
+		clientID:     flags[oauth2ClientId],
+		clientSecret: flags[oauth2ClientSecret],
+	}
+
 	appCfg := appConfig{
-		mqttCfg:      &mqttConfig,
-		messengerCfg: &messengerConfig,
-		storageCfg:   &storageConfig,
-		dpCfg:        dpCfg,
-		devmode:      devmodeEnabled(flags),
+		mqttCfg:       &mqttConfig,
+		messengerCfg:  &messengerConfig,
+		storageCfg:    &storageConfig,
+		deviceMgmtCfg: &deviceMgmtCfg,
+		dpCfg:         dpCfg,
+		devmode:       devmodeEnabled(flags),
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg)
@@ -139,7 +147,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 			}
 			owned.messenger = messenger
 
-			dmClient, err = newDeviceMgmtClient(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], flags[oauth2ClientId], flags[oauth2ClientSecret], ac.devmode)
+			dmClient, err = newDeviceMgmtClient(ctx, *ac.deviceMgmtCfg, ac.devmode)
 			if err != nil {
 				owned.shutdown(ctx)
 				store, mqttClient, messenger = nil, nil, nil
@@ -271,13 +279,13 @@ func newStorage(ctx context.Context, cfg storage.Config, devmode bool) (storage.
 	return storage.New(ctx, cfg)
 }
 
-func newDeviceMgmtClient(ctx context.Context, url, tokenUrl, clientId, clientSecret string, devmode bool) (dmclient.DeviceManagementClient, error) {
+func newDeviceMgmtClient(ctx context.Context, cfg deviceMgmtConfig, devmode bool) (dmclient.DeviceManagementClient, error) {
 	if devmode {
 		logging.GetFromContext(ctx).Warn("devmode is enabled, using device management client mock")
 		return newDevmodeDeviceMgmtClient(ctx)
 	}
 
-	return dmclient.New(ctx, url, tokenUrl, true, clientId, clientSecret)
+	return dmclient.New(ctx, cfg.url, cfg.tokenURL, true, cfg.clientID, cfg.clientSecret)
 }
 
 func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {

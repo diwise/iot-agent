@@ -34,17 +34,21 @@ const (
 )
 
 type appConfig struct {
-	//	messenger  messaging.MsgContext
-	//	dmClient   devicemgmtclient.DeviceManagementClient
-	//	mqttClient mqtt.Client
-	//	storage    storage.Storage
-	//	facade     facades.EventFunc
+	mqttCfg       *mqtt.Config
+	messengerCfg  *messaging.Config
+	storageCfg    *storage.Config
+	deviceMgmtCfg *deviceMgmtConfig
+	dpCfg         map[string]application.DeviceProfileConfig
+	devmode       bool
+}
 
-	mqttCfg      *mqtt.Config
-	messengerCfg *messaging.Config
-	storageCfg   *storage.Config
-	dpCfg        map[string]application.DeviceProfileConfig
-	devmode      bool
+// deviceMgmtConfig groups the device management client settings that
+// are passed to infrastructure as one explicit unit.
+type deviceMgmtConfig struct {
+	url          string
+	tokenURL     string
+	clientID     string
+	clientSecret string
 }
 
 var oninit = servicerunner.OnInit[appConfig]
