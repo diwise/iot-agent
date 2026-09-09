@@ -598,7 +598,11 @@ func (a *app) sendStatusMessage(ctx context.Context, device dmc.Device, evt *typ
 		}
 	}
 
-	log.Debug("publish device-status message", slog.String("device_id", msg.DeviceID), slog.Any("status", msg))
+	statusCode := ""
+	if msg.Code != nil {
+		statusCode = *msg.Code
+	}
+	log.Debug("publish device-status message", slog.String("device_id", msg.DeviceID), slog.String("status_code", statusCode), slog.Int("status_messages", len(msg.Messages)))
 
 	err := a.msgCtx.PublishOnTopic(ctx, &msg)
 	if err != nil {

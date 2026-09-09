@@ -133,7 +133,9 @@ func (s *postgres) Save(ctx context.Context, se types.Event, device dmc.Device, 
 
 	_, err = s.conn.Exec(ctx, sql, args)
 	if err != nil {
-		log.Error("could not save sensor event", "sql", sql, "args", args, "err", err.Error())
+		// Never log the SQL args: they carry the full sensor event,
+		// payload and objects. Correlation fields are enough.
+		log.Error("could not save sensor event", "sensor_id", args["sensor_id"], "device_id", args["device_id"], "trace_id", args["trace_id"], "err", err.Error())
 		return err
 	}
 
