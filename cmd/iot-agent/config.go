@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/application"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/messaging-golang/pkg/messaging"

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/internal/application/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"

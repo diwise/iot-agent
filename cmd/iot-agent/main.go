@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/facades"
+	"github.com/diwise/iot-agent/internal/application"
+	"github.com/diwise/iot-agent/internal/application/facades"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
 	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
 	"github.com/diwise/iot-agent/internal/pkg/presentation/api"

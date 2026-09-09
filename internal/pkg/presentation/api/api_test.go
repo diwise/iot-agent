@@ -11,12 +11,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
+	"github.com/diwise/iot-agent/internal/application"
 
 	"github.com/matryer/is"
 
-	"github.com/diwise/iot-agent/internal/pkg/application/facades"
-	"github.com/diwise/iot-agent/internal/pkg/application/types"
+	"github.com/diwise/iot-agent/internal/application/facades"
+	"github.com/diwise/iot-agent/internal/application/types"
 	"github.com/diwise/senml"
 )
 
