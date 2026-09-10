@@ -38,6 +38,7 @@ func defaultFlags() flagMap {
 
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
+		multiObjectMessages:        "false",
 		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
 
 		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
@@ -164,6 +165,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 				store,
 				createUnknownDevicesEnabled(flags),
 				flags[createUnknownDeviceTenant],
+				multiObjectMessagesEnabled(flags),
 				ac.dpCfg,
 			)
 			owned.app = app
@@ -217,6 +219,15 @@ func devmodeEnabled(flags flagMap) bool {
 // ParseBool spellings such as "TRUE" or "1" intentionally do not.
 func createUnknownDevicesEnabled(flags flagMap) bool {
 	return flags[createUnknownDeviceEnabled] == "true"
+}
+
+// multiObjectMessagesEnabled is the activation for multi-observation
+// reports: one MessageReceived command per device report instead of one
+// per object. Only the exact string "true" enables it. Receivers (core,
+// events, things, FIWARE) must support multi-observation packs before
+// activation; rollback is setting it back to "false".
+func multiObjectMessagesEnabled(flags flagMap) bool {
+	return flags[multiObjectMessages] == "true"
 }
 
 // startServices starts the messaging loop before the MQTT client, so no
@@ -303,6 +314,7 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 
 	flags[createUnknownDeviceEnabled] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", flags[createUnknownDeviceEnabled])
 	flags[createUnknownDeviceTenant] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", flags[createUnknownDeviceTenant])
+	flags[multiObjectMessages] = envOrDef(ctx, "MULTI_OBJECT_MESSAGES", flags[multiObjectMessages])
 	flags[forwardingEndpoint] = envOrDef(ctx, "MSG_FWD_ENDPOINT", flags[forwardingEndpoint])
 	flags[appServerFacade] = envOrDef(ctx, "APPSERVER_FACADE", flags[appServerFacade])
 	flags[devMgmtUrl] = envOrDef(ctx, "DEV_MGMT_URL", flags[devMgmtUrl])

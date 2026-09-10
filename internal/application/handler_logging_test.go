@@ -42,7 +42,7 @@ func TestDeviceStatusPublishLogHasScalarFieldsOnly(t *testing.T) {
 	var records []slog.Record
 	ctx = logging.NewContextWithLogger(ctx, slog.New(&captureHandler{records: &records}))
 
-	agent := New(dmc, e, s, true, "default", map[string]DeviceProfileConfig{})
+	agent := New(dmc, e, s, true, "default", false, map[string]DeviceProfileConfig{})
 	ue, err := facades.New("netmore")(ctx, "payload", []byte(senlabT))
 	is.NoErr(err)
 

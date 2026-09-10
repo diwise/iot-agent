@@ -18,6 +18,7 @@ const (
 
 	createUnknownDeviceEnabled
 	createUnknownDeviceTenant
+	multiObjectMessages
 	deviceprofileFile
 
 	forwardingEndpoint

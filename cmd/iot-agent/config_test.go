@@ -38,6 +38,7 @@ func TestDefaultFlags(t *testing.T) {
 		controlPort:                "8000",
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
+		multiObjectMessages:        "false",
 		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
 		forwardingEndpoint:         "http://127.0.0.1/api/v0/messages",
 		appServerFacade:            "servanet",

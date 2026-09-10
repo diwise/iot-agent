@@ -213,6 +213,7 @@ Precedens: default < miljovariabel < CLI-flagga.
 | `POSTGRES_SSLMODE` | `disable` | Se ovan |
 | `CREATE_UNKNOWN_DEVICE_ENABLED` | `false` |  |
 | `CREATE_UNKNOWN_DEVICE_TENANT` | `default` |  |
+| `MULTI_OBJECT_MESSAGES` | `false` | Ett `MessageReceived`-kommando per enhetsrapport i stället för ett per objekt. Kräver flerobjektsstöd i core/events/things/FIWARE före aktivering |
 | `MSG_FWD_ENDPOINT` | `http://127.0.0.1/api/v0/messages` | Intern MQTT-forwarder mot eget API |
 | `APPSERVER_FACADE` | `servanet` | `chirpstack`, `chirpstackv4`, `netmore`, `servanet`; okant varde faller tillbaka till `chirpstack` |
 | `DEV_MGMT_URL` | (tom) | Klient mot iot-device-mgmt |

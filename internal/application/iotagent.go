@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"slices"
 	"strings"
 	"sync"
@@ -47,8 +48,11 @@ type app struct {
 
 	createUnknownDeviceEnabled bool
 	createUnknownDeviceTenant  string
-	dpCfg                      map[string]profile
-	dpCfgMu                    sync.RWMutex
+	// multiObjectMessages samlar en rapports giltiga observationer i ett
+	// kommando. Avstängt bevaras ett kommando per objekt (legacy).
+	multiObjectMessages bool
+	dpCfg               map[string]profile
+	dpCfgMu             sync.RWMutex
 
 	stopCh   chan struct{}
 	stopOnce sync.Once
@@ -60,7 +64,7 @@ type profile struct {
 	Types []string
 }
 
-func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string, dpCfg map[string]DeviceProfileConfig) App {
+func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string, multiObjectMessages bool, dpCfg map[string]DeviceProfileConfig) App {
 	d := decoders.NewRegistry()
 
 	a := &app{
@@ -71,6 +75,7 @@ func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage st
 		notFoundDevices:            make(map[string]time.Time),
 		createUnknownDeviceEnabled: createUnknownDeviceEnabled,
 		createUnknownDeviceTenant:  createUnknownDeviceTenant,
+		multiObjectMessages:        multiObjectMessages,
 		dpCfg:                      make(map[string]profile),
 		stopCh:                     make(chan struct{}),
 		done:                       make(chan struct{}),
@@ -254,6 +259,10 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 
 	types := device.Types()
 
+	if a.multiObjectMessages {
+		return a.handleReport(ctx, device, objects, types)
+	}
+
 	for _, obj := range objects {
 		if !slices.Contains(types, obj.ObjectURN()) {
 			log.Debug(fmt.Sprintf("%s is not in device types list %s", obj.ObjectURN(), strings.Join(types, ", ")))
@@ -274,6 +283,82 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	log.Debug("sensor measurements processed", "processed_at", time.Now().Format(time.RFC3339Nano))
 
 	return errors.Join(errs...)
+}
+
+var (
+	errObservationWithoutValues = errors.New("observation contains no values")
+	errObservationNonFinite     = errors.New("observation contains non-finite value or time")
+)
+
+// validateObservation avgör om en observation får skickas: den måste bära
+// minst en värderesurs utöver headern, med ändliga värden och tider.
+// Tomma observationer (alla fält nil i avkodningen) och NaN/Inf-artefakter
+// underkänns – de loggas och utelämnas av anroparen, övriga observationer
+// i rapporten påverkas inte.
+func validateObservation(pack senml.Pack) error {
+	values := 0
+	for _, r := range pack {
+		if r.Name == "0" {
+			continue
+		}
+		if !r.HasValue() {
+			continue
+		}
+		for _, v := range []float64{r.BaseTime, r.Time, r.UpdateTime} {
+			if math.IsNaN(v) || math.IsInf(v, 0) {
+				return fmt.Errorf("%w: time in %s", errObservationNonFinite, r.Name)
+			}
+		}
+		for _, v := range []*float64{r.Value, r.Sum, r.BaseValue, r.BaseSum} {
+			if v != nil && (math.IsNaN(*v) || math.IsInf(*v, 0)) {
+				return fmt.Errorf("%w: value in %s", errObservationNonFinite, r.Name)
+			}
+		}
+		values++
+	}
+	if values == 0 {
+		return errObservationWithoutValues
+	}
+	return nil
+}
+
+// handleReport samlar en rapports giltiga observationer i ett kommando.
+// Felaktiga observationer loggas och utelämnas; övriga skickas. Innehåller
+// rapporten inga giltiga observationer skickas inget meddelande.
+func (a *app) handleReport(ctx context.Context, device dmc.Device, objects []lwm2m.Lwm2mObject, types []string) error {
+	log := logging.GetFromContext(ctx)
+
+	var packs []senml.Pack
+	for _, obj := range objects {
+		if !slices.Contains(types, obj.ObjectURN()) {
+			log.Debug(fmt.Sprintf("%s is not in device types list %s", obj.ObjectURN(), strings.Join(types, ", ")))
+			continue
+		}
+
+		pack := lwm2m.ToPack(obj)
+
+		if err := validateObservation(pack); err != nil {
+			log.Warn("omitting invalid observation", "device_id", device.ID(), "object", obj.ObjectURN(), "err", err.Error())
+			continue
+		}
+
+		packs = append(packs, pack)
+	}
+
+	if len(packs) == 0 {
+		log.Warn("no valid observations in report, nothing sent", "device_id", device.ID())
+		return nil
+	}
+
+	// Gemensam explicit referenstid för relativa SenML-tider. Merge löser
+	// varje pack oberoende så att basfält aldrig läcker mellan objekt.
+	merged, err := senml.Merge(time.Now().UTC(), packs...)
+	if err != nil {
+		log.Error("could not build multi-observation pack", "device_id", device.ID(), "err", err.Error())
+		return err
+	}
+
+	return a.handleSensorMeasurementList(ctx, merged)
 }
 
 func (a *app) HandleSensorMeasurementList(ctx context.Context, deviceID string, pack senml.Pack) error {

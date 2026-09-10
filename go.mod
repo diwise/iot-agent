@@ -3,7 +3,7 @@ module github.com/diwise/iot-agent
 go 1.27
 
 require (
-	github.com/diwise/iot-core v0.0.0-20260318135208-e6dfdbf5d103
+	github.com/diwise/iot-core v0.0.0-20260910092530-e290ffe2f6bc
 	github.com/diwise/iot-device-mgmt v0.0.0-20260504091030-a34ced3a3fcc
 	github.com/diwise/messaging-golang v0.0.0-20260910052156-098a088f6b4f
 	github.com/diwise/senml v0.0.0-20260909175035-ac3958b9698e

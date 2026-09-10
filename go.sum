@@ -25,6 +25,8 @@ github.com/dgryski/trifles v0.0.0-20230903005119-f50d829f2e54 h1:SG7nF6SRlWhcT7c
 github.com/dgryski/trifles v0.0.0-20230903005119-f50d829f2e54/go.mod h1:if7Fbed8SFyPtHLHbg49SI7NAdJiC5WIA09pe59rfAA=
 github.com/diwise/iot-core v0.0.0-20260318135208-e6dfdbf5d103 h1:wUKrN54YzL6uJN9Pw+y0o9WaMM4YzuAavFkNWDKGNu8=
 github.com/diwise/iot-core v0.0.0-20260318135208-e6dfdbf5d103/go.mod h1:a2KgAq7Z2bz8nfvuWgKrAaeBoHY/IcrWegcoIX4afK0=
+github.com/diwise/iot-core v0.0.0-20260910092530-e290ffe2f6bc h1:NNe8qEEZqm9IDokJlTtnltlgVxyOtVl28FNctfXuPdw=
+github.com/diwise/iot-core v0.0.0-20260910092530-e290ffe2f6bc/go.mod h1:5oPn15vzRV5BotBQzw7/STTkq6Ms32PyO7HRhw5/zOY=
 github.com/diwise/iot-device-mgmt v0.0.0-20260504091030-a34ced3a3fcc h1:Kpq6oNE8ZlQyENPH+PBuBIPmLKifdkKRUs+QcLwbwzQ=
 github.com/diwise/iot-device-mgmt v0.0.0-20260504091030-a34ced3a3fcc/go.mod h1:AaEHMR7L5tcbAZAVT5nYynhldRfw8ivBMesbM7rr6Ck=
 github.com/diwise/messaging-golang v0.0.0-20260910052156-098a088f6b4f h1:ZqqucHnjlrnIccI4Lf2xfXXmouW8eXt4Pp5CBtHswj0=
