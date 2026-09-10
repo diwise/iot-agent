@@ -64,11 +64,11 @@ func TestStartServicesPropagatesSynchronousStartError(t *testing.T) {
 
 	var order []string
 	messenger := &messaging.MsgContextMock{
-		StartFunc: func() { order = append(order, "messenger") },
+		StartFunc: func(context.Context) error { order = append(order, "messenger"); return nil },
 	}
 	mqttClient := &fakeMQTTClient{startErr: errors.New("synchronous start failed")}
 
-	err := startServices(messenger, mqttClient)
+	err := startServices(context.Background(), messenger, mqttClient)
 	is.True(err != nil)
 	is.Equal(order, []string{"messenger"})
 	is.Equal(mqttClient.starts, 1)
@@ -79,11 +79,11 @@ func TestStartServicesOK(t *testing.T) {
 
 	var order []string
 	messenger := &messaging.MsgContextMock{
-		StartFunc: func() { order = append(order, "messenger") },
+		StartFunc: func(context.Context) error { order = append(order, "messenger"); return nil },
 	}
 	mqttClient := &fakeMQTTClient{}
 
-	is.NoErr(startServices(messenger, mqttClient))
+	is.NoErr(startServices(context.Background(), messenger, mqttClient))
 	is.Equal(mqttClient.starts, 1)
 }
 
@@ -99,7 +99,7 @@ func TestShutdownIsOrderedAndIdempotent(t *testing.T) {
 	}
 	mqttClient := &fakeMQTTClient{onStop: func() { order = append(order, "mqtt") }}
 	messenger := &messaging.MsgContextMock{
-		CloseFunc: func() { order = append(order, "messenger") },
+		ShutdownFunc: func(context.Context) error { order = append(order, "messenger"); return nil },
 	}
 	dmClient := &dmctest.DeviceManagementClientMock{
 		CloseFunc: func(context.Context) { order = append(order, "dm") },

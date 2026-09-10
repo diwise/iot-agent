@@ -67,7 +67,8 @@ func main() {
 	mqttConfig, err := mqtt.NewConfigFromEnvironment("")
 	exitIf(err, logger, "mqtt configuration error")
 
-	messengerConfig := messaging.LoadConfiguration(ctx, serviceName, logger)
+	messengerConfig, err := messaging.LoadConfiguration(ctx, serviceName, logger)
+	exitIf(err, logger, "messaging configuration error")
 	storageConfig := storage.LoadConfiguration(ctx)
 
 	deviceMgmtCfg := deviceMgmtConfig{
@@ -180,7 +181,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 				}
 			}()
 
-			return startServices(messenger, mqttClient)
+			return startServices(ctx, messenger, mqttClient)
 		}),
 		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
 			logger.Debug("shutting down servicerunner")
@@ -225,8 +226,10 @@ func createUnknownDevicesEnabled(flags flagMap) bool {
 // started. The real MQTT client connects asynchronously and reconnects
 // in the background; connection failures are logged, never fatal.
 // Only synchronous start errors abort startup.
-func startServices(messenger messaging.MsgContext, mqttClient mqtt.Client) error {
-	messenger.Start()
+func startServices(ctx context.Context, messenger messaging.MsgContext, mqttClient mqtt.Client) error {
+	if err := messenger.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start messenger: %w", err)
+	}
 
 	if err := mqttClient.Start(); err != nil {
 		return fmt.Errorf("failed to start mqtt client: %w", err)
@@ -237,8 +240,8 @@ func startServices(messenger messaging.MsgContext, mqttClient mqtt.Client) error
 
 // ownedResources tracks the resources created during OnInit so shutdown
 // stops background work, then transports, then storage, exactly once.
-// Shutdown is nil-safe (partial OnInit) and idempotent: the underlying
-// messenger Close is not safe to call twice, hence the sync.Once guard.
+// Shutdown is nil-safe (partial OnInit) and idempotent via the sync.Once
+// guard, so the messenger is shut down at most once.
 type ownedResources struct {
 	once       sync.Once
 	app        application.App
@@ -257,7 +260,9 @@ func (o *ownedResources) shutdown(ctx context.Context) {
 			o.mqttClient.Stop()
 		}
 		if o.messenger != nil {
-			o.messenger.Close()
+			if err := o.messenger.Shutdown(ctx); err != nil {
+				logging.GetFromContext(ctx).Debug("failed to shut down messenger", "err", err.Error())
+			}
 		}
 		if o.dmClient != nil {
 			o.dmClient.Close(ctx)
