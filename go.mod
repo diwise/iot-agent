@@ -6,7 +6,7 @@ require (
 	github.com/diwise/iot-core v0.0.0-20260318135208-e6dfdbf5d103
 	github.com/diwise/iot-device-mgmt v0.0.0-20260504091030-a34ced3a3fcc
 	github.com/diwise/messaging-golang v0.0.0-20250628135946-f23f34d06003
-	github.com/diwise/senml v0.0.0-20251022134045-d0045d1dd610
+	github.com/diwise/senml v0.0.0-20260909175035-ac3958b9698e
 	github.com/diwise/service-chassis v0.0.0-20260602135046-9f4adf349775
 	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c
 	github.com/eclipse/paho.mqtt.golang v1.5.1
