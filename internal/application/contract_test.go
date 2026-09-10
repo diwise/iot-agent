@@ -20,7 +20,7 @@ import (
 func TestMessageReceivedCommandContract(t *testing.T) {
 	is, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default", map[string]DeviceProfileConfig{})
+	agent := New(dmc, e, s, true, "default", false, map[string]DeviceProfileConfig{})
 	ue, err := facades.New("netmore")(ctx, "payload", []byte(senlabT))
 	is.NoErr(err)
 
@@ -47,7 +47,7 @@ func TestMessageReceivedCommandBody(t *testing.T) {
 	is := is.New(t)
 	_, dmc, e, s, ctx := testSetup(t)
 
-	agent := New(dmc, e, s, true, "default", map[string]DeviceProfileConfig{})
+	agent := New(dmc, e, s, true, "default", false, map[string]DeviceProfileConfig{})
 	ue, err := facades.New("netmore")(ctx, "payload", []byte(senlabT))
 	is.NoErr(err)
 
@@ -88,7 +88,7 @@ func TestMessageReceivedCommandBody(t *testing.T) {
 func TestAppStopIsIdempotent(t *testing.T) {
 	is := is.New(t)
 
-	agent := New(nil, nil, nil, false, "default", map[string]DeviceProfileConfig{})
+	agent := New(nil, nil, nil, false, "default", false, map[string]DeviceProfileConfig{})
 	is.True(agent != nil)
 
 	agent.Stop()
@@ -130,7 +130,7 @@ func TestDeviceStatusPublicationContract(t *testing.T) {
 		return nil
 	}
 
-	agent := New(dmc, e, s, true, "default", map[string]DeviceProfileConfig{})
+	agent := New(dmc, e, s, true, "default", false, map[string]DeviceProfileConfig{})
 	ue, err := facades.New("netmore")(ctx, "payload", []byte(senlabT))
 	is.NoErr(err)
 
