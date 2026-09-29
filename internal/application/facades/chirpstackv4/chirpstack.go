@@ -48,12 +48,16 @@ func handleErrorEvent(b []byte) (types.Event, error) {
 		DevEUI:    errorEvent.DeviceInfo.DevEUI,
 		Name:      errorEvent.DeviceInfo.DeviceName,
 		Tags:      mapToMapArr(errorEvent.DeviceInfo.Tags),
-		Timestamp: time.Now().UTC(),
+		Timestamp: errorEvent.Time.UTC(),
 		Error: &types.Error{
 			Level:   errorEvent.Level,
 			Type:    errorEvent.Code,
 			Message: errorEvent.Description,
 		},
+	}
+
+	if e.Timestamp.IsZero() {
+		e.Timestamp = time.Now().UTC()
 	}
 
 	return e, nil

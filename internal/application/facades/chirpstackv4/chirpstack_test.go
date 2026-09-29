@@ -1,6 +1,9 @@
 package chirpstackv4
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 const (
 	uplinkEvent = `
@@ -79,5 +82,28 @@ func TestStatusEvent(t *testing.T) {
 	_, err := HandleEvent(ctx, "status", []byte(statusEvent))
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestErrorEventPreservesEventTime(t *testing.T) {
+	ctx := t.Context()
+	evt, err := HandleEvent(ctx, "error", []byte(`{"time":"2022-07-18T09:35:06.927172638Z","deviceInfo":{"devEui":"0101010101010101"},"level":"error","code":"upling","description":"boom"}`))
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if evt.Timestamp.UTC().Year() != 2022 {
+		t.Fatalf("expected event time preserved, got %v", evt.Timestamp)
+	}
+}
+
+func TestErrorEventWithoutTimeFallsBackToNow(t *testing.T) {
+	ctx := t.Context()
+	before := time.Now().Add(-time.Minute)
+	evt, err := HandleEvent(ctx, "error", []byte(`{"deviceInfo":{"devEui":"0101010101010101"},"level":"error","code":"x","description":"y"}`))
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if evt.Timestamp.Before(before) || evt.Timestamp.After(time.Now().Add(time.Minute)) {
+		t.Fatalf("expected fallback to now, got %v", evt.Timestamp)
 	}
 }
