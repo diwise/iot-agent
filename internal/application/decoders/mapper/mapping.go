@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/diwise/iot-agent/internal/application/types"
@@ -51,10 +52,15 @@ type Group struct {
 	Name string
 	URN  string
 	// Channel is a static suffix such as "/0". Empty means no suffix.
+	// Groups with a ChannelStrategy must leave Channel empty.
 	Channel string
 	// ChannelStrategy selects dynamic channel assignment.
-	// Empty means the static Channel applies. Step 4 adds strategies.
+	// Empty means the static Channel applies.
 	ChannelStrategy string
+	// Role names this group's part in a channel strategy,
+	// e.g. internal, extern1 or extern2 for Elsys temperatures.
+	// A role requires a strategy and must belong to it.
+	Role string
 }
 
 // StatusMapping selects battery, code and messages for device status.
@@ -103,7 +109,21 @@ func ValidateRules(rules []Rule, groups map[string]Group) error {
 			continue
 		}
 		if g.ChannelStrategy != "" {
-			fail("rule %q: group %q uses unsupported channel strategy %q", r.ID, r.Group, g.ChannelStrategy)
+			if !KnownChannelStrategy(g.ChannelStrategy) {
+				fail("rule %q: group %q uses unknown channel strategy %q", r.ID, r.Group, g.ChannelStrategy)
+			} else {
+				roles, _ := StrategyRoles(g.ChannelStrategy)
+				if g.Role == "" {
+					fail("rule %q: group %q needs a role for strategy %q", r.ID, r.Group, g.ChannelStrategy)
+				} else if !slices.Contains(roles, g.Role) {
+					fail("rule %q: group %q role %q is not in strategy %q", r.ID, r.Group, g.Role, g.ChannelStrategy)
+				}
+			}
+			if g.Channel != "" {
+				fail("rule %q: group %q with a strategy must leave Channel empty", r.ID, r.Group)
+			}
+		} else if g.Role != "" {
+			fail("rule %q: group %q role %q needs a strategy", r.ID, r.Group, g.Role)
 		}
 		if !channelPattern.MatchString(g.Channel) {
 			fail("rule %q: group %q has bad channel %q", r.ID, r.Group, g.Channel)

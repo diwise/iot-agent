@@ -198,12 +198,46 @@ func MapToLWM2M(deviceID string, ts time.Time, data types.GenericPayload, groups
 		inst.pending = append(inst.pending, pendingValue{resultPos: pos, resource: r.Resource, value: val})
 	}
 
+	ruleGroup := make(map[string]Group, len(rules))
+	for _, r := range rules {
+		if g, ok := groups[r.Group]; ok {
+			ruleGroup[r.ID] = g
+		}
+	}
+	matchedRoles := map[string]bool{}
+	for _, rr := range res.Results {
+		if rr.Status == RuleMatched {
+			if g, ok := ruleGroup[rr.RuleID]; ok && g.Role != "" {
+				matchedRoles[g.Role] = true
+			}
+		}
+	}
+	resolved := map[string]map[string]string{}
+	for _, g := range groups {
+		if g.ChannelStrategy == "" {
+			continue
+		}
+		if _, done := resolved[g.ChannelStrategy]; !done {
+			resolved[g.ChannelStrategy] = ResolveChannels(g.ChannelStrategy, matchedRoles)
+		}
+	}
+
 	for _, key := range order {
 		inst := instances[key]
 		if inst.failed {
 			continue
 		}
-		objectID := deviceID + inst.channel
+		channel := inst.channel
+		if inst.group.ChannelStrategy != "" {
+			if m, ok := resolved[inst.group.ChannelStrategy]; ok {
+				if ch, ok := m[inst.group.Role]; ok {
+					channel = ch
+				} else {
+					channel = ""
+				}
+			}
+		}
+		objectID := deviceID + channel
 		if inst.header {
 			obj, err := AssembleObject(inst.group.URN, objectID, ts, map[string]any{})
 			if err != nil {

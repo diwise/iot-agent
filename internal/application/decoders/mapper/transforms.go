@@ -29,7 +29,7 @@ func GetTransform(name string, params map[string]any) (TransformFunc, error) {
 		}
 		return func(v any) (any, error) { return v, nil }, nil
 	case "scale":
-		factor, offset, err := scaleParams(params)
+		factor, divisor, offset, err := scaleParams(params)
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +38,7 @@ func GetTransform(name string, params map[string]any) (TransformFunc, error) {
 			if err != nil {
 				return nil, err
 			}
-			return f*factor + offset, nil
+			return f*factor/divisor + offset, nil
 		}, nil
 	case "reciprocal":
 		if len(params) > 0 {
@@ -123,25 +123,28 @@ func GetTransform(name string, params map[string]any) (TransformFunc, error) {
 	}
 }
 
-func scaleParams(params map[string]any) (factor, offset float64, err error) {
-	factor, offset = 1, 0
-	for key, want := range map[string]*float64{"factor": &factor, "offset": &offset} {
+func scaleParams(params map[string]any) (factor, divisor, offset float64, err error) {
+	factor, divisor, offset = 1, 1, 0
+	for key, want := range map[string]*float64{"factor": &factor, "divisor": &divisor, "offset": &offset} {
 		raw, ok := params[key]
 		if !ok {
 			continue
 		}
 		f, ferr := types.AsFloat(raw)
 		if ferr != nil {
-			return 0, 0, fmt.Errorf("%w: scale %s is not numeric", ErrInvalidTransformParams, key)
+			return 0, 0, 0, fmt.Errorf("%w: scale %s is not numeric", ErrInvalidTransformParams, key)
 		}
 		*want = f
 	}
 	for key := range params {
-		if key != "factor" && key != "offset" {
-			return 0, 0, fmt.Errorf("%w: scale has unknown param %q", ErrInvalidTransformParams, key)
+		if key != "factor" && key != "divisor" && key != "offset" {
+			return 0, 0, 0, fmt.Errorf("%w: scale has unknown param %q", ErrInvalidTransformParams, key)
 		}
 	}
-	return factor, offset, nil
+	if divisor == 0 {
+		return 0, 0, 0, fmt.Errorf("%w: scale divisor must not be zero", ErrInvalidTransformParams)
+	}
+	return factor, divisor, offset, nil
 }
 
 func maxIntFloat() int {

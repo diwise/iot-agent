@@ -47,12 +47,22 @@ func TestScaleTransform(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(v, 7.0)
 
-	// Defaults are factor 1 and offset 0.
+	// Defaults are factor 1, divisor 1 and offset 0.
 	fn, err = GetTransform("scale", nil)
 	is.NoErr(err)
 	v, err = fn(3.0)
 	is.NoErr(err)
 	is.Equal(v, 3.0)
+
+	// Divisor keeps legacy-exact division such as pulse/10.
+	fn, err = GetTransform("scale", map[string]any{"divisor": 10})
+	is.NoErr(err)
+	v, err = fn(215.0)
+	is.NoErr(err)
+	is.Equal(v, 215.0/10)
+
+	_, err = GetTransform("scale", map[string]any{"divisor": 0})
+	is.True(errors.Is(err, ErrInvalidTransformParams))
 
 	_, err = GetTransform("scale", map[string]any{"factor": "x"})
 	is.True(errors.Is(err, ErrInvalidTransformParams))
