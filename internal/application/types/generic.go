@@ -157,6 +157,12 @@ func parseLookupPath(path string) ([]pathSegment, error) {
 	return segs, nil
 }
 
+// ValidatePath reports whether path parses. It performs no lookup.
+func ValidatePath(path string) error {
+	_, err := parseLookupPath(path)
+	return err
+}
+
 // Lookup resolves a punktnotation path against the payload.
 // Exact field match wins. Otherwise a single case-insensitive match
 // wins per segment. Array indexes always match exactly.
@@ -304,4 +310,25 @@ func AsBool(v any) (bool, error) {
 		return b, nil
 	}
 	return false, fmt.Errorf("%w: %T", ErrNotBool, v)
+}
+
+// ErrBatteryRange reports a battery percent outside 0-100.
+var ErrBatteryRange = errors.New("battery percent outside 0-100")
+
+// BatteryPercent coerces a mapped status value to a validated percent.
+// Nil input means absent and returns nil without error. Out-of-range
+// or non-numeric input returns an error; callers omit the battery and
+// record diagnostics instead of clamping or fabricating a value.
+func BatteryPercent(v any) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	i, err := AsInt(v)
+	if err != nil {
+		return nil, err
+	}
+	if i < 0 || i > 100 {
+		return nil, fmt.Errorf("%w: %d", ErrBatteryRange, i)
+	}
+	return &i, nil
 }

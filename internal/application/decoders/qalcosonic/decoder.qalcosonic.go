@@ -48,7 +48,7 @@ func (a Payload) BatteryLevel() *int {
 	return nil
 }
 func (a Payload) Error() (string, []string) {
-	if len(a.Reading.Messages) > 0 {
+	if a.Reading != nil && len(a.Reading.Messages) > 0 {
 		m := []string{}
 		for _, v := range a.Reading.Messages {
 			if v != "No error" {
@@ -62,6 +62,26 @@ func (a Payload) Error() (string, []string) {
 
 		return strconv.Itoa(int(a.Reading.StatusCode)), m
 	}
+
+	if a.Reading != nil {
+		return "0", []string{}
+	}
+
+	if a.Alarms != nil {
+		m := []string{}
+		for _, v := range a.Alarms.Messages {
+			if v != "No error" {
+				m = append(m, v)
+			}
+		}
+
+		if a.Alarms.StatusCode == NoError {
+			return "0", m
+		}
+
+		return strconv.Itoa(int(a.Alarms.StatusCode)), m
+	}
+
 	return "0", []string{}
 }
 

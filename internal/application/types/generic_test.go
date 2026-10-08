@@ -149,6 +149,17 @@ func TestGenericPayloadLookupInvalidPaths(t *testing.T) {
 	}
 }
 
+func TestValidatePath(t *testing.T) {
+	is := is.New(t)
+
+	for _, path := range []string{"a", "a.b", `a\.b`, "a[0]", "a[12]", "a.b[3].c", "a.[0]"} {
+		is.NoErr(ValidatePath(path))
+	}
+	for _, path := range []string{"", ".", "a.", "a[", "a[]", "a[x]"} {
+		is.True(ValidatePath(path) != nil)
+	}
+}
+
 func TestAsFloatMatrix(t *testing.T) {
 	is := is.New(t)
 
@@ -291,4 +302,38 @@ func TestDecodedResultJSONWritesDecoderDataOnly(t *testing.T) {
 	var back DecodedResult
 	is.NoErr(json.Unmarshal(b, &back))
 	is.Equal(back.Data["temperature"], 21.5)
+}
+
+func TestBatteryPercent(t *testing.T) {
+	is := is.New(t)
+
+	// Absent input means absent battery, without error.
+	v, err := BatteryPercent(nil)
+	is.NoErr(err)
+	is.True(v == nil)
+
+	// Zero is a valid percent.
+	v, err = BatteryPercent(0)
+	is.NoErr(err)
+	is.Equal(*v, 0)
+
+	// Integral values across numeric kinds are accepted.
+	for _, in := range []any{87, 87.0, int8(100), uint8(55), json.Number("63")} {
+		v, err = BatteryPercent(in)
+		is.NoErr(err)
+		is.True(v != nil)
+	}
+
+	// Out-of-range values are rejected, never clamped.
+	for _, in := range []any{-1, 101, 3636} {
+		_, err = BatteryPercent(in)
+		is.True(err != nil)
+		is.True(errors.Is(err, ErrBatteryRange))
+	}
+
+	// Non-numeric values are rejected.
+	for _, in := range []any{"87", true, 87.5, -0.5, math.NaN()} {
+		_, err = BatteryPercent(in)
+		is.True(err != nil)
+	}
 }
