@@ -20,7 +20,9 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 WORKDIR /opt/diwise
 
-COPY --chown=1001 assets/config/deviceprofiles.yaml /opt/diwise/config/deviceprofiles.yaml
+# Unified config with 2 top sections: deviceprofiles + decoders.
+COPY --chown=1001 assets/config/iot-agent.yaml /opt/diwise/config/iot-agent.yaml
+COPY --chown=1001 assets/decoders/ /opt/diwise/config/decoders/
 COPY --from=builder --chown=1001 /app/cmd/iot-agent/iot-agent /opt/diwise
 
 RUN chown 1001 /opt/diwise

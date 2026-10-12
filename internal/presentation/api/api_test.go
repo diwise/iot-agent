@@ -212,15 +212,3 @@ func testRequest(_ *is.I, method, url string, body io.Reader) (*http.Response, s
 
 const senMLPayload string = `[{"bn": "urn:oma:lwm2m:ext:3303", "bt": 1677079794, "n": "0", "vs": "net:serva:iot:a81758fffe051d02"}, {"n": "5700", "v": -4.5}, {"u": "lat", "v": 62.36956}, {"u": "lon", "v": 17.31984}, {"n": "env", "vs": "air"}, {"n": "tenant", "vs": "default"}]`
 const msgfromMQTT string = `{"applicationID":"102","applicationName":"3_IoT-For-Klimat","deviceName":"TLD-01","deviceProfileName":"Milesight EM400TLD","deviceProfileID":"c70ad992-b55e-4f40-804b-2ebfec18ac58","devEUI":"24e124329e090021","rxInfo":[{"gatewayID":"24e124fffef477f6","uplinkID":"68bae122-70fd-4487-866d-49ccf45e9ab4","name":"SN-LGW-047","time":"2025-04-10T11:44:01.912259Z","rssi":-110,"loRaSNR":-5.8,"location":{"latitude":62.36951,"longitude":17.32014,"altitude":273}},{"gatewayID":"fcc23dfffe0a752b","uplinkID":"058471f1-3076-47a3-9ef1-6d1ad5bd248f","name":"SN-LGW-001","rssi":-104,"loRaSNR":1.2,"location":{"latitude":62.39466886148298,"longitude":17.34076023101807,"altitude":0}}],"txInfo":{"frequency":868500000,"dr":5},"adr":true,"fCnt":45797,"fPort":85,"data":"AXVXA2c4AASCXAgFAAA=","object":{"battery":87,"distance":2140,"position":"normal","temperature":5.6},"tags":{"x_typ":"mr_hushall"}}`
-const policy string = `
-package example.authz
-
-# See https://www.openpolicyagent.org/docs/latest/policy-reference/ to learn more about rego
-
-default allow := false
-
-allow = response {
-	response := {
-		"tenants": ["default"]
-	}
-}`

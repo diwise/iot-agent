@@ -39,7 +39,8 @@ func TestDefaultFlags(t *testing.T) {
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 		multiObjectMessages:        "false",
-		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
+		deviceprofileFile:          "/opt/diwise/config/iot-agent.yaml",
+		mappingsFile:               "/opt/diwise/config/iot-agent.yaml",
 		forwardingEndpoint:         "http://127.0.0.1/api/v0/messages",
 		appServerFacade:            "servanet",
 		logLevel:                   "debug",
@@ -72,6 +73,7 @@ func TestEnvOverrides(t *testing.T) {
 	t.Setenv("APPSERVER_FACADE", "chirpstack")
 	t.Setenv("CREATE_UNKNOWN_DEVICE_ENABLED", "true")
 	t.Setenv("DEV_MGMT_URL", "http://dm:8080")
+	t.Setenv("MAPPINGS_FILE", "/tmp/mappings.yaml")
 
 	_, flags := parseExternalConfig(context.Background(), defaultFlags())
 
@@ -82,20 +84,23 @@ func TestEnvOverrides(t *testing.T) {
 	is.Equal(flags[appServerFacade], "chirpstack")
 	is.Equal(flags[createUnknownDeviceEnabled], "true")
 	is.Equal(flags[devMgmtUrl], "http://dm:8080")
+	is.Equal(flags[mappingsFile], "/tmp/mappings.yaml")
 }
 
 // HARM-004: locks CLI-over-env precedence. AGENT-003: the dead
 // -policies flag was removed; the remaining CLI flags still win.
 func TestCLIOverridesEnv(t *testing.T) {
 	is := is.New(t)
-	withCleanFlags(t, []string{"iot-agent", "-loglevel=error", "-devmode=true"})
+	withCleanFlags(t, []string{"iot-agent", "-loglevel=error", "-devmode=true", "-mappings=/tmp/cli.yaml"})
 
 	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("MAPPINGS_FILE", "/tmp/env.yaml")
 
 	_, flags := parseExternalConfig(context.Background(), defaultFlags())
 
 	is.Equal(flags[logLevel], "error")
 	is.Equal(flags[devmode], "true")
+	is.Equal(flags[mappingsFile], "/tmp/cli.yaml")
 }
 
 // HARM-004: locks log level parsing, including the silent debug fallback.

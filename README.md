@@ -187,14 +187,15 @@ curl -X POST http://localhost:8080/api/v0/messages
 ```
 
 ## CLI flags
- - `deviceprofiles` - A device profile configuration file (overrides the `deviceprofiles.yaml` default path)
+ - `deviceprofiles` - Unified configuration file (overrides `DEVICEPROFILES_FILE` and the `iot-agent.yaml` default path, `deviceprofiles`-sektionen används)
+ - `mappings` - Unified configuration file (overrides `MAPPINGS_FILE` and the `iot-agent.yaml` default path, `decoders`-sektionen används)
  - `devmode` - Enable dev mode (in-memory storage and device management mock)
  - `loglevel` - Set the log level (overrides `LOG_LEVEL`)
 
 The dead `policies` flag (`POLICIES_FILE`) was removed in AGENT-003: the file was never opened and no OPA policy is used by this service. External calls passing `-policies` are now rejected at startup.
 
 ## Configuration files
- - `deviceprofiles.yaml` (default `/opt/diwise/config/deviceprofiles.yaml`) - Required at startup, maps device profiles to decoders/converters.
+ - `iot-agent.yaml` (default `/opt/diwise/config/iot-agent.yaml` för båda flaggorna) - Enda configfilen med 2 toppsektioner, krävs vid startup. `deviceprofiles` styr auto-create (codec -> profil/tenant/tags). `decoders` styr Go/JS-decoders och LWM2M-regler (`schemaVersion: 1`). Separata legacyfiler stöds inte. Ändringar kräver omstart. Leverera agent + fil + script som matchande uppsättning. Rollback är föregående agent + matchande fil. Qalcosonic tar ingen YAML-post (explicit legacy-undantag).
 
 ## Faktisk konfiguration (kod ar facit, HARM-002)
 Precedens: default < miljovariabel < CLI-flagga.

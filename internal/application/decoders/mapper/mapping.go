@@ -11,18 +11,29 @@ import (
 	"strings"
 
 	"github.com/diwise/iot-agent/internal/application/types"
+	"gopkg.in/yaml.v3"
 )
 
 // TransformStep is one named transform with validated parameters.
 // Steps run in declared order.
 type TransformStep struct {
-	Name   string
-	Params map[string]any
+	Name   string         `yaml:"name"`
+	Params map[string]any `yaml:"params,omitempty"`
 }
 
 // ConstValue holds a constant rule source. Constants never act as paths.
 type ConstValue struct {
-	V any
+	V any `yaml:"-"`
+}
+
+// UnmarshalYAML accepts any scalar, list or map as a constant value.
+func (c *ConstValue) UnmarshalYAML(value *yaml.Node) error {
+	var v any
+	if err := value.Decode(&v); err != nil {
+		return err
+	}
+	c.V = v
+	return nil
 }
 
 // Rule maps one source to one resource of an object group.
@@ -30,16 +41,16 @@ type ConstValue struct {
 // Const. HeaderOnly rules carry From but no resource, transform,
 // const or list.
 type Rule struct {
-	ID         string
-	From       string
-	Aliases    []string
-	Group      string
-	Resource   string
-	Const      *ConstValue
-	Transforms []TransformStep
-	Enabled    *bool
-	HeaderOnly bool
-	List       string
+	ID         string          `yaml:"id"`
+	From       string          `yaml:"from,omitempty"`
+	Aliases    []string        `yaml:"aliases,omitempty"`
+	Group      string          `yaml:"group"`
+	Resource   string          `yaml:"resource,omitempty"`
+	Const      *ConstValue     `yaml:"const,omitempty"`
+	Transforms []TransformStep `yaml:"transforms,omitempty"`
+	Enabled    *bool           `yaml:"enabled,omitempty"`
+	HeaderOnly bool            `yaml:"header_only,omitempty"`
+	List       string          `yaml:"list,omitempty"`
 }
 
 // IsEnabled reports true when Enabled is nil or true.
@@ -49,27 +60,34 @@ func (r Rule) IsEnabled() bool {
 
 // Group names an object type with its channel behavior.
 type Group struct {
-	Name string
-	URN  string
+	// Name comes from the configuration key and has no YAML field.
+	Name string `yaml:"-"`
+	URN  string `yaml:"urn"`
 	// Channel is a static suffix such as "/0". Empty means no suffix.
 	// Groups with a ChannelStrategy must leave Channel empty.
-	Channel string
+	Channel string `yaml:"channel,omitempty"`
 	// ChannelStrategy selects dynamic channel assignment.
 	// Empty means the static Channel applies.
-	ChannelStrategy string
+	ChannelStrategy string `yaml:"strategy,omitempty"`
 	// Role names this group's part in a channel strategy,
 	// e.g. internal, extern1 or extern2 for Elsys temperatures.
 	// A role requires a strategy and must belong to it.
-	Role string
+	Role string `yaml:"role,omitempty"`
+}
+
+// StatusSource selects one status field by path with an optional
+// transform chain. Empty path means absent.
+type StatusSource struct {
+	Path       string          `yaml:"path,omitempty"`
+	Transforms []TransformStep `yaml:"transforms,omitempty"`
 }
 
 // StatusMapping selects battery, code and messages for device status.
-// Empty paths mean absent.
+// Empty sources mean absent.
 type StatusMapping struct {
-	BatteryPath       string
-	BatteryTransforms []TransformStep
-	CodePath          string
-	MessagePath       string
+	Battery  StatusSource `yaml:"battery,omitempty"`
+	Code     StatusSource `yaml:"code,omitempty"`
+	Messages StatusSource `yaml:"messages,omitempty"`
 }
 
 var channelPattern = regexp.MustCompile(`^(/[0-9]+)?$`)

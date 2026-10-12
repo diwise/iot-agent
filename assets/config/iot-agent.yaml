@@ -1,0 +1,926 @@
+# Unified iot-agent configuration with 2 top sections.
+#
+# - `deviceprofiles` styr auto-create (codec -> profil/tenant/tags).
+#   Tom som default, samma beteende som gamla deviceprofiles.yaml-mallen.
+#   Exempel:
+#   deviceprofiles:
+#     Elsys_Codec:
+#       profile_name: elsys
+#       tenant: default
+#       activate: true
+#       location: true
+#       tags: {enabled: true, metadata: true}
+# - `decoders` styr Go/JS-decoders + LWM2M-regler (kräver schemaVersion: 1).
+#   Qalcosonic tar ingen YAML-post (explicit legacy-undantag).
+# Ändringar kräver omstart. Leverera agent + denna fil + script som matchande uppsättning.
+# Rollback är föregående agent + matchande fil.
+schemaVersion: 1
+deviceprofiles: {}
+decoders:
+  airquality:
+    go: airquality
+    groups:
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+    rules:
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: pm10
+        from: pm10
+        group: air
+        resource: "1"
+      - id: pm25
+        from: pm25
+        group: air
+        resource: "3"
+      - id: no2
+        from: no2
+        group: air
+        resource: "15"
+  axsensor:
+    go: axsensor
+    groups:
+      distance:
+        urn: urn:oma:lwm2m:ext:3330
+      filling:
+        urn: urn:oma:lwm2m:ext:3435
+      pressure:
+        urn: urn:oma:lwm2m:ext:3323
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      device:
+        urn: urn:oma:lwm2m:ext:3
+    rules:
+      - id: d
+        from: distance_m
+        group: distance
+        resource: "5700"
+      - id: lp
+        from: level_percent
+        group: filling
+        resource: "2"
+      - id: lc
+        from: level_cm
+        group: filling
+        resource: "3"
+      - id: pr
+        from: pressure
+        group: pressure
+        resource: "5700"
+      - id: h
+        from: relativeHumidity
+        group: humidity
+        resource: "5700"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: v
+        from: vbat
+        group: device
+        resource: "7"
+  enviot:
+    go: enviot
+    input: object
+    status:
+      battery:
+        path: payload.battery
+        transforms:
+          - name: to_int
+    groups:
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      distance:
+        urn: urn:oma:lwm2m:ext:3330
+    rules:
+      - id: t
+        from: payload.temperature
+        group: temp
+        resource: "5700"
+      - id: h
+        from: payload.humidity
+        group: humidity
+        resource: "5700"
+      - id: b
+        from: payload.battery
+        group: device
+        resource: "9"
+        transforms:
+          - name: to_int
+      - id: s
+        from: payload.snowHeight
+        group: distance
+        resource: "5700"
+      - id: apptype
+        group: distance
+        resource: "5750"
+        const: SnowHeight
+  niab-fls:
+    go: niab-fls
+    input: object
+    status:
+      battery:
+        path: battery
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      distance:
+        urn: urn:oma:lwm2m:ext:3330
+    rules:
+      - id: b
+        from: battery
+        group: device
+        resource: "9"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: d
+        from: distance
+        group: distance
+        resource: "5700"
+  vegapuls_air_41:
+    go: vegapuls_air_41
+    status:
+      battery:
+        path: remainingPower
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      distance:
+        urn: urn:oma:lwm2m:ext:3330
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+    rules:
+      - id: b
+        from: remainingPower
+        group: device
+        resource: "9"
+      - id: d
+        from: distance_m
+        group: distance
+        resource: "5700"
+      - id: t
+        from: temperature_c
+        group: temp
+        resource: "5700"
+  elt_2_hp:
+    go: elt_2_hp
+    status:
+      battery:
+        path: vdd
+        transforms:
+          - name: vdd_to_soc
+    groups:
+      temp-in:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: internal
+      temp-ext1:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: extern1
+      temp-ext2:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: extern2
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      light:
+        urn: urn:oma:lwm2m:ext:3301
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      presence:
+        urn: urn:oma:lwm2m:ext:3302
+      loudness:
+        urn: urn:oma:lwm2m:ext:3324
+      digital:
+        urn: urn:oma:lwm2m:ext:3200
+    rules:
+      - id: t
+        from: temperature
+        group: temp-in
+        resource: "5700"
+      - id: e1
+        from: externalTemperature
+        group: temp-ext1
+        resource: "5700"
+      - id: e2
+        from: externalTemperature2
+        group: temp-ext2
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: l
+        from: light
+        group: light
+        resource: "5700"
+      - id: c
+        from: co2
+        group: air
+        resource: "17"
+      - id: v
+        from: vdd
+        group: device
+        resource: "7"
+      - id: b
+        from: vdd
+        group: device
+        resource: "9"
+        transforms:
+          - name: vdd_to_soc
+      - id: o
+        from: occupancy
+        group: presence
+        resource: "5500"
+        transforms:
+          - name: equals
+            params:
+              value: 2
+      - id: sa
+        from: soundAvg
+        aliases: [soundPeak]
+        group: loudness
+        resource: "5700"
+      - id: sp
+        from: soundPeak
+        group: loudness
+        resource: "5602"
+      - id: d
+        from: digital
+        group: digital
+        resource: "5500"
+      - id: pa
+        from: pulseAbs
+        group: digital
+        resource: "5501"
+  elsys:
+    go: elsys
+    status:
+      battery:
+        path: vdd
+        transforms:
+          - name: vdd_to_soc
+    groups:
+      temp-in:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: internal
+      temp-ext1:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: extern1
+      temp-ext2:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: extern2
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      light:
+        urn: urn:oma:lwm2m:ext:3301
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      presence:
+        urn: urn:oma:lwm2m:ext:3302
+      loudness:
+        urn: urn:oma:lwm2m:ext:3324
+      digital:
+        urn: urn:oma:lwm2m:ext:3200
+    rules:
+      - id: t
+        from: temperature
+        group: temp-in
+        resource: "5700"
+      - id: e1
+        from: externalTemperature
+        group: temp-ext1
+        resource: "5700"
+      - id: e2
+        from: externalTemperature2
+        group: temp-ext2
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: l
+        from: light
+        group: light
+        resource: "5700"
+      - id: c
+        from: co2
+        group: air
+        resource: "17"
+      - id: v
+        from: vdd
+        group: device
+        resource: "7"
+      - id: b
+        from: vdd
+        group: device
+        resource: "9"
+        transforms:
+          - name: vdd_to_soc
+      - id: o
+        from: occupancy
+        group: presence
+        resource: "5500"
+        transforms:
+          - name: equals
+            params:
+              value: 2
+      - id: sa
+        from: soundAvg
+        aliases: [soundPeak]
+        group: loudness
+        resource: "5700"
+      - id: sp
+        from: soundPeak
+        group: loudness
+        resource: "5602"
+      - id: d
+        from: digital
+        group: digital
+        resource: "5500"
+      - id: pa
+        from: pulseAbs
+        group: digital
+        resource: "5501"
+  elsys/elt/sht3x:
+    go: elsys/elt/sht3x
+    status:
+      battery:
+        path: vdd
+        transforms:
+          - name: vdd_to_soc
+    groups:
+      temp-in:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys-sht3x
+        role: internal
+      temp-ext1:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys-sht3x
+        role: extern1
+      temp-ext2:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys-sht3x
+        role: extern2
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+        strategy: elsys-sht3x
+        role: humidity
+      pulse-humidity:
+        urn: urn:oma:lwm2m:ext:3304
+        strategy: elsys-sht3x
+        role: pulse
+      light:
+        urn: urn:oma:lwm2m:ext:3301
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      presence:
+        urn: urn:oma:lwm2m:ext:3302
+      loudness:
+        urn: urn:oma:lwm2m:ext:3324
+      digital:
+        urn: urn:oma:lwm2m:ext:3200
+    rules:
+      - id: t
+        from: temperature
+        group: temp-in
+        resource: "5700"
+      - id: e1
+        from: externalTemperature
+        group: temp-ext1
+        resource: "5700"
+      - id: e2
+        from: externalTemperature2
+        group: temp-ext2
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: ph
+        from: pulse1
+        group: pulse-humidity
+        resource: "5700"
+        transforms:
+          - name: scale
+            params:
+              divisor: 10
+      - id: l
+        from: light
+        group: light
+        resource: "5700"
+      - id: c
+        from: co2
+        group: air
+        resource: "17"
+      - id: v
+        from: vdd
+        group: device
+        resource: "7"
+      - id: b
+        from: vdd
+        group: device
+        resource: "9"
+        transforms:
+          - name: vdd_to_soc
+      - id: o
+        from: occupancy
+        group: presence
+        resource: "5500"
+        transforms:
+          - name: equals
+            params:
+              value: 2
+      - id: sa
+        from: soundAvg
+        aliases: [soundPeak]
+        group: loudness
+        resource: "5700"
+      - id: sp
+        from: soundPeak
+        group: loudness
+        resource: "5602"
+      - id: d
+        from: digital
+        group: digital
+        resource: "5500"
+      - id: pa
+        from: pulseAbs
+        group: digital
+        resource: "5501"
+  elsys_codec:
+    go: elsys_codec
+    status:
+      battery:
+        path: vdd
+        transforms:
+          - name: vdd_to_soc
+    groups:
+      temp-in:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: internal
+      temp-ext1:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: extern1
+      temp-ext2:
+        urn: urn:oma:lwm2m:ext:3303
+        strategy: elsys
+        role: extern2
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      light:
+        urn: urn:oma:lwm2m:ext:3301
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      presence:
+        urn: urn:oma:lwm2m:ext:3302
+      loudness:
+        urn: urn:oma:lwm2m:ext:3324
+      digital:
+        urn: urn:oma:lwm2m:ext:3200
+    rules:
+      - id: t
+        from: temperature
+        group: temp-in
+        resource: "5700"
+      - id: e1
+        from: externalTemperature
+        group: temp-ext1
+        resource: "5700"
+      - id: e2
+        from: externalTemperature2
+        group: temp-ext2
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: l
+        from: light
+        group: light
+        resource: "5700"
+      - id: c
+        from: co2
+        group: air
+        resource: "17"
+      - id: v
+        from: vdd
+        group: device
+        resource: "7"
+      - id: b
+        from: vdd
+        group: device
+        resource: "9"
+        transforms:
+          - name: vdd_to_soc
+      - id: o
+        from: occupancy
+        group: presence
+        resource: "5500"
+        transforms:
+          - name: equals
+            params:
+              value: 2
+      - id: sa
+        from: soundAvg
+        aliases: [soundPeak]
+        group: loudness
+        resource: "5700"
+      - id: sp
+        from: soundPeak
+        group: loudness
+        resource: "5602"
+      - id: d
+        from: digital
+        group: digital
+        resource: "5500"
+      - id: pa
+        from: pulseAbs
+        group: digital
+        resource: "5501"
+  milesight:
+    go: milesight
+    status:
+      battery:
+        path: battery
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+      distance:
+        urn: urn:oma:lwm2m:ext:3330
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      digital:
+        urn: urn:oma:lwm2m:ext:3200
+    rules:
+      - id: b
+        from: battery
+        group: device
+        resource: "9"
+      - id: c
+        from: co2
+        group: air
+        resource: "17"
+      - id: d
+        from: distance
+        group: distance
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: m
+        from: magnet_status
+        group: digital
+        resource: "5500"
+        transforms:
+          - name: magnet_open_to_bool
+  milesight_am100:
+    go: milesight_am100
+    status:
+      battery:
+        path: battery
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+      distance:
+        urn: urn:oma:lwm2m:ext:3330
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      digital:
+        urn: urn:oma:lwm2m:ext:3200
+    rules:
+      - id: b
+        from: battery
+        group: device
+        resource: "9"
+      - id: c
+        from: co2
+        group: air
+        resource: "17"
+      - id: d
+        from: distance
+        group: distance
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: m
+        from: magnet_status
+        group: digital
+        resource: "5500"
+        transforms:
+          - name: magnet_open_to_bool
+  senlabt:
+    go: senlabt
+    status:
+      battery:
+        path: battery_level
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+    rules:
+      - id: b
+        from: battery_level
+        group: device
+        resource: "9"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+  tem_lab_14ns:
+    go: tem_lab_14ns
+    status:
+      battery:
+        path: battery_level
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+    rules:
+      - id: b
+        from: battery_level
+        group: device
+        resource: "9"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+  sensefarm:
+    go: sensefarm
+    groups:
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      conductivity:
+        urn: urn:oma:lwm2m:ext:3327
+      pressure:
+        urn: urn:oma:lwm2m:ext:3323
+    rules:
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: v
+        from: battery_voltage
+        group: device
+        resource: "7"
+      - id: r
+        group: conductivity
+        resource: "5700"
+        list: resistances
+        transforms:
+          - name: reciprocal
+      - id: sm
+        group: pressure
+        resource: "5700"
+        list: soil_moistures
+        transforms:
+          - name: scale
+            params:
+              factor: 1000
+  cube02:
+    go: cube02
+    groups:
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      conductivity:
+        urn: urn:oma:lwm2m:ext:3327
+      pressure:
+        urn: urn:oma:lwm2m:ext:3323
+    rules:
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: v
+        from: battery_voltage
+        group: device
+        resource: "7"
+      - id: r
+        group: conductivity
+        resource: "5700"
+        list: resistances
+        transforms:
+          - name: reciprocal
+      - id: sm
+        group: pressure
+        resource: "5700"
+        list: soil_moistures
+        transforms:
+          - name: scale
+            params:
+              factor: 1000
+  sensative:
+    go: sensative
+    status:
+      battery:
+        path: battery_level
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      presence:
+        urn: urn:oma:lwm2m:ext:3302
+    rules:
+      - id: b
+        from: battery_level
+        group: device
+        resource: "9"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: p
+        from: presence
+        group: presence
+        resource: "5500"
+      - id: checkin
+        from: check_in
+        group: device
+        header_only: true
+  strips_lora_ms_h:
+    go: strips_lora_ms_h
+    status:
+      battery:
+        path: battery_level
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      presence:
+        urn: urn:oma:lwm2m:ext:3302
+    rules:
+      - id: b
+        from: battery_level
+        group: device
+        resource: "9"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: p
+        from: presence
+        group: presence
+        resource: "5500"
+      - id: checkin
+        from: check_in
+        group: device
+        header_only: true
+  presence:
+    go: presence
+    status:
+      battery:
+        path: battery_level
+    groups:
+      device:
+        urn: urn:oma:lwm2m:ext:3
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      presence:
+        urn: urn:oma:lwm2m:ext:3302
+    rules:
+      - id: b
+        from: battery_level
+        group: device
+        resource: "9"
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: p
+        from: presence
+        group: presence
+        resource: "5500"
+      - id: checkin
+        from: check_in
+        group: device
+        header_only: true
+  talkpool/oy1210:
+    go: talkpool/oy1210
+    groups:
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      air:
+        urn: urn:oma:lwm2m:ext:3428
+    rules:
+      - id: t
+        from: temperature
+        group: temp
+        resource: "5700"
+      - id: h
+        from: humidity
+        group: humidity
+        resource: "5700"
+      - id: c
+        from: co2
+        group: air
+        resource: "17"
+  x2climate:
+    go: x2climate
+    status:
+      battery:
+        path: battery_level
+    groups:
+      temp:
+        urn: urn:oma:lwm2m:ext:3303
+      humidity:
+        urn: urn:oma:lwm2m:ext:3304
+      device:
+        urn: urn:oma:lwm2m:ext:3
+    rules:
+      - id: t
+        from: temp_c
+        group: temp
+        resource: "5700"
+      - id: h
+        from: humidity_rh
+        group: humidity
+        resource: "5700"
+      - id: v
+        from: voltage_mv
+        group: device
+        resource: "7"
+      - id: b
+        from: battery_level
+        group: device
+        resource: "9"

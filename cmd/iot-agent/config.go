@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/diwise/iot-agent/internal/application"
+	"github.com/diwise/iot-agent/internal/application/decoders"
 	"github.com/diwise/iot-agent/internal/infrastructure/mqtt"
 	"github.com/diwise/iot-agent/internal/infrastructure/storage"
 	"github.com/diwise/messaging-golang/pkg/messaging"
@@ -20,6 +21,7 @@ const (
 	createUnknownDeviceTenant
 	multiObjectMessages
 	deviceprofileFile
+	mappingsFile
 
 	forwardingEndpoint
 	appServerFacade
@@ -41,6 +43,7 @@ type appConfig struct {
 	deviceMgmtCfg *deviceMgmtConfig
 	dpCfg         map[string]application.DeviceProfileConfig
 	devmode       bool
+	registry      decoders.Registry
 }
 
 // deviceMgmtConfig groups the device management client settings that

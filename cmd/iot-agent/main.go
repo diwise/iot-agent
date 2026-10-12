@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/application"
+	"github.com/diwise/iot-agent/internal/application/decoders"
 	"github.com/diwise/iot-agent/internal/application/facades"
 	"github.com/diwise/iot-agent/internal/infrastructure/mqtt"
 	"github.com/diwise/iot-agent/internal/infrastructure/storage"
@@ -39,7 +40,8 @@ func defaultFlags() flagMap {
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
 		multiObjectMessages:        "false",
-		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
+		deviceprofileFile:          "/opt/diwise/config/iot-agent.yaml",
+		mappingsFile:               "/opt/diwise/config/iot-agent.yaml",
 
 		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
 		appServerFacade:    "servanet",
@@ -65,6 +67,9 @@ func main() {
 	dpCfg, err := parseExternalConfigFile(ctx, f)
 	exitIf(err, logger, "failed to parse device profile configuration")
 
+	registry, err := decoders.BuildRegistry(ctx, flags[mappingsFile])
+	exitIf(err, logger, "failed to load decoder mappings")
+
 	mqttConfig, err := mqtt.NewConfigFromEnvironment("")
 	exitIf(err, logger, "mqtt configuration error")
 
@@ -86,6 +91,7 @@ func main() {
 		deviceMgmtCfg: &deviceMgmtCfg,
 		dpCfg:         dpCfg,
 		devmode:       devmodeEnabled(flags),
+		registry:      registry,
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg)
@@ -159,7 +165,11 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 
 			facade = facades.New(flags[appServerFacade])
 
-			app = application.New(
+			reg := ac.registry
+			if reg == nil {
+				reg = decoders.NewRegistry()
+			}
+			app = application.NewWithRegistry(
 				dmClient,
 				messenger,
 				store,
@@ -167,6 +177,7 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 				flags[createUnknownDeviceTenant],
 				multiObjectMessagesEnabled(flags),
 				ac.dpCfg,
+				reg,
 			)
 			owned.app = app
 
@@ -315,6 +326,8 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	flags[createUnknownDeviceEnabled] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", flags[createUnknownDeviceEnabled])
 	flags[createUnknownDeviceTenant] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", flags[createUnknownDeviceTenant])
 	flags[multiObjectMessages] = envOrDef(ctx, "MULTI_OBJECT_MESSAGES", flags[multiObjectMessages])
+	flags[deviceprofileFile] = envOrDef(ctx, "DEVICEPROFILES_FILE", flags[deviceprofileFile])
+	flags[mappingsFile] = envOrDef(ctx, "MAPPINGS_FILE", flags[mappingsFile])
 	flags[forwardingEndpoint] = envOrDef(ctx, "MSG_FWD_ENDPOINT", flags[forwardingEndpoint])
 	flags[appServerFacade] = envOrDef(ctx, "APPSERVER_FACADE", flags[appServerFacade])
 	flags[devMgmtUrl] = envOrDef(ctx, "DEV_MGMT_URL", flags[devMgmtUrl])
@@ -332,6 +345,7 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 
 	// Allow command line arguments to override defaults and environment variables
 	flag.Func("deviceprofiles", "a device profile configuration file", apply(deviceprofileFile))
+	flag.Func("mappings", "a decoder mappings configuration file", apply(mappingsFile))
 	flag.Func("devmode", "enable dev mode", apply(devmode))
 	flag.Func("loglevel", "set the log level", apply(logLevel))
 	flag.Parse()
@@ -339,17 +353,32 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	return ctx, flags
 }
 
+// parseExternalConfigFile reads only the unified iot-agent.yaml with 2
+// top sections ({schemaVersion, deviceprofiles, decoders}). Legacy bare-map
+// deviceprofiles.yaml is no longer accepted.
 func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (map[string]application.DeviceProfileConfig, error) {
 	defer f.Close()
 
-	var cfg map[string]application.DeviceProfileConfig
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read device profile file: %w", err)
 	}
 
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	var top map[string]yaml.Node
+	if err := yaml.Unmarshal(data, &top); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
+	}
+	node, ok := top["deviceprofiles"]
+	if !ok {
+		return nil, fmt.Errorf("failed to unmarshal device profile file: missing required top section \"deviceprofiles\" (unified iot-agent.yaml required)")
+	}
+
+	var cfg map[string]application.DeviceProfileConfig
+	if err := node.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
+	}
+	if cfg == nil {
+		return map[string]application.DeviceProfileConfig{}, nil
 	}
 
 	return cfg, nil

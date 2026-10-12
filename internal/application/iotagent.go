@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/diwise/iot-agent/internal/application/decoders"
+	"github.com/diwise/iot-agent/internal/application/decoders/js"
+	"github.com/diwise/iot-agent/internal/application/decoders/mapper"
 	"github.com/diwise/iot-agent/internal/application/types"
 	"github.com/diwise/iot-agent/internal/infrastructure/storage"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
@@ -65,10 +67,14 @@ type profile struct {
 }
 
 func New(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string, multiObjectMessages bool, dpCfg map[string]DeviceProfileConfig) App {
-	d := decoders.NewRegistry()
+	return NewWithRegistry(dmc, msgCtx, storage, createUnknownDeviceEnabled, createUnknownDeviceTenant, multiObjectMessages, dpCfg, decoders.NewRegistry())
+}
 
+// NewWithRegistry builds the app with an explicit decoder registry.
+// Snapshots built from mappings replace the legacy default registry.
+func NewWithRegistry(dmc dmc.DeviceManagementClient, msgCtx messaging.MsgContext, storage storage.Storage, createUnknownDeviceEnabled bool, createUnknownDeviceTenant string, multiObjectMessages bool, dpCfg map[string]DeviceProfileConfig, registry decoders.Registry) App {
 	a := &app{
-		registry:                   d,
+		registry:                   registry,
 		client:                     dmc,
 		msgCtx:                     msgCtx,
 		store:                      storage,
@@ -151,42 +157,117 @@ func (a *app) GetDevice(ctx context.Context, deviceID string) (dmc.Device, error
 	return a.client.FindDeviceFromInternalID(ctx, deviceID)
 }
 
-func (a *app) decodeAndConvert(ctx context.Context, se types.Event) (dmc.Device, types.SensorPayload, []lwm2m.Lwm2mObject, error) {
+func (a *app) decodeAndConvert(ctx context.Context, se types.Event) (dmc.Device, types.SensorPayload, []lwm2m.Lwm2mObject, error, error) {
 	log := logging.GetFromContext(ctx)
 
 	device, err := a.findDevice(ctx, se.DevEUI, a.client.FindDeviceFromDevEUI)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, err, nil
 	}
 
 	if a.createUnknownDeviceEnabled && device.SensorType() == UNKNOWN {
 		a.ignoreDeviceFor(se.DevEUI, 5*time.Minute)
-		return device, nil, nil, types.ErrDeviceIgnored
+		return device, nil, nil, types.ErrDeviceIgnored, nil
 	}
 
 	if se.Payload == nil {
-		return device, nil, nil, types.ErrPayloadContainsNoData
+		return device, nil, nil, types.ErrPayloadContainsNoData, nil
 	}
 
 	log = log.With("device_id", device.ID())
 	ctx = logging.NewContextWithLogger(ctx, log)
 
-	decoder, converter, ok := a.registry.Get(ctx, device.SensorType())
+	snapshot, ok := a.registry.Get(ctx, device.SensorType())
 	if !ok {
-		return device, nil, nil, types.ErrDecoderOrConverterNotFound
+		return device, nil, nil, types.ErrDecoderOrConverterNotFound, nil
 	}
 
-	payload, err := decoder(ctx, se)
+	if snapshot.Kind == decoders.KindLegacy {
+		payload, err := snapshot.Legacy.Decoder(ctx, se)
+		if err != nil {
+			return device, nil, nil, err, nil
+		}
+
+		objects, err := snapshot.Legacy.Converter(ctx, device.ID(), payload, se.Timestamp)
+		if err != nil {
+			return device, nil, nil, err, nil
+		}
+
+		return device, payload, objects, nil, nil
+	}
+
+	if snapshot.Input == decoders.InputObject && len(se.Payload.Object) == 0 {
+		return device, nil, nil, types.ErrPayloadContainsNoData, nil
+	}
+
+	result, err := a.decodeGeneric(ctx, se, snapshot)
 	if err != nil {
-		return device, nil, nil, err
+		return device, nil, nil, err, nil
 	}
 
-	objects, err := converter(ctx, device.ID(), payload, se.Timestamp)
+	mapped := mapper.MapToLWM2M(device.ID(), se.Timestamp, result.Mapping, snapshot.Groups, snapshot.Rules)
+
+	var storeErr error
+	if diag := mappingDiagnostics(mapped); diag != "" {
+		log.Warn("partial mapping failure", "diagnostics", diag)
+		storeErr = fmt.Errorf("mapping partial: %s", diag)
+	}
+
+	return device, result, mapped.Objects, nil, storeErr
+}
+
+// decodeGeneric runs the snapshot decoder and fills wrapper status
+// for JS decoders from explicit status mapping. Go adapters fill
+// wrapper status themselves. Status issues are never dropped
+// silently; they are logged with sensor type and path.
+func (a *app) decodeGeneric(ctx context.Context, se types.Event, snapshot *decoders.Snapshot) (types.DecodedResult, error) {
+	if snapshot.Kind == decoders.KindJS {
+		raw, warnings, err := snapshot.JS.Decode(ctx, js.JSInput{
+			Bytes:    se.Payload.Data,
+			FPort:    se.Payload.FPort,
+			RecvTime: se.Timestamp,
+		})
+		if err != nil {
+			return types.DecodedResult{}, err
+		}
+		status := mapper.ApplyStatus(raw, snapshot.Status)
+		if len(status.Issues) > 0 {
+			log := logging.GetFromContext(ctx)
+			for _, iss := range status.Issues {
+				log.Warn("js status issue", "sensor_type", snapshot.ID, "path", iss.Path, "code", iss.Code, "detail", iss.Detail)
+			}
+		}
+		return types.DecodedResult{
+			Data:     raw,
+			Mapping:  raw,
+			Battery:  status.Battery,
+			Code:     status.Code,
+			Messages: status.Messages,
+			Warnings: warnings,
+		}, nil
+	}
+
+	return snapshot.Go(ctx, se)
+}
+
+// firstErr prefers the flow error for storage. Mapping diagnostics
+// reach storage only when the uplink itself succeeded.
+func firstErr(err, storeErr error) error {
 	if err != nil {
-		return device, nil, nil, err
+		return err
 	}
+	return storeErr
+}
 
-	return device, payload, objects, nil
+// mappingDiagnostics classifies invalid rule results without raw data.
+func mappingDiagnostics(mapped mapper.MappingResult) string {
+	var parts []string
+	for _, r := range mapped.Results {
+		if r.Status == mapper.RuleInvalid {
+			parts = append(parts, fmt.Sprintf("rule %q %s (%s)", r.RuleID, r.ErrorCode, r.Path))
+		}
+	}
+	return strings.Join(parts, "; ")
 }
 
 func (a *app) storeSensorEvent(ctx context.Context, se types.Event, device dmc.Device, payload types.SensorPayload, objects []lwm2m.Lwm2mObject, err error) {
@@ -204,8 +285,8 @@ func (a *app) HandleSensorEvent(ctx context.Context, se types.Event) error {
 	var objects []lwm2m.Lwm2mObject
 	var err error
 
-	device, payload, objects, err = a.decodeAndConvert(ctx, se)
-	a.storeSensorEvent(ctx, se, device, payload, objects, err)
+	device, payload, objects, err, storeErr := a.decodeAndConvert(ctx, se)
+	a.storeSensorEvent(ctx, se, device, payload, objects, firstErr(err, storeErr))
 
 	if errors.Is(err, types.ErrDecoderOrConverterNotFound) {
 		log.Warn("decoder or converter not found for sensor type", "sensor_type", device.SensorType())
