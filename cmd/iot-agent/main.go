@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -10,13 +9,15 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/application/facades"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
-	"github.com/diwise/iot-agent/internal/pkg/presentation/api"
+	"github.com/diwise/iot-agent/internal/application"
+	"github.com/diwise/iot-agent/internal/application/decoders"
+	"github.com/diwise/iot-agent/internal/application/facades"
+	"github.com/diwise/iot-agent/internal/infrastructure/mqtt"
+	"github.com/diwise/iot-agent/internal/infrastructure/storage"
+	"github.com/diwise/iot-agent/internal/presentation/api"
 	dmclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
@@ -36,18 +37,11 @@ func defaultFlags() flagMap {
 		servicePort:   "8080",
 		controlPort:   "8000",
 
-		policiesFile: "/opt/diwise/config/authz.rego",
-
-		dbHost:     "",
-		dbUser:     "",
-		dbPassword: "",
-		dbPort:     "5432",
-		dbName:     "diwise",
-		dbSSLMode:  "disable",
-
 		createUnknownDeviceEnabled: "false",
 		createUnknownDeviceTenant:  "default",
-		deviceprofileFile:          "/opt/diwise/config/deviceprofiles.yaml",
+		multiObjectMessages:        "false",
+		deviceprofileFile:          "/opt/diwise/config/iot-agent.yaml",
+		mappingsFile:               "/opt/diwise/config/iot-agent.yaml",
 
 		forwardingEndpoint: "http://127.0.0.1/api/v0/messages",
 		appServerFacade:    "servanet",
@@ -73,21 +67,31 @@ func main() {
 	dpCfg, err := parseExternalConfigFile(ctx, f)
 	exitIf(err, logger, "failed to parse device profile configuration")
 
+	registry, err := decoders.BuildRegistry(ctx, flags[mappingsFile])
+	exitIf(err, logger, "failed to load decoder mappings")
+
 	mqttConfig, err := mqtt.NewConfigFromEnvironment("")
 	exitIf(err, logger, "mqtt configuration error")
 
-	messengerConfig := messaging.LoadConfiguration(ctx, serviceName, logger)
+	messengerConfig, err := messaging.LoadConfiguration(ctx, serviceName, logger)
+	exitIf(err, logger, "messaging configuration error")
 	storageConfig := storage.LoadConfiguration(ctx)
 
-	ctx, cancel := context.WithCancel(ctx)
+	deviceMgmtCfg := deviceMgmtConfig{
+		url:          flags[devMgmtUrl],
+		tokenURL:     flags[oauth2TokenUrl],
+		clientID:     flags[oauth2ClientId],
+		clientSecret: flags[oauth2ClientSecret],
+	}
 
 	appCfg := appConfig{
-		mqttCfg:      &mqttConfig,
-		messengerCfg: &messengerConfig,
-		storageCfg:   &storageConfig,
-		dpCfg:        dpCfg,
-		devmode:      flags[devmode] == "true",
-		cancel:       cancel,
+		mqttCfg:       &mqttConfig,
+		messengerCfg:  &messengerConfig,
+		storageCfg:    &storageConfig,
+		deviceMgmtCfg: &deviceMgmtCfg,
+		dpCfg:         dpCfg,
+		devmode:       devmodeEnabled(flags),
+		registry:      registry,
 	}
 
 	runner, err := initialize(ctx, flags, &appCfg)
@@ -105,52 +109,11 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 	var mqttClient mqtt.Client
 	var store storage.Storage
 	var facade facades.EventFunc
+	var app application.App
 
-	probes := map[string]k8shandlers.ServiceProber{
-		"rabbitmq": func(ctx context.Context) (string, error) {
-			if messenger == nil {
-				return "", errors.New("messenger not initialized")
-			}
+	owned := &ownedResources{}
 
-			probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-			defer cancel()
-
-			if err := messenger.NoteToSelf(probeCtx, messaging.NewPingCommand()); err != nil {
-				return "", err
-			}
-
-			return "ok", nil
-		},
-		"timescale": func(ctx context.Context) (string, error) {
-			if store == nil {
-				return "", errors.New("storage not initialized")
-			}
-
-			if pinger, ok := store.(interface{ Ping(context.Context) error }); ok {
-				probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-				defer cancel()
-
-				if err := pinger.Ping(probeCtx); err != nil {
-					return "", err
-				}
-
-				return "ok", nil
-			}
-
-			return "ok", nil
-		},
-		"mqtt": func(context.Context) (string, error) {
-			if mqttClient == nil {
-				return "", errors.New("mqtt not initialized")
-			}
-
-			if !mqttClient.Ready() {
-				return "", errors.New("mqtt not connected")
-			}
-
-			return "ok", nil
-		},
-	}
+	probes := readinessProbes()
 
 	_, runner := servicerunner.New(ctx, *cfg,
 		webserver("control", listen(flags[listenAddress]), port(flags[controlPort]),
@@ -159,15 +122,6 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]), tracing(true),
 			muxinit(func(ctx context.Context, identifier string, port string, appCfg *appConfig, handler *http.ServeMux) error {
 				logger.Debug("initializing public webserver")
-
-				app := application.New(
-					dmClient,
-					messenger,
-					store,
-					flags[createUnknownDeviceEnabled] == "true",
-					flags[createUnknownDeviceTenant],
-					appCfg.dpCfg,
-				)
 
 				api.RegisterHandlers(ctx, handler, app, facade)
 
@@ -183,47 +137,164 @@ func initialize(ctx context.Context, flags flagMap, cfg *appConfig) (servicerunn
 			if err != nil {
 				return fmt.Errorf("failed to create storage: %w", err)
 			}
+			owned.store = store
 
 			mqttClient, err = mqtt.NewClient(ctx, *ac.mqttCfg, flags[forwardingEndpoint])
 			if err != nil {
+				owned.shutdown(ctx)
+				store = nil
 				return fmt.Errorf("failed to create mqtt client: %w", err)
 			}
+			owned.mqttClient = mqttClient
 
 			messenger, err = messaging.Initialize(ctx, *ac.messengerCfg)
 			if err != nil {
+				owned.shutdown(ctx)
+				store, mqttClient = nil, nil
 				return fmt.Errorf("failed to init messenger: %w", err)
 			}
+			owned.messenger = messenger
 
-			dmClient, err = newDeviceMgmtClient(ctx, flags[devMgmtUrl], flags[oauth2TokenUrl], flags[oauth2ClientId], flags[oauth2ClientSecret], ac.devmode)
+			dmClient, err = newDeviceMgmtClient(ctx, *ac.deviceMgmtCfg, ac.devmode)
 			if err != nil {
+				owned.shutdown(ctx)
+				store, mqttClient, messenger = nil, nil, nil
 				return fmt.Errorf("failed to create device management client: %w", err)
 			}
+			owned.dmClient = dmClient
 
 			facade = facades.New(flags[appServerFacade])
+
+			reg := ac.registry
+			if reg == nil {
+				reg = decoders.NewRegistry()
+			}
+			app = application.NewWithRegistry(
+				dmClient,
+				messenger,
+				store,
+				createUnknownDevicesEnabled(flags),
+				flags[createUnknownDeviceTenant],
+				multiObjectMessagesEnabled(flags),
+				ac.dpCfg,
+				reg,
+			)
+			owned.app = app
 
 			return nil
 		}),
 		onstarting(func(ctx context.Context, appCfg *appConfig) (err error) {
 			logger.Debug("starting servicerunner")
-			messenger.Start()
-			mqttClient.Start()
 
-			return nil
+			// OnStarting failures bypass OnShutdown in the runner, so
+			// clean up acquired resources on error below.
+			defer func() {
+				if err != nil {
+					owned.shutdown(ctx)
+				}
+			}()
+
+			return startServices(ctx, messenger, mqttClient)
 		}),
 		onshutdown(func(ctx context.Context, appCfg *appConfig) error {
 			logger.Debug("shutting down servicerunner")
 
-			mqttClient.Stop()
-			messenger.Close()
-			dmClient.Close(ctx)
-			store.Close()
-			appCfg.cancel()
+			owned.shutdown(ctx)
 
 			return nil
 		}),
 	)
 
 	return runner, nil
+}
+
+// readinessProbes returns the named readiness stubs. Per harmonization
+// standard they always report OK and never call any dependency. Probe
+// names are preserved for external deployment definitions.
+func readinessProbes() map[string]k8shandlers.ServiceProber {
+	return map[string]k8shandlers.ServiceProber{
+		"rabbitmq":  func(context.Context) (string, error) { return "ok", nil },
+		"timescale": func(context.Context) (string, error) { return "ok", nil },
+		"mqtt":      func(context.Context) (string, error) { return "ok", nil },
+	}
+}
+
+// devmodeEnabled is the minimal production seam for the dev-mode
+// toggle. Only the exact string "true" enables it.
+func devmodeEnabled(flags flagMap) bool {
+	return flags[devmode] == "true"
+}
+
+// createUnknownDevicesEnabled is the minimal production seam for the
+// unknown-device toggle. Only the exact string "true" enables it;
+// ParseBool spellings such as "TRUE" or "1" intentionally do not.
+func createUnknownDevicesEnabled(flags flagMap) bool {
+	return flags[createUnknownDeviceEnabled] == "true"
+}
+
+// multiObjectMessagesEnabled is the activation for multi-observation
+// reports: one MessageReceived command per device report instead of one
+// per object. Only the exact string "true" enables it. Receivers (core,
+// events, things, FIWARE) must support multi-observation packs before
+// activation; rollback is setting it back to "false".
+func multiObjectMessagesEnabled(flags flagMap) bool {
+	return flags[multiObjectMessages] == "true"
+}
+
+// startServices starts the messaging loop before the MQTT client, so no
+// inbound message can arrive before the command path is running.
+//
+// Startup contract (REV-009): startup is complete once the loops are
+// started. The real MQTT client connects asynchronously and reconnects
+// in the background; connection failures are logged, never fatal.
+// Only synchronous start errors abort startup.
+func startServices(ctx context.Context, messenger messaging.MsgContext, mqttClient mqtt.Client) error {
+	if err := messenger.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start messenger: %w", err)
+	}
+
+	if err := mqttClient.Start(); err != nil {
+		return fmt.Errorf("failed to start mqtt client: %w", err)
+	}
+
+	return nil
+}
+
+// ownedResources tracks the resources created during OnInit so shutdown
+// stops background work, then transports, then storage, exactly once.
+// Shutdown is nil-safe (partial OnInit) and idempotent via the sync.Once
+// guard, so the messenger is shut down at most once.
+type ownedResources struct {
+	once       sync.Once
+	app        application.App
+	mqttClient mqtt.Client
+	messenger  messaging.MsgContext
+	dmClient   dmclient.DeviceManagementClient
+	store      storage.Storage
+}
+
+func (o *ownedResources) shutdown(ctx context.Context) {
+	o.once.Do(func() {
+		if o.app != nil {
+			o.app.Stop()
+		}
+		if o.mqttClient != nil {
+			o.mqttClient.Stop()
+		}
+		if o.messenger != nil {
+			if err := o.messenger.Shutdown(ctx); err != nil {
+				logging.GetFromContext(ctx).Debug("failed to shut down messenger", "err", err.Error())
+			}
+		}
+		if o.dmClient != nil {
+			o.dmClient.Close(ctx)
+		}
+		if o.store != nil {
+			if err := o.store.Close(); err != nil {
+				logging.GetFromContext(ctx).Debug("failed to close storage", "err", err.Error())
+			}
+		}
+	})
 }
 
 func newStorage(ctx context.Context, cfg storage.Config, devmode bool) (storage.Storage, error) {
@@ -235,13 +306,13 @@ func newStorage(ctx context.Context, cfg storage.Config, devmode bool) (storage.
 	return storage.New(ctx, cfg)
 }
 
-func newDeviceMgmtClient(ctx context.Context, url, tokenUrl, clientId, clientSecret string, devmode bool) (dmclient.DeviceManagementClient, error) {
+func newDeviceMgmtClient(ctx context.Context, cfg deviceMgmtConfig, devmode bool) (dmclient.DeviceManagementClient, error) {
 	if devmode {
 		logging.GetFromContext(ctx).Warn("devmode is enabled, using device management client mock")
 		return newDevmodeDeviceMgmtClient(ctx)
 	}
 
-	return dmclient.New(ctx, url, tokenUrl, true, clientId, clientSecret)
+	return dmclient.New(ctx, cfg.url, cfg.tokenURL, true, cfg.clientID, cfg.clientSecret)
 }
 
 func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, flagMap) {
@@ -252,17 +323,11 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	flags[servicePort] = envOrDef(ctx, "SERVICE_PORT", flags[servicePort])
 	flags[logLevel] = envOrDef(ctx, "LOG_LEVEL", flags[logLevel])
 
-	flags[policiesFile] = envOrDef(ctx, "POLICIES_FILE", flags[policiesFile])
-
-	flags[dbHost] = envOrDef(ctx, "POSTGRES_HOST", flags[dbHost])
-	flags[dbPort] = envOrDef(ctx, "POSTGRES_PORT", flags[dbPort])
-	flags[dbName] = envOrDef(ctx, "POSTGRES_DBNAME", flags[dbName])
-	flags[dbUser] = envOrDef(ctx, "POSTGRES_USER", flags[dbUser])
-	flags[dbPassword] = envOrDef(ctx, "POSTGRES_PASSWORD", flags[dbPassword])
-	flags[dbSSLMode] = envOrDef(ctx, "POSTGRES_SSLMODE", flags[dbSSLMode])
-
 	flags[createUnknownDeviceEnabled] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_ENABLED", flags[createUnknownDeviceEnabled])
 	flags[createUnknownDeviceTenant] = envOrDef(ctx, "CREATE_UNKNOWN_DEVICE_TENANT", flags[createUnknownDeviceTenant])
+	flags[multiObjectMessages] = envOrDef(ctx, "MULTI_OBJECT_MESSAGES", flags[multiObjectMessages])
+	flags[deviceprofileFile] = envOrDef(ctx, "DEVICEPROFILES_FILE", flags[deviceprofileFile])
+	flags[mappingsFile] = envOrDef(ctx, "MAPPINGS_FILE", flags[mappingsFile])
 	flags[forwardingEndpoint] = envOrDef(ctx, "MSG_FWD_ENDPOINT", flags[forwardingEndpoint])
 	flags[appServerFacade] = envOrDef(ctx, "APPSERVER_FACADE", flags[appServerFacade])
 	flags[devMgmtUrl] = envOrDef(ctx, "DEV_MGMT_URL", flags[devMgmtUrl])
@@ -279,8 +344,8 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	}
 
 	// Allow command line arguments to override defaults and environment variables
-	flag.Func("policies", "an authorization policy file", apply(policiesFile))
 	flag.Func("deviceprofiles", "a device profile configuration file", apply(deviceprofileFile))
+	flag.Func("mappings", "a decoder mappings configuration file", apply(mappingsFile))
 	flag.Func("devmode", "enable dev mode", apply(devmode))
 	flag.Func("loglevel", "set the log level", apply(logLevel))
 	flag.Parse()
@@ -288,17 +353,32 @@ func parseExternalConfig(ctx context.Context, flags flagMap) (context.Context, f
 	return ctx, flags
 }
 
+// parseExternalConfigFile reads only the unified iot-agent.yaml with 2
+// top sections ({schemaVersion, deviceprofiles, decoders}). Legacy bare-map
+// deviceprofiles.yaml is no longer accepted.
 func parseExternalConfigFile(_ context.Context, f io.ReadCloser) (map[string]application.DeviceProfileConfig, error) {
 	defer f.Close()
 
-	var cfg map[string]application.DeviceProfileConfig
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read device profile file: %w", err)
 	}
 
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	var top map[string]yaml.Node
+	if err := yaml.Unmarshal(data, &top); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
+	}
+	node, ok := top["deviceprofiles"]
+	if !ok {
+		return nil, fmt.Errorf("failed to unmarshal device profile file: missing required top section \"deviceprofiles\" (unified iot-agent.yaml required)")
+	}
+
+	var cfg map[string]application.DeviceProfileConfig
+	if err := node.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device profile file: %w", err)
+	}
+	if cfg == nil {
+		return map[string]application.DeviceProfileConfig{}, nil
 	}
 
 	return cfg, nil

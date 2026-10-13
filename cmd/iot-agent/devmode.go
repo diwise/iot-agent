@@ -8,8 +8,8 @@ import (
 	"os"
 	"sync"
 
-	apptypes "github.com/diwise/iot-agent/internal/pkg/application/types"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
+	apptypes "github.com/diwise/iot-agent/internal/application/types"
+	"github.com/diwise/iot-agent/internal/infrastructure/storage"
 	"github.com/diwise/iot-agent/pkg/lwm2m"
 	devicemgmtclient "github.com/diwise/iot-device-mgmt/pkg/client"
 	test "github.com/diwise/iot-device-mgmt/pkg/test"

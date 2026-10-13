@@ -1,4 +1,5 @@
 # iot-agent
+
 A service that handles (decodes and converts) incoming data from multiple sources.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://github.com/diwise/iot-agent/blob/main/LICENSE)
@@ -36,6 +37,10 @@ Since application servers such as [Chirpstack](https://www.chirpstack.io/applica
 ### Chirpstack
 
 Support for Chirpstack v3 payloads.
+
+### Chirpstack v4
+
+Support for Chirpstack v4 payloads (`APPSERVER_FACADE=chirpstackv4`).
 
 ### Netmore
 
@@ -124,6 +129,13 @@ Converters converts sensor data to lwm2m measurements.
 ```bash
 docker build -f deployments/Dockerfile -t diwise/iot-agent:latest .
 ```
+## Verify
+```bash
+gofmt -l cmd/ internal/ pkg/
+go test -count=1 ./...
+go vet ./...
+go build ./...
+```
 ## Test
 ```bash
 curl -X POST http://localhost:8080/api/v0/messages 
@@ -171,16 +183,71 @@ curl -X POST http://localhost:8080/api/v0/messages
 "OAUTH2_TOKEN_URL": "http://keycloak:8080/realms/diwise-local/protocol/openid-connect/token",
 "OAUTH2_CLIENT_ID": "diwise-devmgmt-api",
 "OAUTH2_CLIENT_SECRET": "<client secret>",
-"APPSERVER_FACADE": "<facade>" # configure application server, chirpstack (default) or netmore
+"APPSERVER_FACADE": "servanet" # configure application server, e.g. chirpstack, netmore or servanet (default)
 ```
 
 ## CLI flags
+ - `deviceprofiles` - Unified configuration file (overrides `DEVICEPROFILES_FILE` and the `iot-agent.yaml` default path, `deviceprofiles`-sektionen används)
+ - `mappings` - Unified configuration file (overrides `MAPPINGS_FILE` and the `iot-agent.yaml` default path, `decoders`-sektionen används)
+ - `devmode` - Enable dev mode (in-memory storage and device management mock)
+ - `loglevel` - Set the log level (overrides `LOG_LEVEL`)
 
-none
+The dead `policies` flag (`POLICIES_FILE`) was removed in AGENT-003: the file was never opened and no OPA policy is used by this service. External calls passing `-policies` are now rejected at startup.
 
 ## Configuration files
+ - `iot-agent.yaml` (default `/opt/diwise/config/iot-agent.yaml` för båda flaggorna) - Enda configfilen med 2 toppsektioner, krävs vid startup. `deviceprofiles` styr auto-create (codec -> profil/tenant/tags). `decoders` styr Go/JS-decoders och LWM2M-regler (`schemaVersion: 1`). Separata legacyfiler stöds inte. Ändringar kräver omstart. Leverera agent + fil + script som matchande uppsättning. Rollback är föregående agent + matchande fil. Qalcosonic tar ingen YAML-post (explicit legacy-undantag).
 
-none
+## Faktisk konfiguration (kod ar facit, HARM-002)
+Precedens: default < miljovariabel < CLI-flagga.
+
+| Variabel | Default | Notering |
+| --- | --- | --- |
+| `LISTEN_ADDRESS` | `0.0.0.0` | Galler bade publik server och kontrollserver |
+| `SERVICE_PORT` | `8080` | Publik server (`POST /api/v0/messages`, `POST /api/v0/messages/lwm2m`, `/openapi.yaml`, `/docs`) |
+| `CONTROL_PORT` | `8000` | Kontrollserver: pprof, liveness, readiness-stubbar (`rabbitmq`, `timescale`, `mqtt`) som returnerar OK |
+| `LOG_LEVEL` | `debug` | `debug`, `info`, `warn`, `error`; okant varde faller tillbaka till `debug` |
+| `POSTGRES_HOST` | (tom) | Anvands via `storage.LoadConfiguration` |
+| `POSTGRES_PORT` | `5432` | Se ovan |
+| `POSTGRES_DBNAME` | `diwise` | Se ovan |
+| `POSTGRES_USER` | (tom) | Se ovan |
+| `POSTGRES_PASSWORD` | (tom) | Se ovan |
+| `POSTGRES_SSLMODE` | `disable` | Se ovan |
+| `CREATE_UNKNOWN_DEVICE_ENABLED` | `false` |  |
+| `CREATE_UNKNOWN_DEVICE_TENANT` | `default` |  |
+| `MULTI_OBJECT_MESSAGES` | `false` | Ett `MessageReceived`-kommando per enhetsrapport i stället för ett per objekt. Kräver flerobjektsstöd i core/events/things/FIWARE före aktivering |
+| `MSG_FWD_ENDPOINT` | `http://127.0.0.1/api/v0/messages` | Intern MQTT-forwarder mot eget API |
+| `APPSERVER_FACADE` | `servanet` | `chirpstack`, `chirpstackv4`, `netmore`, `servanet`; okant varde faller tillbaka till `chirpstack` |
+| `DEV_MGMT_URL` | (tom) | Klient mot iot-device-mgmt |
+| `OAUTH2_TOKEN_URL` | (tom) |  |
+| `OAUTH2_CLIENT_ID` | (tom) |  |
+| `OAUTH2_CLIENT_SECRET` | (tom) |  |
+| `MQTT_DISABLED` | `false` | `true` stanger av MQTT-ingress |
+| `MQTT_HOST` | (tom, kravs) | Broker hostname |
+| `MQTT_PORT` | `8883` |  |
+| `MQTT_USER` | (tom) |  |
+| `MQTT_PASSWORD` | (tom) |  |
+| `MQTT_CLIENT_ID` | (tom) | Kravs vid durable session |
+| `MQTT_SESSION_MODE` | `ephemeral` | `ephemeral` eller `durable` |
+| `MQTT_TOPIC_0..24` | (tom, minst en kravs) | T.ex. `MQTT_TOPIC_0=topic-01/#` |
+| `MQTT_KEEPALIVE` | `30` | Sekunder |
+| `RABBITMQ_HOST` | (tom, kravs om inte avstangd) |  |
+| `RABBITMQ_PORT` | `5672` |  |
+| `RABBITMQ_VHOST` | `/` |  |
+| `RABBITMQ_USER` | `user` |  |
+| `RABBITMQ_PASS` | `bitnami` |  |
+| `RABBITMQ_DISABLED` | `false` |  |
+| `RABBITMQ_INIT_TIMEOUT` | `10` | Sekunder |
+| `POSTGRES_MAX_CONNS` | `10` |  |
+| `POSTGRES_MIN_CONNS` | `2` |  |
+| `POSTGRES_MAX_CONN_LIFETIME` | `30m` |  |
+| `POSTGRES_MAX_CONN_IDLE_TIME` | `5m` |  |
+| `POSTGRES_HEALTH_CHECK_PERIOD` | `30s` |  |
+
+RabbitMQ konfigureras i ovrigt via `messaging.LoadConfiguration`. Poolvarden ovan tolkas av den laste `service-chassis`-versionens env-hjalpare.
+
+Health paths pa kontrollservern (`CONTROL_PORT`): `/health`, `/healthz`, `/livez`, `/readyz`, `/readyz/{check}`.
+
+Externa Kubernetes- och Compose-definitioner finns inte i detta repo och ar darfor inte inventerade har.
 
 # Links
 [iot-agent](https://diwise.github.io/) on diwise.github.io

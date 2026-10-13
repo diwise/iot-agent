@@ -1,11 +1,10 @@
 package main
 
 import (
-	"context"
-
-	"github.com/diwise/iot-agent/internal/pkg/application"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/mqtt"
-	"github.com/diwise/iot-agent/internal/pkg/infrastructure/services/storage"
+	"github.com/diwise/iot-agent/internal/application"
+	"github.com/diwise/iot-agent/internal/application/decoders"
+	"github.com/diwise/iot-agent/internal/infrastructure/mqtt"
+	"github.com/diwise/iot-agent/internal/infrastructure/storage"
 	"github.com/diwise/messaging-golang/pkg/messaging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
 )
@@ -18,18 +17,11 @@ const (
 	servicePort
 	controlPort
 
-	policiesFile
-
-	dbHost
-	dbUser
-	dbPassword
-	dbPort
-	dbName
-	dbSSLMode
-
 	createUnknownDeviceEnabled
 	createUnknownDeviceTenant
+	multiObjectMessages
 	deviceprofileFile
+	mappingsFile
 
 	forwardingEndpoint
 	appServerFacade
@@ -45,18 +37,22 @@ const (
 )
 
 type appConfig struct {
-	//	messenger  messaging.MsgContext
-	//	dmClient   devicemgmtclient.DeviceManagementClient
-	//	mqttClient mqtt.Client
-	//	storage    storage.Storage
-	//	facade     facades.EventFunc
+	mqttCfg       *mqtt.Config
+	messengerCfg  *messaging.Config
+	storageCfg    *storage.Config
+	deviceMgmtCfg *deviceMgmtConfig
+	dpCfg         map[string]application.DeviceProfileConfig
+	devmode       bool
+	registry      decoders.Registry
+}
 
-	mqttCfg      *mqtt.Config
-	messengerCfg *messaging.Config
-	storageCfg   *storage.Config
-	dpCfg        map[string]application.DeviceProfileConfig
-	devmode      bool
-	cancel       context.CancelFunc
+// deviceMgmtConfig groups the device management client settings that
+// are passed to infrastructure as one explicit unit.
+type deviceMgmtConfig struct {
+	url          string
+	tokenURL     string
+	clientID     string
+	clientSecret string
 }
 
 var oninit = servicerunner.OnInit[appConfig]
