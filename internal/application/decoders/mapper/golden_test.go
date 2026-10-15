@@ -65,15 +65,32 @@ func assertPacksEqual(t *testing.T, legacyObjs, mappedObjs []lwm2m.Lwm2mObject) 
 	is.Equal(mappedPacks, legacyPacks)
 }
 
-func f32p(v float32) *float32   { return &v }
-func i8p(v int8) *int8          { return &v }
-func u16p(v uint16) *uint16     { return &v }
-func u8p(v uint8) *uint8        { return &v }
-func u32p(v uint32) *uint32     { return &v }
-func boolp(v bool) *bool        { return &v }
-func intp(v int) *int           { return &v }
-func floatp(v float64) *float64 { return &v }
-func stringp(v string) *string  { return &v }
+//go:fix inline
+func f32p(v float32) *float32 { return new(v) }
+
+//go:fix inline
+func i8p(v int8) *int8 { return new(v) }
+
+//go:fix inline
+func u16p(v uint16) *uint16 { return new(v) }
+
+//go:fix inline
+func u8p(v uint8) *uint8 { return new(v) }
+
+//go:fix inline
+func u32p(v uint32) *uint32 { return new(v) }
+
+//go:fix inline
+func boolp(v bool) *bool { return new(v) }
+
+//go:fix inline
+func intp(v int) *int { return new(v) }
+
+//go:fix inline
+func floatp(v float64) *float64 { return new(v) }
+
+//go:fix inline
+func stringp(v string) *string { return new(v) }
 
 // elsysGenericMap mirrors the future Elsys adapter: marshal the typed
 // payload, then restore mapped float32 fields with direct conversion
@@ -238,7 +255,7 @@ func TestGoldenElsysObjects(t *testing.T) {
 	payload := elsys.ElsysPayload{
 		Temperature:  f32p(23.5),
 		VDD:          u16p(3625),
-		DigitalInput: boolp(true),
+		DigitalInput: new(true),
 		PulseAbs:     u32p(123),
 		Occupancy:    u8p(2),
 		SoundAvg:     u8p(50),
@@ -294,13 +311,13 @@ func TestGoldenMilesight(t *testing.T) {
 	ctx := goldenCtx()
 
 	payload := milesight.MilesightPayload{
-		Battery:      intp(95),
-		CO2:          intp(800),
-		Distance:     floatp(12.5),
-		Humidity:     floatp(45.5),
-		Temperature:  floatp(22.3),
-		Position:     stringp("normal"),
-		MagnetStatus: stringp("open"),
+		Battery:      new(95),
+		CO2:          new(800),
+		Distance:     new(12.5),
+		Humidity:     new(45.5),
+		Temperature:  new(22.3),
+		Position:     new("normal"),
+		MagnetStatus: new("open"),
 	}
 	legacyObjects, err := milesight.Converter(ctx, "dev", payload, goldenTime)
 	is.NoErr(err)
@@ -310,7 +327,7 @@ func TestGoldenMilesight(t *testing.T) {
 	assertPacksEqual(t, legacyObjects, mapped.Objects)
 
 	// Partial report with only temperature.
-	payload = milesight.MilesightPayload{Temperature: floatp(22.3)}
+	payload = milesight.MilesightPayload{Temperature: new(22.3)}
 	legacyObjects, err = milesight.Converter(ctx, "dev", payload, goldenTime)
 	is.NoErr(err)
 	mapped = mapper.MapToLWM2M("dev", goldenTime, marshalMap(t, payload), milesightGroups(), milesightRules())
@@ -318,7 +335,7 @@ func TestGoldenMilesight(t *testing.T) {
 	is.Equal(len(mapped.Objects), 1)
 
 	// Closed magnet maps to false.
-	payload = milesight.MilesightPayload{MagnetStatus: stringp("close")}
+	payload = milesight.MilesightPayload{MagnetStatus: new("close")}
 	legacyObjects, err = milesight.Converter(ctx, "dev", payload, goldenTime)
 	is.NoErr(err)
 	mapped = mapper.MapToLWM2M("dev", goldenTime, marshalMap(t, payload), milesightGroups(), milesightRules())

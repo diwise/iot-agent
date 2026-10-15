@@ -58,7 +58,7 @@ func TestValidateObservation(t *testing.T) {
 
 	valid := senml.Pack{
 		{BaseName: "dev/3303/", BaseTime: now, Name: "0", StringValue: "urn:oma:lwm2m:ext:3303"},
-		{Name: "5700", Unit: "Cel", Value: ptr(21.5)},
+		{Name: "5700", Unit: "Cel", Value: new(21.5)},
 	}
 	is.NoErr(validateObservation(valid))
 
@@ -69,19 +69,19 @@ func TestValidateObservation(t *testing.T) {
 
 	nan := senml.Pack{
 		{BaseName: "dev/3303/", BaseTime: now, Name: "0", StringValue: "urn:oma:lwm2m:ext:3303"},
-		{Name: "5700", Unit: "Cel", Value: ptr(math.NaN())},
+		{Name: "5700", Unit: "Cel", Value: new(math.NaN())},
 	}
 	is.True(errors.Is(validateObservation(nan), errObservationNonFinite))
 
 	inf := senml.Pack{
 		{BaseName: "dev/3303/", BaseTime: now, Name: "0", StringValue: "urn:oma:lwm2m:ext:3303"},
-		{Name: "5700", Unit: "Cel", Value: ptr(math.Inf(1))},
+		{Name: "5700", Unit: "Cel", Value: new(math.Inf(1))},
 	}
 	is.True(errors.Is(validateObservation(inf), errObservationNonFinite))
 
 	boolean := senml.Pack{
 		{BaseName: "dev/3200/", BaseTime: now, Name: "0", StringValue: "urn:oma:lwm2m:ext:3200"},
-		{Name: "5500", BoolValue: ptrBool(true)},
+		{Name: "5500", BoolValue: new(true)},
 	}
 	is.NoErr(validateObservation(boolean))
 }
@@ -130,6 +130,8 @@ func TestReportSendsNothingWhenAllInvalid(t *testing.T) {
 	is.Equal(len(e.SendCommandToCalls()), 0)
 }
 
-func ptr(f float64) *float64 { return &f }
+//go:fix inline
+func ptr(f float64) *float64 { return new(f) }
 
-func ptrBool(b bool) *bool { return &b }
+//go:fix inline
+func ptrBool(b bool) *bool { return new(b) }
