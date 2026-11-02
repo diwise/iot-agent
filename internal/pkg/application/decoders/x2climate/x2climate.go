@@ -2,7 +2,6 @@ package x2climate
 
 import (
 	"context"
-	"encoding/binary"
 	"math"
 	"time"
 
@@ -11,17 +10,26 @@ import (
 )
 
 type X2ClimatePayload struct {
-	TempC      float64 `json:"temp_c"`
-	HumidityRH float64 `json:"humidity_rh"`
-	VoltageMV  uint16  `json:"voltage_mv"`
+	//	TempC      float64 `json:"temp_c"`
+	//	HumidityRH float64 `json:"humidity_rh"`
+	//	VoltageMV  uint16  `json:"voltage_mv"`
+
+	Frame        byte
+	Measurement  bool
+	TemperatureC float64 `json:"temp_c"`
+	HumidityPct  int     `json:"humidity_rh"`
+	BatteryMV    int     `json:"voltage_mv"`
+	Counter      int     // bytes 10-11
+	Unknown      int     // bytes 4-5
+
 }
 
 func (p X2ClimatePayload) BatteryLevel() *int {
-	if p.VoltageMV == 0 {
+	if p.BatteryMV == 0 {
 		return nil
 	}
 
-	vbat := int(p.VoltageMV)
+	vbat := int(p.BatteryMV)
 	return &vbat
 }
 
@@ -45,24 +53,20 @@ func DecoderX2Climate(ctx context.Context, e types.Event) (types.SensorPayload, 
 // decodeX2Climate decodar X2 Climate / FOAB port-2 payload.
 // Förväntar sig exakt 19 bytes.
 func decodeX2Climate(b []byte) (X2ClimatePayload, error) {
-	var t X2ClimatePayload
+	var r X2ClimatePayload
 
 	if len(b) != 19 {
-		return t, types.ErrUnsupportedPayloadLength
+		return r, types.ErrUnsupportedPayloadLength
 	}
 
-	// Temperature: bytes 4–5, uint16 BE, /1600 → °C
-	tempRaw := binary.BigEndian.Uint16(b[4:6])
-	t.TempC = float64(tempRaw) / 1600.0
+	r.Measurement = true
+	r.Unknown = int(b[4])<<8 | int(b[5])
+	r.BatteryMV = int(b[8])<<8 | int(b[9])
+	r.Counter = int(b[10])<<8 | int(b[11])
+	r.TemperatureC = float64(int16(uint16(b[12])<<8|uint16(b[13]))) / 100
+	r.HumidityPct = int(b[14])
 
-	// Humidity: bytes 8–9, uint16 BE, /100 → %RH
-	humRaw := binary.BigEndian.Uint16(b[8:10])
-	t.HumidityRH = float64(humRaw) / 100.0
-
-	// Voltage: bytes 12–13, uint16 BE, already in mV
-	t.VoltageMV = binary.BigEndian.Uint16(b[12:14])
-
-	return t, nil
+	return r, nil
 }
 
 func ConverterX2Climate(ctx context.Context, deviceID string, payload types.SensorPayload, ts time.Time) ([]lwm2m.Lwm2mObject, error) {
@@ -73,11 +77,11 @@ func ConverterX2Climate(ctx context.Context, deviceID string, payload types.Sens
 func convertToLwm2mObjects(_ context.Context, deviceID string, p X2ClimatePayload, ts time.Time, options ...string) []lwm2m.Lwm2mObject {
 	objects := []lwm2m.Lwm2mObject{}
 
-	objects = append(objects, lwm2m.NewTemperature(deviceID, float64(p.TempC), ts))
+	objects = append(objects, lwm2m.NewTemperature(deviceID, float64(p.TemperatureC), ts))
 
-	objects = append(objects, lwm2m.NewHumidity(deviceID, float64(p.HumidityRH), ts))
+	objects = append(objects, lwm2m.NewHumidity(deviceID, float64(p.HumidityPct), ts))
 
-	vdd := int(p.VoltageMV)
+	vdd := int(p.BatteryMV)
 	d := lwm2m.NewDevice(deviceID, ts)
 	d.PowerSourceVoltage = &vdd
 	soc := VBatToSOC(vdd)
