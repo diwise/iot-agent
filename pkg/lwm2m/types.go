@@ -14,10 +14,8 @@ type DeviceInfo struct {
 
 func NewFillingLevel(deviceID string, sensorValue float64, ts time.Time) FillingLevel {
 	return FillingLevel{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:                     deviceID,
+		Timestamp_:              ts,
 		ActualFillingPercentage: &sensorValue,
 	}
 }
@@ -51,10 +49,8 @@ func (f FillingLevel) MarshalJSON() ([]byte, error) {
 
 func NewTemperature(deviceID string, sensorValue float64, ts time.Time) Temperature {
 	return Temperature{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: Round(sensorValue),
 	}
 }
@@ -88,10 +84,8 @@ func (t Temperature) MarshalJSON() ([]byte, error) {
 
 func NewHumidity(deviceID string, sensorValue float64, ts time.Time) Humidity {
 	return Humidity{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 	}
 }
@@ -119,10 +113,8 @@ func (h Humidity) MarshalJSON() ([]byte, error) {
 
 func NewIlluminance(deviceID string, sensorValue float64, ts time.Time) Illuminance {
 	return Illuminance{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 	}
 }
@@ -150,14 +142,12 @@ func (i Illuminance) MarshalJSON() ([]byte, error) {
 
 func NewAirQuality(deviceID string, co2, pm10, pm25, no2 *float64, ts time.Time) AirQuality {
 	return AirQuality{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
-		CO2:  co2,
-		PM10: pm10,
-		PM25: pm25,
-		NO2:  no2,
+		ID_:        deviceID,
+		Timestamp_: ts,
+		CO2:        co2,
+		PM10:       pm10,
+		PM25:       pm25,
+		NO2:        no2,
 	}
 }
 
@@ -187,10 +177,8 @@ func (aq AirQuality) MarshalJSON() ([]byte, error) {
 
 func NewWaterMeter(deviceID string, cumulatedWaterVolume float64, ts time.Time) WaterMeter {
 	return WaterMeter{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:                  deviceID,
+		Timestamp_:           ts,
 		CumulatedWaterVolume: &cumulatedWaterVolume,
 	}
 }
@@ -234,10 +222,8 @@ func (w WaterMeter) MarshalJSON() ([]byte, error) {
 
 func NewBattery(deviceID string, batteryLevel int, ts time.Time) Battery {
 	return Battery{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:          deviceID,
+		Timestamp_:   ts,
 		BatteryLevel: batteryLevel,
 	}
 }
@@ -267,10 +253,8 @@ func (b Battery) MarshalJSON() ([]byte, error) {
 
 func NewDigitalInput(deviceID string, digitalInputState bool, ts time.Time) DigitalInput {
 	return DigitalInput{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:               deviceID,
+		Timestamp_:        ts,
 		DigitalInputState: digitalInputState,
 	}
 }
@@ -299,10 +283,8 @@ func (d DigitalInput) MarshalJSON() ([]byte, error) {
 
 func NewPeopleCounter(deviceID string, actualNumberOfPersons int, ts time.Time) PeopleCounter {
 	return PeopleCounter{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:                   deviceID,
+		Timestamp_:            ts,
 		ActualNumberOfPersons: actualNumberOfPersons,
 	}
 }
@@ -331,10 +313,8 @@ func (pc PeopleCounter) MarshalJSON() ([]byte, error) {
 
 func NewPresence(deviceID string, digitalInputState bool, ts time.Time) Presence {
 	return Presence{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:               deviceID,
+		Timestamp_:        ts,
 		DigitalInputState: digitalInputState,
 	}
 }
@@ -364,10 +344,8 @@ func (d Presence) MarshalJSON() ([]byte, error) {
 func NewDistance(deviceID string, sensorValue float64, ts time.Time) Distance {
 	metre := "metre"
 	return Distance{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 		SensorUnits: &metre,
 	}
@@ -402,10 +380,8 @@ func (d Distance) MarshalJSON() ([]byte, error) {
 
 func NewConductivity(deviceID string, sensorValue float64, ts time.Time) Conductivity {
 	return Conductivity{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 	}
 }
@@ -434,10 +410,8 @@ func (c Conductivity) MarshalJSON() ([]byte, error) {
 
 func NewPressure(deviceID string, sensorValue float64, ts time.Time) Pressure {
 	return Pressure{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 	}
 }
@@ -465,10 +439,8 @@ func (p Pressure) MarshalJSON() ([]byte, error) {
 
 func NewLoudness(deviceID string, sensorValue float64, ts time.Time) Loudness {
 	return Loudness{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 	}
 }
@@ -498,10 +470,8 @@ func (l Loudness) MarshalJSON() ([]byte, error) {
 
 func NewPower(deviceID string, sensorValue float64, ts time.Time) Power {
 	return Power{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 	}
 }
@@ -529,10 +499,8 @@ func (p Power) MarshalJSON() ([]byte, error) {
 
 func NewEnergy(deviceID string, sensorValue float64, ts time.Time) Energy {
 	return Energy{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:         deviceID,
+		Timestamp_:  ts,
 		SensorValue: sensorValue,
 	}
 }
@@ -560,10 +528,8 @@ func (e Energy) MarshalJSON() ([]byte, error) {
 
 func NewDevice(deviceID string, ts time.Time) Device {
 	return Device{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:        deviceID,
+		Timestamp_: ts,
 	}
 }
 
@@ -593,10 +559,8 @@ func (d Device) MarshalJSON() ([]byte, error) {
 
 func NewStopwatch(deviceID string, sensorValue float64, ts time.Time) Stopwatch {
 	return Stopwatch{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:            deviceID,
+		Timestamp_:     ts,
 		CumulativeTime: sensorValue,
 	}
 }
@@ -626,10 +590,8 @@ func (d Stopwatch) MarshalJSON() ([]byte, error) {
 
 func NewTimer(deviceID string, sensorValue float64, ts time.Time) Timer {
 	return Timer{
-		DeviceInfo: DeviceInfo{
-			ID_:        deviceID,
-			Timestamp_: ts,
-		},
+		ID_:           deviceID,
+		Timestamp_:    ts,
 		DelayDuration: sensorValue,
 	}
 }

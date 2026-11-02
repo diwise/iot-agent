@@ -216,10 +216,8 @@ func convertToLwm2mObjects(ctx context.Context, deviceID string, p *WaterMeterRe
 
 	if ap != nil {
 		wm := lwm2m.WaterMeter{
-			DeviceInfo: lwm2m.DeviceInfo{
-				ID_:        deviceID,
-				Timestamp_: ap.Timestamp,
-			},
+			ID_:        deviceID,
+			Timestamp_: ap.Timestamp,
 		}
 		applyAlarmPacketCode(&wm, ap.StatusCode)
 
